@@ -1,0 +1,40 @@
+{
+  "name": "Pythmata",
+  "short_name": "Pythmata",
+  "description": "A Python-based BPMN workflow engine",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1976d2",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "View process dashboard"
+    },
+    {
+      "name": "Processes",
+      "url": "/processes",
+      "description": "View all processes"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "related_applications": []
+}
