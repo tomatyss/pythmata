@@ -14,7 +14,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://backend:8000',
         changeOrigin: true,
         secure: false,
         ws: true,
@@ -41,7 +41,7 @@ export default defineConfig({
   },
   // Optimize deps that might need special handling
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', '@mui/material'],
+    include: ['react', 'react-dom', 'react-router-dom', '@mui/material', 'bpmn-js'],
     exclude: ['@tanstack/react-query'],
   },
 });

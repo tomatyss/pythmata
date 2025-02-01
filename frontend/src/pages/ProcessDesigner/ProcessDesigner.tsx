@@ -9,9 +9,12 @@ import {
   Button,
   TextField,
   CircularProgress,
+  Typography,
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
+import 'bpmn-js/dist/assets/diagram-js.css';
+import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 
 // Default empty BPMN diagram
 const emptyBpmn = `<?xml version="1.0" encoding="UTF-8"?>
@@ -40,44 +43,60 @@ const ProcessDesigner = () => {
   const [loading, setLoading] = useState(true);
   const [processName, setProcessName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const initializeModeler = async () => {
-      if (!containerRef.current) return;
+    console.log('ProcessDesigner mounted');
+    if (id) {
+      setProcessName('Existing Process');
+    } else {
+      setProcessName('New Process');
+    }
+    setLoading(false);
+  }, [id]);
 
-      try {
-        // Initialize BPMN modeler
-        modelerRef.current = new BpmnModeler({
-          container: containerRef.current,
-          keyboard: {
-            bindTo: document,
-          },
-        });
+  useEffect(() => {
+    if (loading || !containerRef.current) return;
 
-        if (id) {
-          // TODO: Fetch existing process
-          // Simulate API call
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          setProcessName('Existing Process');
-          await modelerRef.current.importXML(emptyBpmn);
-        } else {
-          // Create new process
-          setProcessName('New Process');
-          await modelerRef.current.importXML(emptyBpmn);
+    console.log('Initializing BPMN modeler...');
+    console.log('Container ref:', containerRef.current);
+    console.log('Container dimensions:', {
+      width: containerRef.current.clientWidth,
+      height: containerRef.current.clientHeight
+    });
+
+    try {
+      modelerRef.current = new BpmnModeler({
+        container: containerRef.current,
+        keyboard: {
+          bindTo: document
         }
-      } catch (error) {
-        console.error('Error initializing BPMN modeler:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
+      console.log('BpmnModeler instance created:', modelerRef.current);
 
-    initializeModeler();
+      modelerRef.current.importXML(emptyBpmn).then(() => {
+        console.log('BPMN XML imported successfully');
+      });
+    } catch (error: any) {
+      console.error('Error initializing BPMN modeler:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      setError('Failed to initialize process designer. Please try refreshing the page.');
+    }
 
     return () => {
-      modelerRef.current?.destroy();
+      if (modelerRef.current) {
+        console.log('Cleaning up BPMN modeler');
+        modelerRef.current.destroy();
+        modelerRef.current = null;
+      }
     };
-  }, [id]);
+  }, [loading]);
 
   const handleSave = async () => {
     if (!modelerRef.current || !processName) return;
@@ -85,21 +104,22 @@ const ProcessDesigner = () => {
     try {
       setSaving(true);
       const { xml } = await modelerRef.current.saveXML({ format: true });
-      
+
       if (id) {
         // Update existing process
         await apiService.updateProcessDefinition(id, {
           name: processName,
-          bpmnXml: xml
+          bpmn_xml: xml
         });
       } else {
         // Create new process
         await apiService.createProcessDefinition({
           name: processName,
-          bpmnXml: xml
+          bpmn_xml: xml,
+          version: 1
         });
       }
-      
+
       // Navigate back to process list
       navigate('/processes');
     } catch (error) {
@@ -119,22 +139,23 @@ const ProcessDesigner = () => {
           justifyContent: 'center',
           alignItems: 'center',
           minHeight: '400px',
+          flexDirection: 'column',
+          gap: 2
         }}
       >
-        <CircularProgress />
+        {error ? (
+          <Typography color="error">{error}</Typography>
+        ) : (
+          <CircularProgress />
+        )}
       </Box>
     );
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 128px)', display: 'flex', flexDirection: 'column' }}>
-      <AppBar
-        position="static"
-        color="default"
-        elevation={0}
-        sx={{ borderBottom: 1, borderColor: 'divider' }}
-      >
-        <Toolbar>
+    <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+      <AppBar position="static" color="default" elevation={0}>
+        <Toolbar sx={{ gap: 2 }}>
           <TextField
             value={processName}
             onChange={(e) => setProcessName(e.target.value)}
@@ -147,7 +168,6 @@ const ProcessDesigner = () => {
             startIcon={<SaveIcon />}
             onClick={handleSave}
             disabled={saving}
-            sx={{ ml: 2 }}
           >
             {saving ? 'Saving...' : 'Save'}
           </Button>
@@ -155,15 +175,21 @@ const ProcessDesigner = () => {
       </AppBar>
 
       <Paper
-        ref={containerRef}
         sx={{
           flexGrow: 1,
-          overflow: 'hidden',
-          '& .djs-palette': {
-            position: 'fixed',
-          },
+          position: 'relative',
+          bgcolor: '#fff',
+          overflow: 'hidden'
         }}
-      />
+      >
+        <div
+          ref={containerRef}
+          style={{
+            width: '100%',
+            height: '100%'
+          }}
+        />
+      </Paper>
     </Box>
   );
 };

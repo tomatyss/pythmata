@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TypeVar, Generic, List
 from uuid import UUID
 from pydantic import BaseModel
 
@@ -34,3 +34,20 @@ class ProcessDefinitionResponse(ProcessDefinitionBase):
     class Config:
         """Pydantic config."""
         from_attributes = True  # Allow ORM model conversion
+
+
+T = TypeVar('T')
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Schema for paginated response."""
+    items: List[T]
+    total: int
+    page: int
+    pageSize: int
+    totalPages: int
+
+
+class ApiResponse(BaseModel, Generic[T]):
+    """Schema for API response."""
+    data: T

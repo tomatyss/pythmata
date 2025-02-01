@@ -1,3 +1,4 @@
+from pythmata.api.routes import router as process_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,11 +16,12 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -27,12 +29,13 @@ async def startup_event():
     settings = Settings()
     app.state.event_bus = EventBus(settings)
     app.state.state_manager = StateManager(settings)
-    
+
     # Initialize services
     init_db(settings)
 
     await app.state.event_bus.connect()
     await app.state.state_manager.connect()
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -42,11 +45,11 @@ async def shutdown_event():
     await app.state.event_bus.disconnect()
     await app.state.state_manager.disconnect()
 
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
 
 # Import and include routers
-from pythmata.api.routes import router as process_router
-app.include_router(process_router)
+app.include_router(process_router, prefix="/api")

@@ -8,6 +8,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
@@ -19,7 +20,11 @@ COPY pyproject.toml poetry.lock* ./
 # Configure poetry to not create virtual environment
 RUN poetry config virtualenvs.create false
 
-# Copy the application
+# Copy scripts first and make executable
+COPY scripts/start.sh /app/scripts/
+RUN chmod +x /app/scripts/start.sh
+
+# Copy the rest of the application
 COPY . .
 
 # Install dependencies and package in development mode
@@ -28,5 +33,5 @@ RUN poetry install --no-interaction --no-ansi
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["poetry", "run", "uvicorn", "pythmata.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Run the start script
+CMD ["/app/scripts/start.sh"]

@@ -28,8 +28,8 @@ interface ProcessState {
   // Actions
   fetchDefinitions: () => Promise<void>;
   fetchDefinition: (id: string) => Promise<void>;
-  createDefinition: (name: string, bpmnXml: string) => Promise<void>;
-  updateDefinition: (id: string, name: string, bpmnXml: string) => Promise<void>;
+  createDefinition: (name: string, bpmn_xml: string) => Promise<void>;
+  updateDefinition: (id: string, name: string, bpmn_xml: string) => Promise<void>;
   deleteDefinition: (id: string) => Promise<void>;
   
   fetchInstances: (definitionId?: string) => Promise<void>;
@@ -93,10 +93,10 @@ const useProcessStore = create<ProcessState>()(
         }
       },
 
-      createDefinition: async (name: string, bpmnXml: string) => {
+      createDefinition: async (name: string, bpmn_xml: string) => {
         try {
           set({ definitionsLoading: true, definitionsError: null });
-          await apiService.createProcessDefinition({ name, bpmnXml });
+          await apiService.createProcessDefinition({ name, bpmn_xml });
           await get().fetchDefinitions();
         } catch (error) {
           set({
@@ -106,10 +106,10 @@ const useProcessStore = create<ProcessState>()(
         }
       },
 
-      updateDefinition: async (id: string, name: string, bpmnXml: string) => {
+      updateDefinition: async (id: string, name: string, bpmn_xml: string) => {
         try {
           set({ definitionsLoading: true, definitionsError: null });
-          await apiService.updateProcessDefinition(id, { name, bpmnXml });
+          await apiService.updateProcessDefinition(id, { name, bpmn_xml });
           await get().fetchDefinitions();
         } catch (error) {
           set({

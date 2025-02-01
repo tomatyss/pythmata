@@ -18,12 +18,14 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    ports:
-      - "3000:80"
+    depends_on:
+      - backend
 
   postgres:
     image: postgres:15

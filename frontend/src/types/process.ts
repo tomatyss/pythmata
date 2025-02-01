@@ -3,7 +3,7 @@ export interface ProcessDefinition {
   id: string;
   name: string;
   version: number;
-  bpmnXml: string;
+  bpmn_xml: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,13 +100,13 @@ export interface PaginatedResponse<T> {
 // API Request Types
 export interface CreateProcessDefinitionRequest {
   name: string;
-  bpmnXml: string;
+  bpmn_xml: string;
   version?: number;  // Optional, defaults to 1
 }
 
 export interface UpdateProcessDefinitionRequest {
   name?: string;
-  bpmnXml?: string;
+  bpmn_xml?: string;
   version?: number;  // Optional, auto-increments if not provided
 }
 
