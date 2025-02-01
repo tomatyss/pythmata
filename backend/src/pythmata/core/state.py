@@ -37,7 +37,7 @@ class StateManager:
     async def disconnect(self) -> None:
         """Close Redis connection."""
         if self.redis:
-            await self.redis.close()
+            await self.redis.aclose()
             self.redis = None
 
     async def get_process_state(self, instance_id: str) -> Dict[str, Any]:
