@@ -159,14 +159,16 @@
   - [ ] Implement deployment automation
 
 ## 11. BPMN Engine Core
-- [ ] Implement BPMN parser and validator
+- [x] Implement BPMN parser and validator
   - [ ] Support for all BPMN 2.0 elements
-  - [ ] XML schema validation
+  - [x] XML schema validation
   - [ ] Custom extension validation
-- [ ] Create execution engine
-  - [ ] Token-based execution
-  - [ ] Gateway handling (exclusive, parallel, inclusive)
-  - [ ] Event handling (start, end, intermediate)
+- [x] Create execution engine
+  - [x] Token-based execution
+  - [x] Gateway handling (parallel split)
+  - [ ] Gateway handling (exclusive, inclusive)
+  - [x] Event handling (basic start/end)
+  - [ ] Event handling (intermediate)
   - [ ] Compensation handling
   - [ ] Boundary event support
 - [ ] Add transaction management
