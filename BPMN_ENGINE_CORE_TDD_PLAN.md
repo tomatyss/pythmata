@@ -275,9 +275,9 @@
    - Test interrupting vs non-interrupting ✅
    - Test message event ordering ✅
 
-## 5. Compensation Handling
+## 5. Compensation Handling ✅
 
-### 5.1 Compensation Events
+### 5.1 Compensation Events ✅
 #### Test Cases
 1. Basic Compensation ✅
    ```python
