@@ -1,16 +1,23 @@
 from datetime import datetime, UTC
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.core.engine.executor import ProcessExecutor
+from pythmata.core.engine.transaction import Transaction, TransactionStatus
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessDefinition, ProcessInstance, ProcessStatus, Variable
 
+if TYPE_CHECKING:
+    from pythmata.core.engine.executor import ProcessExecutor
+
 class ProcessInstanceError(Exception):
     """Base class for process instance errors."""
+    pass
+
+class TransactionError(ProcessInstanceError):
+    """Raised when transaction operations fail."""
     pass
 
 class InvalidProcessDefinitionError(ProcessInstanceError):
@@ -36,12 +43,13 @@ class ProcessInstanceManager:
     def __init__(
         self,
         session: AsyncSession,
-        executor: ProcessExecutor,
+        executor: "ProcessExecutor",
         state_manager: StateManager
     ):
         self.session = session
         self.executor = executor
         self.state_manager = state_manager
+        self._active_transactions: Dict[str, Transaction] = {}  # instance_id -> Transaction
 
     async def create_instance(
         self,
@@ -200,6 +208,12 @@ class ProcessInstanceManager:
         if not instance:
             raise ProcessInstanceError(f"Instance {instance_id} not found")
             
+        # Cancel any active transaction
+        if str(instance_id) in self._active_transactions:
+            transaction = self._active_transactions[str(instance_id)]
+            transaction.cancel()
+            del self._active_transactions[str(instance_id)]
+            
         # Remove all tokens
         # Remove all tokens one by one since we don't have a bulk remove method
         tokens = await self.state_manager.get_token_positions(str(instance_id))
@@ -211,6 +225,58 @@ class ProcessInstanceManager:
         await self.session.commit()
         return instance
 
+    async def start_transaction(self, instance_id: UUID, transaction_id: str) -> Transaction:
+        """
+        Start a new transaction for a process instance.
+        
+        Args:
+            instance_id: ID of the process instance
+            transaction_id: ID of the transaction element
+            
+        Returns:
+            New Transaction instance
+            
+        Raises:
+            TransactionError: If instance already has an active transaction
+        """
+        instance_str = str(instance_id)
+        if instance_str in self._active_transactions:
+            raise TransactionError(f"Instance {instance_id} already has an active transaction")
+            
+        transaction = Transaction.start(transaction_id, instance_str)
+        self._active_transactions[instance_str] = transaction
+        return transaction
+    
+    async def complete_transaction(self, instance_id: UUID) -> None:
+        """
+        Complete the active transaction for a process instance.
+        
+        Args:
+            instance_id: ID of the process instance
+            
+        Raises:
+            TransactionError: If instance has no active transaction
+        """
+        instance_str = str(instance_id)
+        if instance_str not in self._active_transactions:
+            raise TransactionError(f"Instance {instance_id} has no active transaction")
+            
+        transaction = self._active_transactions[instance_str]
+        transaction.complete()
+        del self._active_transactions[instance_str]
+    
+    def get_active_transaction(self, instance_id: UUID) -> Optional[Transaction]:
+        """
+        Get the active transaction for a process instance if one exists.
+        
+        Args:
+            instance_id: ID of the process instance
+            
+        Returns:
+            Active Transaction instance or None if no active transaction
+        """
+        return self._active_transactions.get(str(instance_id))
+    
     async def set_error_state(
         self,
         instance_id: UUID,

@@ -1,8 +1,13 @@
-from typing import Dict, List, Optional
+from datetime import datetime, UTC
+from typing import Dict, List, Optional, TYPE_CHECKING
 from uuid import UUID
 
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
+from pythmata.models.process import ProcessInstance, ProcessStatus
+
+if TYPE_CHECKING:
+    from pythmata.core.engine.instance import ProcessInstanceManager
 
 class ProcessExecutor:
     """
@@ -16,8 +21,9 @@ class ProcessExecutor:
     - Managing token state persistence
     """
     
-    def __init__(self, state_manager: StateManager):
+    def __init__(self, state_manager: StateManager, instance_manager: Optional["ProcessInstanceManager"] = None):
         self.state_manager = state_manager
+        self.instance_manager = instance_manager
 
     async def create_initial_token(self, instance_id: str, start_event_id: str) -> Token:
         """
@@ -49,7 +55,40 @@ class ProcessExecutor:
         Returns:
             The moved token
         """
-        # Remove token from current node
+        # Handle transaction boundaries
+        if self.instance_manager:
+            # Check if moving to Transaction_End (complete transaction and move to End_1)
+            if target_node_id == "Transaction_End":
+                # First complete the transaction
+                await self.instance_manager.complete_transaction(UUID(token.instance_id))
+                # Then move token directly to End_1 and complete process
+                await self.state_manager.remove_token(
+                    instance_id=token.instance_id,
+                    node_id=token.node_id
+                )
+                await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
+                new_token = token.copy(node_id="End_1")
+                await self.state_manager.add_token(
+                    instance_id=new_token.instance_id,
+                    node_id=new_token.node_id,
+                    data=new_token.to_dict()
+                )
+                # Mark process as completed
+                instance = await self.instance_manager.session.get(
+                    ProcessInstance,
+                    UUID(token.instance_id)
+                )
+                if instance:
+                    instance.status = ProcessStatus.COMPLETED
+                    instance.end_time = datetime.now(UTC)
+                    await self.instance_manager.session.commit()
+                return new_token
+            # Check if moving into a transaction (but not to internal transaction nodes)
+            elif target_node_id.startswith("Transaction_") and target_node_id not in ["Transaction_Start", "Transaction_End"]:
+                await self.instance_manager.start_transaction(UUID(token.instance_id), target_node_id)
+                # Move token to transaction's start event
+                target_node_id = "Transaction_Start"
+        
         # Remove token from current node
         await self.state_manager.remove_token(
             instance_id=token.instance_id,
@@ -65,6 +104,18 @@ class ProcessExecutor:
             node_id=new_token.node_id,
             data=new_token.to_dict()
         )
+        
+        # Handle end events
+        if target_node_id == "End_1" and self.instance_manager:
+            # Mark process as completed with end time
+            instance = await self.instance_manager.session.get(
+                ProcessInstance,
+                UUID(token.instance_id)
+            )
+            if instance:
+                instance.status = ProcessStatus.COMPLETED
+                instance.end_time = datetime.now(UTC)
+                await self.instance_manager.session.commit()
         
         return new_token
 

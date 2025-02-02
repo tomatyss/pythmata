@@ -302,7 +302,7 @@
 
 ### 5.2 Transaction Management
 #### Test Cases
-1. Process-level Transactions
+1. Process-level Transactions ✅
    ```python
    def test_process_transaction():
        """Test process-level transaction handling"""
@@ -314,7 +314,7 @@
        </bpmn:transaction>
        """
    ```
-   - Test transaction boundaries
+   - Test transaction boundaries ✅
    - Test rollback handling
    - Test compensation triggers
 
