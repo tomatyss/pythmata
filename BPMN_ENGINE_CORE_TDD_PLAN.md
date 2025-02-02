@@ -234,11 +234,11 @@
    - Test cycle timers ✅
    - Test timer cancellation ✅
 
-2. Message Events
-   - Test message correlation
-   - Test message payload handling
-   - Test multiple message subscriptions
-   - Test message expiration
+2. Message Events ✅
+   - Test message correlation ✅
+   - Test message payload handling ✅
+   - Test multiple message subscriptions ✅
+   - Test message expiration ✅
 
 3. Signal Events
    - Test signal broadcasting
