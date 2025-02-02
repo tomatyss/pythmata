@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Any, Dict, Optional, List
+from uuid import uuid4
 
 import redis.asyncio as redis
 from redis.asyncio import Redis
@@ -159,8 +160,11 @@ class StateManager:
 
         key = f"process:{instance_id}:tokens"
         token = {
+            "instance_id": instance_id,
             "node_id": node_id,
-            "data": data or {}
+            "state": "ACTIVE",
+            "data": data or {},
+            "id": str(uuid4())
         }
         await self.redis.rpush(key, json.dumps(token))
 

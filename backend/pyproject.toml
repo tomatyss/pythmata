@@ -23,6 +23,8 @@ python-multipart = "^0.0.6"
 toml = "^0.10.2"
 python-dotenv = "^1.0.1"
 xmlschema = "^2.5.1"
+psycopg2-binary = "^2.9.10"
+greenlet = "^3.1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.4.4"

@@ -74,22 +74,22 @@
    - Lost tokens ✅
    - Token deadlocks ✅
 
-### 2.2 Process Instance Management
+### 2.2 Process Instance Management ✅
 #### Test Cases
-1. Instance Creation
-   - New instance initialization
-   - Initial variable setup
-   - Start event triggering
+1. Instance Creation ✅
+   - New instance initialization ✅
+   - Initial variable setup ✅
+   - Start event triggering ✅
 
-2. Instance State
-   - Active/suspended states
-   - Variable scoping
-   - Execution context
+2. Instance State ✅
+   - Active/suspended states ✅
+   - Variable scoping ✅
+   - Execution context ✅
 
-3. Instance Control
-   - Suspend/resume
-   - Terminate
-   - Error handling
+3. Instance Control ✅
+   - Suspend/resume ✅
+   - Terminate ✅
+   - Error handling ✅
 
 4. Multi-instance Handling
    - Parallel instances
