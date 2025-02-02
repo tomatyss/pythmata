@@ -30,22 +30,26 @@ class Token:
         state: TokenState = TokenState.ACTIVE,
         data: Optional[Dict] = None,
         token_id: Optional[UUID] = None,
+        scope_id: Optional[str] = None,
     ):
         self.id = token_id or uuid4()
         self.instance_id = instance_id
         self.node_id = node_id
         self.state = state
         self.data = data or {}
+        self.scope_id = scope_id
 
     def to_dict(self) -> Dict:
         """Convert token to dictionary for storage."""
-        return {
+        data = {
             "id": str(self.id),
             "instance_id": self.instance_id,
             "node_id": self.node_id,
             "state": self.state.value,
             "data": self.data,
+            "scope_id": self.scope_id,
         }
+        return {k: v for k, v in data.items() if v is not None}
 
     @classmethod
     def from_dict(cls, data: Dict) -> "Token":
@@ -56,6 +60,7 @@ class Token:
             state=TokenState(data["state"]),
             data=data.get("data", {}),
             token_id=UUID(data["id"]) if "id" in data else None,
+            scope_id=data.get("scope_id"),
         )
 
     def copy(self, **kwargs) -> "Token":

@@ -12,7 +12,7 @@
 2. Complex Process Validation
    - Multiple start/end events
    - Parallel paths
-   - Nested sub-processes
+   - Nested sub-processes ✅
    - All BPMN 2.0 elements
 
 3. Error Cases ✅
@@ -93,8 +93,8 @@
 
 4. Multi-instance Handling
    - Parallel instances
-   - Resource isolation
-   - State separation
+   - Resource isolation ✅
+   - State separation ✅
 
 ## 3. Gateway Implementation
 

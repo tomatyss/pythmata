@@ -75,7 +75,7 @@ class StateManager:
         await self.redis.set(key, json.dumps(state), ex=ttl)
 
     async def get_variable(
-        self, instance_id: str, name: str, scope_id: Optional[str] = None
+        self, instance_id: str, name: str, scope_id: Optional[str] = None, check_parent: bool = True
     ) -> Any:
         """Get a process variable.
 
@@ -83,17 +83,32 @@ class StateManager:
             instance_id: The process instance ID
             name: Variable name
             scope_id: Optional scope ID (e.g., subprocess ID)
+            check_parent: Whether to check parent scope if not found in specified scope
 
         Returns:
-            The variable value
+            The variable value from specified scope, or parent scope if check_parent is True
         """
         if not self.redis:
             raise RuntimeError("Not connected to Redis")
 
         key = f"process:{instance_id}:vars"
-        scope_key = f"{scope_id}:{name}" if scope_id else name
-        value = await self.redis.hget(key, scope_key)
-        return json.loads(value) if value else None
+        
+        # First try to get from specified scope
+        if scope_id:
+            scope_key = f"{scope_id}:{name}"
+            value = await self.redis.hget(key, scope_key)
+            if value:
+                return json.loads(value)
+            
+            # If not found in subprocess scope and check_parent is True, try parent scope
+            if check_parent:
+                value = await self.redis.hget(key, name)
+                return json.loads(value) if value else None
+            return None
+        else:
+            # Direct access to parent scope
+            value = await self.redis.hget(key, name)
+            return json.loads(value) if value else None
 
     async def set_variable(
         self, instance_id: str, name: str, value: Any, scope_id: Optional[str] = None
@@ -149,8 +164,63 @@ class StateManager:
             "state": "ACTIVE",
             "data": data or {},
             "id": str(uuid4()),
+            "scope_id": data.get("scope_id") if data else None,
         }
         await self.redis.rpush(key, json.dumps(token))
+
+    async def get_scope_tokens(
+        self, instance_id: str, scope_id: str
+    ) -> List[Dict[str, Any]]:
+        """Get tokens within a specific scope.
+
+        Args:
+            instance_id: The process instance ID
+            scope_id: The scope ID (e.g., subprocess ID)
+
+        Returns:
+            List of tokens in the scope
+        """
+        if not self.redis:
+            raise RuntimeError("Not connected to Redis")
+
+        key = f"process:{instance_id}:tokens"
+        tokens = await self.redis.lrange(key, 0, -1)
+        return [
+            json.loads(token)
+            for token in tokens
+            if json.loads(token).get("scope_id") == scope_id
+        ]
+
+    async def clear_scope_tokens(self, instance_id: str, scope_id: str) -> None:
+        """Remove all tokens and variables within a specific scope.
+
+        Args:
+            instance_id: The process instance ID
+            scope_id: The scope ID to clear (e.g., subprocess ID)
+        """
+        if not self.redis:
+            raise RuntimeError("Not connected to Redis")
+
+        # Clear tokens
+        key = f"process:{instance_id}:tokens"
+        tokens = await self.get_token_positions(instance_id)
+
+        # Filter out tokens in the specified scope
+        new_tokens = [token for token in tokens if token.get("scope_id") != scope_id]
+
+        # Replace the token list
+        await self.redis.delete(key)
+        if new_tokens:
+            await self.redis.rpush(key, *[json.dumps(token) for token in new_tokens])
+
+        # Clear variables in scope
+        vars_key = f"process:{instance_id}:vars"
+        all_vars = await self.redis.hgetall(vars_key)
+        
+        # Remove variables in this scope
+        for var_key in list(all_vars.keys()):
+            if var_key.startswith(f"{scope_id}:"):
+                await self.redis.hdel(vars_key, var_key)
 
     async def remove_token(self, instance_id: str, node_id: str) -> None:
         """Remove a token from a node.
