@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -75,7 +75,7 @@ class ProcessInstanceManager:
         instance = ProcessInstance(
             definition_id=process_definition_id,
             status=ProcessStatus.RUNNING,
-            start_time=datetime.utcnow()
+            start_time=datetime.now(UTC)
         )
         self.session.add(instance)
         await self.session.commit()  # Commit to get instance.id
@@ -207,7 +207,7 @@ class ProcessInstanceManager:
             await self.state_manager.remove_token(str(instance_id), token["node_id"])
         
         instance.status = ProcessStatus.COMPLETED
-        instance.end_time = datetime.utcnow()
+        instance.end_time = datetime.now(UTC)
         await self.session.commit()
         return instance
 

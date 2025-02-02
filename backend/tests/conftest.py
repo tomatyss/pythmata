@@ -12,17 +12,7 @@ from pythmata.core.config import Settings, RedisSettings, ServerSettings, Databa
 from pythmata.models.process import Base
 
 @pytest.fixture(scope="function")
-def event_loop():
-    """Create an instance of the default event loop for each test."""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
-    asyncio.set_event_loop(None)
-
-@pytest.fixture(scope="function")
-async def redis_connection(test_settings: Settings, event_loop) -> AsyncGenerator[Redis, None]:
+async def redis_connection(test_settings: Settings) -> AsyncGenerator[Redis, None]:
     """Create a Redis connection for testing."""
     connection = redis.from_url(
         str(test_settings.redis.url),
@@ -39,7 +29,7 @@ async def redis_connection(test_settings: Settings, event_loop) -> AsyncGenerato
         await connection.aclose()   # Close connection
 
 @pytest.fixture(scope="function")
-async def engine(test_settings: Settings, event_loop):
+async def engine(test_settings: Settings):
     """Create a test database engine."""
     engine = create_async_engine(
         str(test_settings.database.url),  # Convert PostgresDsn to string
