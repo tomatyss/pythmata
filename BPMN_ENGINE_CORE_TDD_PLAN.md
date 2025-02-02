@@ -295,10 +295,10 @@
    - Test compensation handler execution ✅
    - Test compensation data handling ✅
 
-2. Complex Compensation
-   - Test nested compensation
-   - Test parallel compensation
-   - Test compensation ordering
+2. Complex Compensation ✅
+   - Test nested compensation ✅
+   - Test parallel compensation ✅
+   - Test compensation ordering ✅
 
 ### 5.2 Transaction Management
 #### Test Cases
