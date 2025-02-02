@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 import redis.asyncio as redis
@@ -10,6 +10,7 @@ from redis.exceptions import LockError
 from pythmata.core.config import Settings
 
 logger = logging.getLogger(__name__)
+
 
 class StateManager:
     """Manages process state and variables using Redis."""
@@ -26,7 +27,7 @@ class StateManager:
                 str(self.settings.redis.url),
                 encoding="utf-8",
                 decode_responses=True,
-                max_connections=self.settings.redis.pool_size
+                max_connections=self.settings.redis.pool_size,
             )
             # Test connection
             await self.redis.ping()
@@ -43,10 +44,10 @@ class StateManager:
 
     async def get_process_state(self, instance_id: str) -> Dict[str, Any]:
         """Get the current state of a process instance.
-        
+
         Args:
             instance_id: The process instance ID
-            
+
         Returns:
             Dict containing the process state
         """
@@ -58,13 +59,10 @@ class StateManager:
         return json.loads(state) if state else {}
 
     async def set_process_state(
-        self,
-        instance_id: str,
-        state: Dict[str, Any],
-        ttl: Optional[int] = None
+        self, instance_id: str, state: Dict[str, Any], ttl: Optional[int] = None
     ) -> None:
         """Set the state of a process instance.
-        
+
         Args:
             instance_id: The process instance ID
             state: The state to store
@@ -74,25 +72,18 @@ class StateManager:
             raise RuntimeError("Not connected to Redis")
 
         key = f"process:{instance_id}:state"
-        await self.redis.set(
-            key,
-            json.dumps(state),
-            ex=ttl
-        )
+        await self.redis.set(key, json.dumps(state), ex=ttl)
 
     async def get_variable(
-        self,
-        instance_id: str,
-        name: str,
-        scope_id: Optional[str] = None
+        self, instance_id: str, name: str, scope_id: Optional[str] = None
     ) -> Any:
         """Get a process variable.
-        
+
         Args:
             instance_id: The process instance ID
             name: Variable name
             scope_id: Optional scope ID (e.g., subprocess ID)
-            
+
         Returns:
             The variable value
         """
@@ -105,14 +96,10 @@ class StateManager:
         return json.loads(value) if value else None
 
     async def set_variable(
-        self,
-        instance_id: str,
-        name: str,
-        value: Any,
-        scope_id: Optional[str] = None
+        self, instance_id: str, name: str, value: Any, scope_id: Optional[str] = None
     ) -> None:
         """Set a process variable.
-        
+
         Args:
             instance_id: The process instance ID
             name: Variable name
@@ -128,10 +115,10 @@ class StateManager:
 
     async def get_token_positions(self, instance_id: str) -> List[Dict[str, Any]]:
         """Get current token positions for a process instance.
-        
+
         Args:
             instance_id: The process instance ID
-            
+
         Returns:
             List of token positions
         """
@@ -143,13 +130,10 @@ class StateManager:
         return [json.loads(token) for token in tokens]
 
     async def add_token(
-        self,
-        instance_id: str,
-        node_id: str,
-        data: Optional[Dict[str, Any]] = None
+        self, instance_id: str, node_id: str, data: Optional[Dict[str, Any]] = None
     ) -> None:
         """Add a token to a node.
-        
+
         Args:
             instance_id: The process instance ID
             node_id: The node ID where the token is placed
@@ -164,17 +148,13 @@ class StateManager:
             "node_id": node_id,
             "state": "ACTIVE",
             "data": data or {},
-            "id": str(uuid4())
+            "id": str(uuid4()),
         }
         await self.redis.rpush(key, json.dumps(token))
 
-    async def remove_token(
-        self,
-        instance_id: str,
-        node_id: str
-    ) -> None:
+    async def remove_token(self, instance_id: str, node_id: str) -> None:
         """Remove a token from a node.
-        
+
         Args:
             instance_id: The process instance ID
             node_id: The node ID to remove the token from
@@ -184,32 +164,24 @@ class StateManager:
 
         key = f"process:{instance_id}:tokens"
         tokens = await self.get_token_positions(instance_id)
-        
+
         # Filter out the token to remove
-        new_tokens = [
-            token for token in tokens
-            if token["node_id"] != node_id
-        ]
-        
+        new_tokens = [token for token in tokens if token["node_id"] != node_id]
+
         # Replace the token list
         await self.redis.delete(key)
         if new_tokens:
-            await self.redis.rpush(
-                key,
-                *[json.dumps(token) for token in new_tokens]
-            )
+            await self.redis.rpush(key, *[json.dumps(token) for token in new_tokens])
 
     async def acquire_lock(
-        self,
-        instance_id: str,
-        timeout: Optional[int] = None
+        self, instance_id: str, timeout: Optional[int] = None
     ) -> bool:
         """Acquire a lock for a process instance.
-        
+
         Args:
             instance_id: The process instance ID
             timeout: Lock timeout in seconds
-            
+
         Returns:
             True if lock was acquired, False otherwise
         """
@@ -218,15 +190,12 @@ class StateManager:
 
         lock_key = f"lock:process:{instance_id}"
         return await self.redis.set(
-            lock_key,
-            "1",
-            ex=timeout or self.lock_timeout,
-            nx=True
+            lock_key, "1", ex=timeout or self.lock_timeout, nx=True
         )
 
     async def release_lock(self, instance_id: str) -> None:
         """Release a process instance lock.
-        
+
         Args:
             instance_id: The process instance ID
         """
@@ -237,13 +206,10 @@ class StateManager:
         await self.redis.delete(lock_key)
 
     async def save_timer_state(
-        self,
-        instance_id: str,
-        timer_id: str,
-        state: Dict[str, Any]
+        self, instance_id: str, timer_id: str, state: Dict[str, Any]
     ) -> None:
         """Save timer state.
-        
+
         Args:
             instance_id: The process instance ID
             timer_id: The timer event ID
@@ -256,16 +222,14 @@ class StateManager:
         await self.redis.set(key, json.dumps(state))
 
     async def get_timer_state(
-        self,
-        instance_id: str,
-        timer_id: str
+        self, instance_id: str, timer_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get timer state.
-        
+
         Args:
             instance_id: The process instance ID
             timer_id: The timer event ID
-            
+
         Returns:
             Timer state if exists, None otherwise
         """
@@ -276,13 +240,9 @@ class StateManager:
         state = await self.redis.get(key)
         return json.loads(state) if state else None
 
-    async def delete_timer_state(
-        self,
-        instance_id: str,
-        timer_id: str
-    ) -> None:
+    async def delete_timer_state(self, instance_id: str, timer_id: str) -> None:
         """Delete timer state.
-        
+
         Args:
             instance_id: The process instance ID
             timer_id: The timer event ID

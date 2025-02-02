@@ -28,7 +28,7 @@ install:
 	@echo "Installing frontend dependencies..."
 	cd frontend && npm install
 	@echo "Installing backend dependencies..."
-	cd backend && pip install -r requirements.txt
+	cd backend && poetry install
 
 # Start development servers
 dev:
@@ -53,15 +53,28 @@ test:
 lint:
 	@echo "Linting frontend..."
 	cd frontend && npm run lint
+	@echo "Type checking frontend..."
+	cd frontend && npm run build -- --noEmit
 	@echo "Linting backend..."
-	cd backend && flake8
+	cd backend && poetry run black --check .
+	cd backend && poetry run isort --check-only .
+	cd backend && poetry run mypy src/
+
+# Fix linting issues
+lint-fix:
+	@echo "Fixing frontend linting issues..."
+	cd frontend && npm run format
+	@echo "Fixing backend linting issues..."
+	cd backend && poetry run black .
+	cd backend && poetry run isort .
 
 # Format code
 format:
 	@echo "Formatting frontend..."
 	cd frontend && npm run format
 	@echo "Formatting backend..."
-	cd backend && black .
+	cd backend && poetry run isort .
+	cd backend && poetry run black .
 
 # Clean build artifacts
 clean:

@@ -1,27 +1,28 @@
-from typing import Dict, Any, Optional
-from datetime import datetime
 import asyncio
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-from pythmata.core.engine.events.timer import TimerEvent, TimerCancelled
+from pythmata.core.engine.events.timer import TimerCancelled, TimerEvent
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
+
 
 class TimerBoundaryEvent(TimerEvent):
     """
     Implementation of BPMN timer boundary events.
-    
+
     Timer boundary events can be attached to activities and can be either:
     - Interrupting: Cancels the activity when timer triggers
     - Non-interrupting: Creates parallel execution path without cancelling activity
     """
-    
+
     def __init__(
         self,
         event_id: str,
         timer_def: str,
         state_manager: StateManager,
         activity_id: str,
-        interrupting: bool = True
+        interrupting: bool = True,
     ):
         super().__init__(event_id, timer_def, state_manager)
         self.activity_id = activity_id
@@ -33,7 +34,7 @@ class TimerBoundaryEvent(TimerEvent):
         try:
             # Store additional boundary event info
             await self.start(token)
-            
+
             if self.timer_type == "duration":
                 await self._execute_duration(token)
             elif self.timer_type == "date":
@@ -47,15 +48,14 @@ class TimerBoundaryEvent(TimerEvent):
                     instance_id=token.instance_id,
                     node_id=self.id,
                     state=TokenState.CANCELLED,
-                    data=token.data
+                    data=token.data,
                 )
 
             # Handle interrupting vs non-interrupting behavior
             if self.interrupting:
                 # Remove token from activity
                 await self.state_manager.remove_token(
-                    instance_id=token.instance_id,
-                    node_id=self.activity_id
+                    instance_id=token.instance_id, node_id=self.activity_id
                 )
                 # Cancel any other boundary events
                 await self._cancel_other_boundary_events(token.instance_id)
@@ -64,7 +64,7 @@ class TimerBoundaryEvent(TimerEvent):
                 instance_id=token.instance_id,
                 node_id=self.id,
                 state=TokenState.COMPLETED,
-                data=token.data
+                data=token.data,
             )
 
         except TimerCancelled:
@@ -72,7 +72,7 @@ class TimerBoundaryEvent(TimerEvent):
                 instance_id=token.instance_id,
                 node_id=self.id,
                 state=TokenState.CANCELLED,
-                data=token.data
+                data=token.data,
             )
         finally:
             await self._cleanup(token.instance_id)
@@ -85,26 +85,19 @@ class TimerBoundaryEvent(TimerEvent):
             "start_time": datetime.now().isoformat(),
             "token_data": token.data,
             "activity_id": self.activity_id,
-            "interrupting": self.interrupting
+            "interrupting": self.interrupting,
         }
 
         if self.timer_type == "duration":
-            state["end_time"] = (
-                datetime.now() + self.duration
-            ).isoformat()
+            state["end_time"] = (datetime.now() + self.duration).isoformat()
         elif self.timer_type == "date":
             state["end_time"] = self.target_date.isoformat()
         elif self.timer_type == "cycle":
             state["end_time"] = (
-                datetime.now() + 
-                self.interval * self.repetitions
+                datetime.now() + self.interval * self.repetitions
             ).isoformat()
 
-        await self.state_manager.save_timer_state(
-            token.instance_id,
-            self.id,
-            state
-        )
+        await self.state_manager.save_timer_state(token.instance_id, self.id, state)
 
         # Store task for cancellation
         task = asyncio.current_task()
@@ -121,7 +114,7 @@ class TimerBoundaryEvent(TimerEvent):
         # Get all timer states for this instance
         pattern = f"process:{instance_id}:timer:*"
         keys = await self.state_manager.redis.keys(pattern)
-        
+
         for key in keys:
             timer_id = key.split(":")[-1]
             if timer_id != self.id:
@@ -137,10 +130,7 @@ class TimerBoundaryEvent(TimerEvent):
 
     @classmethod
     async def restore(
-        cls,
-        event_id: str,
-        state: Dict[str, Any],
-        state_manager: StateManager
+        cls, event_id: str, state: Dict[str, Any], state_manager: StateManager
     ) -> "TimerBoundaryEvent":
         """Restore timer boundary event from saved state."""
         timer = cls(
@@ -148,7 +138,7 @@ class TimerBoundaryEvent(TimerEvent):
             timer_def=state["timer_definition"],
             state_manager=state_manager,
             activity_id=state["activity_id"],
-            interrupting=state["interrupting"]
+            interrupting=state["interrupting"],
         )
         timer._state = state
         return timer

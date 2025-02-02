@@ -4,9 +4,10 @@ from pythmata.core.engine.events.boundary import BoundaryEvent
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 
+
 class MessageBoundaryEvent(BoundaryEvent):
     """Implementation of BPMN message boundary events"""
-    
+
     def __init__(
         self,
         event_id: str,
@@ -15,11 +16,11 @@ class MessageBoundaryEvent(BoundaryEvent):
         state_manager: StateManager,
         correlation_key: Optional[str] = None,
         is_interrupting: bool = True,
-        timeout: Optional[int] = None
+        timeout: Optional[int] = None,
     ):
         """
         Initialize message boundary event.
-        
+
         Args:
             event_id: Unique identifier for the event
             attached_to_id: ID of the activity this event is attached to
@@ -39,13 +40,13 @@ class MessageBoundaryEvent(BoundaryEvent):
     async def execute(self, token: Token) -> Token:
         """
         Execute message boundary event behavior.
-        
+
         Args:
             token: Process token from the attached activity
-            
+
         Returns:
             Updated token with execution results
-            
+
         Raises:
             ValueError: If correlation key is specified but not found in token data
         """
@@ -54,7 +55,9 @@ class MessageBoundaryEvent(BoundaryEvent):
         if self.correlation_key:
             correlation_value = token.data.get(self.correlation_key)
             if correlation_value is None:
-                raise ValueError(f"Correlation key '{self.correlation_key}' not found in token data")
+                raise ValueError(
+                    f"Correlation key '{self.correlation_key}' not found in token data"
+                )
 
         try:
             # Register message subscription
@@ -62,38 +65,36 @@ class MessageBoundaryEvent(BoundaryEvent):
                 self.message_name,
                 token.instance_id,
                 token.node_id,
-                correlation_value=correlation_value
+                correlation_value=correlation_value,
             )
-            
+
             # Wait for message to arrive
             message = await self.state_manager.wait_for_message(
                 self.message_name,
                 token.instance_id,
                 token.node_id,
-                correlation_value=correlation_value
+                correlation_value=correlation_value,
             )
-            
+
             # Create new token for the boundary event path
             result_token = Token(
                 instance_id=token.instance_id,
                 node_id=self.id,
                 state=TokenState.ACTIVE,
-                data=token.data.copy()  # Preserve original task data
+                data=token.data.copy(),  # Preserve original task data
             )
-            
+
             # Add message payload to token data
             result_token.data["message_payload"] = message["payload"]
-            
+
             # If interrupting, update original token state
             if self.is_interrupting:
                 token.state = TokenState.COMPLETED
-                
+
             return result_token
-                
+
         finally:
             # Ensure subscription is cleaned up in all cases
             await self.state_manager.remove_message_subscription(
-                self.message_name,
-                token.instance_id,
-                token.node_id
+                self.message_name, token.instance_id, token.node_id
             )

@@ -1,7 +1,8 @@
-from typing import Dict, List, Optional
-import xmlschema
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Dict, List, Optional
+
+import xmlschema
 
 
 class ValidationError:
@@ -16,10 +17,7 @@ class ValidationError:
         return f"{self.code}: {self.message}"
 
     def to_dict(self) -> Dict[str, str]:
-        result = {
-            "code": self.code,
-            "message": self.message
-        }
+        result = {"code": self.code, "message": self.message}
         if self.element_id:
             result["element_id"] = self.element_id
         return result
@@ -30,7 +28,9 @@ class ValidationResult:
         self.is_valid = is_valid
         self.errors = errors or []
 
-    def add_error(self, code: str, message: str, element_id: Optional[str] = None) -> None:
+    def add_error(
+        self, code: str, message: str, element_id: Optional[str] = None
+    ) -> None:
         self.errors.append(ValidationError(code, message, element_id))
         self.is_valid = False
 
@@ -42,8 +42,8 @@ class BPMNValidator:
         schema_dir = Path(__file__).parent / "schemas" / "bpmn20"
         self.schema = xmlschema.XMLSchema(
             schema_dir / "BPMN20.xsd",
-            validation='lax',  # Use lax validation to handle missing imports
-            base_url=str(schema_dir.absolute())  # Set base URL for imports
+            validation="lax",  # Use lax validation to handle missing imports
+            base_url=str(schema_dir.absolute()),  # Set base URL for imports
         )
 
     def validate(self, xml: str) -> ValidationResult:
@@ -70,7 +70,7 @@ class BPMNValidator:
                 for error in validation_errors:
                     result.add_error("SCHEMA_ERROR", str(error))
                 return result
-            
+
             # Parse XML for additional validation
             try:
                 doc = ET.fromstring(xml.strip())
@@ -84,9 +84,7 @@ class BPMNValidator:
                 elem_id = elem.get("id")
                 if elem_id in ids:
                     result.add_error(
-                        "DUPLICATE_ID",
-                        f"Duplicate ID '{elem_id}' found",
-                        elem_id
+                        "DUPLICATE_ID", f"Duplicate ID '{elem_id}' found", elem_id
                     )
                 ids[elem_id] = elem
 
@@ -95,13 +93,15 @@ class BPMNValidator:
                 if not process.get("id"):
                     result.add_error(
                         "MISSING_ATTRIBUTE",
-                        "Process element missing required 'id' attribute"
+                        "Process element missing required 'id' attribute",
                     )
 
                 # Get all flow nodes
-                nodes = process.findall(".//{*}startEvent") + \
-                    process.findall(".//{*}task") + \
-                    process.findall(".//{*}endEvent")
+                nodes = (
+                    process.findall(".//{*}startEvent")
+                    + process.findall(".//{*}task")
+                    + process.findall(".//{*}endEvent")
+                )
 
                 # Get all sequence flows
                 flows = process.findall(".//{*}sequenceFlow")
@@ -110,7 +110,7 @@ class BPMNValidator:
                 if nodes and not flows:
                     result.add_error(
                         "INVALID_STRUCTURE",
-                        "Process contains nodes but no sequence flows"
+                        "Process contains nodes but no sequence flows",
                     )
 
                 # Validate flow references
@@ -121,16 +121,14 @@ class BPMNValidator:
                     if not source_ref or not target_ref:
                         result.add_error(
                             "INVALID_FLOW",
-                            f"Sequence flow {
-                                flow.get('id')} missing source or target reference"
+                            f"Sequence flow {flow.get('id')} missing source or target reference",
                         )
                         continue
 
                     if source_ref not in ids or target_ref not in ids:
                         result.add_error(
                             "INVALID_REFERENCE",
-                            f"Sequence flow {
-                                flow.get('id')} references non-existent node"
+                            f"Sequence flow {flow.get('id')} references non-existent node",
                         )
 
         except xmlschema.XMLSchemaValidationError as e:

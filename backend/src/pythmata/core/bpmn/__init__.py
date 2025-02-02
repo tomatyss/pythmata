@@ -1,3 +1,3 @@
-from .validator import BPMNValidator, ValidationResult, ValidationError
+from .validator import BPMNValidator, ValidationError, ValidationResult
 
-__all__ = ['BPMNValidator', 'ValidationResult', 'ValidationError']
+__all__ = ["BPMNValidator", "ValidationResult", "ValidationError"]

@@ -2,8 +2,10 @@ from enum import Enum
 from typing import Dict, Optional
 from uuid import UUID, uuid4
 
+
 class TokenState(str, Enum):
     """Token execution states."""
+
     ACTIVE = "ACTIVE"
     SUSPENDED = "SUSPENDED"
     COMPLETED = "COMPLETED"
@@ -11,22 +13,23 @@ class TokenState(str, Enum):
     CANCELLED = "CANCELLED"  # Added for timer cancellation
     COMPENSATION = "COMPENSATION"  # Added for compensation handling
 
+
 class Token:
     """
     Represents a process execution token that moves through BPMN nodes.
-    
+
     A token is created when a process instance starts and moves through the process
     nodes as the process executes. Tokens can be split at parallel gateways and
     merged at joining gateways.
     """
-    
+
     def __init__(
         self,
         instance_id: str,
         node_id: str,
         state: TokenState = TokenState.ACTIVE,
         data: Optional[Dict] = None,
-        token_id: Optional[UUID] = None
+        token_id: Optional[UUID] = None,
     ):
         self.id = token_id or uuid4()
         self.instance_id = instance_id
@@ -41,7 +44,7 @@ class Token:
             "instance_id": self.instance_id,
             "node_id": self.node_id,
             "state": self.state.value,
-            "data": self.data
+            "data": self.data,
         }
 
     @classmethod
@@ -52,7 +55,7 @@ class Token:
             node_id=data["node_id"],
             state=TokenState(data["state"]),
             data=data.get("data", {}),
-            token_id=UUID(data["id"]) if "id" in data else None
+            token_id=UUID(data["id"]) if "id" in data else None,
         )
 
     def copy(self, **kwargs) -> "Token":

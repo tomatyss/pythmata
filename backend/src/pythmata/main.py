@@ -1,11 +1,11 @@
-from pythmata.api.routes import router as process_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from pythmata.api.routes import router as process_router
 from pythmata.core.config import Settings
+from pythmata.core.database import get_db, init_db
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
-from pythmata.core.database import init_db, get_db
 
 app = FastAPI(
     title="Pythmata",
@@ -50,6 +50,7 @@ async def shutdown_event():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
 
 # Import and include routers
 app.include_router(process_router, prefix="/api")

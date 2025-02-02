@@ -1,18 +1,15 @@
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
-from fastapi import Request
 
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine
-)
+from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from pythmata.core.config import Settings
 from pythmata.models.process import Base
 
 logger = logging.getLogger(__name__)
+
 
 class Database:
     """Database connection and session management."""
@@ -23,12 +20,10 @@ class Database:
             str(settings.database.url),
             pool_size=settings.database.pool_size,
             max_overflow=settings.database.max_overflow,
-            echo=settings.server.debug
+            echo=settings.server.debug,
         )
         self.async_session = async_sessionmaker(
-            self.engine,
-            class_=AsyncSession,
-            expire_on_commit=False
+            self.engine, class_=AsyncSession, expire_on_commit=False
         )
 
     async def create_tables(self) -> None:
@@ -46,7 +41,7 @@ class Database:
     @asynccontextmanager
     async def session(self) -> AsyncGenerator[AsyncSession, None]:
         """Get a database session.
-        
+
         Usage:
             async with db.session() as session:
                 result = await session.execute(...)

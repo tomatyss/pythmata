@@ -1,9 +1,11 @@
-import pytest
 from uuid import UUID
+
+import pytest
 
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
+
 
 @pytest.mark.asyncio
 class TestProcessExecutor:
@@ -12,9 +14,9 @@ class TestProcessExecutor:
         """Setup test environment and cleanup after."""
         self.state_manager = StateManager(test_settings)
         await self.state_manager.connect()
-        
+
         yield
-        
+
         # Cleanup after test
         await self.state_manager.redis.flushdb()
         await self.state_manager.disconnect()
@@ -68,7 +70,7 @@ class TestProcessExecutor:
 
         # Create token at end event
         token = await executor.create_initial_token(instance_id, end_event_id)
-        
+
         # Consume token
         await executor.consume_token(token)
 
@@ -85,7 +87,7 @@ class TestProcessExecutor:
 
         # Create token at gateway
         token = await executor.create_initial_token(instance_id, gateway_id)
-        
+
         # Split token
         new_tokens = await executor.split_token(token, target_ids)
 

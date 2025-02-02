@@ -1,14 +1,15 @@
+import asyncio
 import json
 import logging
-import asyncio
 from typing import Any, Callable, Dict, Optional
 
 import aio_pika
-from aio_pika import Connection, Channel, Exchange, Queue
+from aio_pika import Channel, Connection, Exchange, Queue
 
 from pythmata.core.config import Settings
 
 logger = logging.getLogger(__name__)
+
 
 class EventBus:
     """Event bus for handling BPMN events using RabbitMQ."""
@@ -39,9 +40,7 @@ class EventBus:
             # Create channel and exchange
             self.channel = await self.connection.channel()
             self.exchange = await self.channel.declare_exchange(
-                "pythmata.events",
-                aio_pika.ExchangeType.TOPIC,
-                durable=True
+                "pythmata.events", aio_pika.ExchangeType.TOPIC, durable=True
             )
 
             logger.info("Successfully connected to RabbitMQ")
@@ -59,7 +58,7 @@ class EventBus:
 
     async def publish(self, routing_key: str, data: Dict[str, Any]) -> None:
         """Publish an event to RabbitMQ.
-        
+
         Args:
             routing_key: The routing key for the event (e.g., "process.started")
             data: The event data to publish
@@ -70,7 +69,7 @@ class EventBus:
         message = aio_pika.Message(
             body=json.dumps(data).encode(),
             content_type="application/json",
-            delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+            delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
         )
 
         await self.exchange.publish(message, routing_key=routing_key)
@@ -80,10 +79,10 @@ class EventBus:
         self,
         routing_key: str,
         callback: Callable[[Dict[str, Any]], None],
-        queue_name: Optional[str] = None
+        queue_name: Optional[str] = None,
     ) -> None:
         """Subscribe to events with the given routing key.
-        
+
         Args:
             routing_key: The routing key to subscribe to (e.g., "process.#")
             callback: Function to call when an event is received
@@ -94,9 +93,7 @@ class EventBus:
 
         # Create queue
         queue = await self.channel.declare_queue(
-            queue_name or "",
-            durable=True,
-            auto_delete=queue_name is None
+            queue_name or "", durable=True, auto_delete=queue_name is None
         )
 
         # Bind queue to exchange

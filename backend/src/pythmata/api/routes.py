@@ -1,18 +1,19 @@
-from fastapi import APIRouter, HTTPException, Depends, Body
-from typing import List
 from datetime import datetime
+from typing import List
+
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
-from pythmata.core.database import get_db
 from pythmata.api.schemas import (
-    ProcessDefinitionResponse,
-    ProcessDefinitionCreate,
-    ProcessDefinitionUpdate,
     ApiResponse,
-    PaginatedResponse
+    PaginatedResponse,
+    ProcessDefinitionCreate,
+    ProcessDefinitionResponse,
+    ProcessDefinitionUpdate,
 )
+from pythmata.core.database import get_db
+from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.utils.logger import get_logger, log_error
 
 router = APIRouter()
@@ -26,12 +27,16 @@ async def get_session() -> AsyncSession:
         yield session
 
 
-@router.get("/processes", response_model=ApiResponse[PaginatedResponse[ProcessDefinitionResponse]])
+@router.get(
+    "/processes",
+    response_model=ApiResponse[PaginatedResponse[ProcessDefinitionResponse]],
+)
 async def get_processes(session: AsyncSession = Depends(get_session)):
     """Get all process definitions."""
     result = await session.execute(
         select(ProcessDefinitionModel).order_by(
-            ProcessDefinitionModel.created_at.desc())
+            ProcessDefinitionModel.created_at.desc()
+        )
     )
     processes = result.scalars().all()
     return {
@@ -40,17 +45,18 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
             "total": len(processes),
             "page": 1,
             "pageSize": len(processes),
-            "totalPages": 1
+            "totalPages": 1,
         }
     }
 
 
-@router.get("/processes/{process_id}", response_model=ApiResponse[ProcessDefinitionResponse])
+@router.get(
+    "/processes/{process_id}", response_model=ApiResponse[ProcessDefinitionResponse]
+)
 async def get_process(process_id: str, session: AsyncSession = Depends(get_session)):
     """Get a specific process definition."""
     result = await session.execute(
-        select(ProcessDefinitionModel).filter(
-            ProcessDefinitionModel.id == process_id)
+        select(ProcessDefinitionModel).filter(ProcessDefinitionModel.id == process_id)
     )
     process = result.scalar_one_or_none()
     if not process:
@@ -62,7 +68,7 @@ async def get_process(process_id: str, session: AsyncSession = Depends(get_sessi
 @log_error(logger)
 async def create_process(
     data: ProcessDefinitionCreate = Body(...),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """Create a new process definition."""
     try:
@@ -75,13 +81,10 @@ async def create_process(
         existing_version = result.scalar_one_or_none()
 
         # If process exists, increment version
-        version = (existing_version or 0) + \
-            1 if data.version is None else data.version
+        version = (existing_version or 0) + 1 if data.version is None else data.version
 
         process = ProcessDefinitionModel(
-            name=data.name,
-            bpmn_xml=data.bpmn_xml,
-            version=version
+            name=data.name, bpmn_xml=data.bpmn_xml, version=version
         )
         session.add(process)
         await session.commit()
@@ -92,17 +95,20 @@ async def create_process(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/processes/{process_id}", response_model=ApiResponse[ProcessDefinitionResponse])
+@router.put(
+    "/processes/{process_id}", response_model=ApiResponse[ProcessDefinitionResponse]
+)
 async def update_process(
     process_id: str,
     data: ProcessDefinitionUpdate = Body(...),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """Update a process definition."""
     try:
         result = await session.execute(
             select(ProcessDefinitionModel).filter(
-                ProcessDefinitionModel.id == process_id)
+                ProcessDefinitionModel.id == process_id
+            )
         )
         process = result.scalar_one_or_none()
         if not process:
@@ -127,15 +133,13 @@ async def update_process(
 
 
 @router.delete("/processes/{process_id}")
-async def delete_process(
-    process_id: str,
-    session: AsyncSession = Depends(get_session)
-):
+async def delete_process(process_id: str, session: AsyncSession = Depends(get_session)):
     """Delete a process definition."""
     try:
         result = await session.execute(
             select(ProcessDefinitionModel).filter(
-                ProcessDefinitionModel.id == process_id)
+                ProcessDefinitionModel.id == process_id
+            )
         )
         process = result.scalar_one_or_none()
         if not process:
