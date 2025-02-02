@@ -1,5 +1,6 @@
 import pytest
 
+from pythmata.core.engine.expressions import ExpressionSyntaxError, ExpressionEvalError
 from pythmata.core.engine.gateway import ExclusiveGateway
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
@@ -111,9 +112,9 @@ class TestExclusiveGateway:
         token = Token(instance_id="test-4", node_id="Gateway_1", data={"amount": 1500})
 
         # Test invalid syntax
-        with pytest.raises(ValueError):
+        with pytest.raises(ExpressionSyntaxError):
             await gateway.evaluate_condition(token, "${invalid syntax")
 
         # Test undefined variable
-        result = await gateway.evaluate_condition(token, "${undefined_var > 1000}")
-        assert result is False
+        with pytest.raises(ExpressionEvalError):
+            await gateway.evaluate_condition(token, "${undefined_var > 1000}")

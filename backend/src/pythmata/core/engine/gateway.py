@@ -1,9 +1,12 @@
-import re
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
+from pythmata.core.engine.expressions import ExpressionEvaluator, ExpressionError
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
+from pythmata.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class Gateway(ABC):
@@ -27,6 +30,10 @@ class ExclusiveGateway(Gateway):
     match, selects the default path if available.
     """
 
+    def __init__(self, gateway_id: str, state_manager: StateManager):
+        super().__init__(gateway_id, state_manager)
+        self.evaluator = ExpressionEvaluator()
+
     async def evaluate_condition(self, token: Token, condition: Optional[str]) -> bool:
         """Evaluate a condition expression using token data.
 
@@ -40,30 +47,13 @@ class ExclusiveGateway(Gateway):
         if not condition:
             return True  # Default path
 
-        if not re.match(r"^\${.+}$", condition):
-            raise ValueError(f"Invalid condition syntax: {condition}")
-
-        expr = condition[2:-1]  # Remove ${ and }
-
-        # Convert JavaScript-style operators to Python
-        expr = expr.replace("&&", " and ").replace("||", " or ")
-
-        # Create evaluation environment with token data
-        eval_dict = {
-            "True": True,
-            "False": False,
-            "None": None,
-            "true": True,
-            "false": False,
-            **token.data,  # Add token variables to environment
-        }
-
         try:
-            # Evaluate the expression
-            return bool(eval(expr, {"__builtins__": {}}, eval_dict))
+            return self.evaluator.evaluate(condition, token.data)
+        except ExpressionError as e:
+            # Re-raise expression-related errors
+            raise
         except Exception as e:
-            print(f"Failed to evaluate expression: {expr}")
-            print(f"Error: {e}")
+            logger.error(f"Failed to evaluate condition: {condition}. Error: {str(e)}")
             return False
 
     async def select_path(self, token: Token, flows: Dict[str, Dict]) -> str:

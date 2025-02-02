@@ -104,6 +104,9 @@
    - Condition evaluation ✅
    - Path selection ✅
    - Default path handling ✅
+   - Complex conditions with parentheses ✅
+   - Multiple data type support ✅
+   - Nested object access ✅
 
 2. Join Behavior ✅
    - Token passing ✅
@@ -114,6 +117,8 @@
    - Invalid conditions ✅
    - Missing default path ✅
    - Dead ends ✅
+   - Type errors ✅
+   - Syntax errors ✅
 
 ### 3.2 Parallel Gateway (AND) ✅
 #### Test Cases
@@ -149,69 +154,6 @@
    - Synchronization issues ✅
    - Deadlock scenarios ✅
 
-## 3. Gateway Implementation (Continued)
-
-### 3.1 Exclusive Gateway (XOR)
-#### Test Cases
-1. Split Behavior
-   - Test condition evaluation with different data types
-   ```python
-   def test_exclusive_gateway_condition_types():
-       """Test condition evaluation with string, number, boolean"""
-       process_xml = """
-       <bpmn:exclusiveGateway id="Gateway_1">
-           <bpmn:outgoing>Flow_1</bpmn:outgoing>
-           <bpmn:outgoing>Flow_2</bpmn:outgoing>
-       </bpmn:exclusiveGateway>
-       """
-       conditions = {
-           "Flow_1": "${amount > 1000}",
-           "Flow_2": "${status == 'approved'}"
-       }
-   ```
-   - Test default path selection when no conditions match
-   - Test path selection with complex conditions
-   - Test condition evaluation with process variables
-
-2. Join Behavior
-   - Test token passing from multiple incoming paths
-   - Test state preservation through gateway
-   - Test multiple active paths merging
-
-3. Error Cases
-   - Test missing default path
-   - Test invalid condition expressions
-   - Test unreachable paths
-
-### 3.3 Inclusive Gateway (OR)
-#### Test Cases
-1. Split Behavior
-   - Test multiple condition evaluation
-   ```python
-   def test_inclusive_gateway_multiple_paths():
-       """Test activation of multiple paths based on conditions"""
-       process_xml = """
-       <bpmn:inclusiveGateway id="Gateway_1">
-           <bpmn:outgoing>Flow_1</bpmn:outgoing>
-           <bpmn:outgoing>Flow_2</bpmn:outgoing>
-           <bpmn:outgoing>Flow_3</bpmn:outgoing>
-       </bpmn:inclusiveGateway>
-       """
-       conditions = {
-           "Flow_1": "${amount > 1000}",
-           "Flow_2": "${urgent == true}",
-           "Flow_3": "${category == 'special'}"
-       }
-   ```
-   - Test no matching conditions (default path)
-   - Test all conditions matching
-   - Test subset of conditions matching
-
-2. Join Behavior
-   - Test synchronization of multiple active paths
-   - Test dynamic path activation/deactivation
-   - Test state merging from multiple paths
-   - Test completion conditions
 
 ## 4. Event Implementation
 
