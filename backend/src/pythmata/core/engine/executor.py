@@ -227,7 +227,10 @@ class ProcessExecutor:
         return new_token
 
     async def complete_subprocess(
-        self, token: Token, next_task_id: str, output_vars: Optional[Dict[str, str]] = None
+        self,
+        token: Token,
+        next_task_id: str,
+        output_vars: Optional[Dict[str, str]] = None,
     ) -> Token:
         """
         Complete a subprocess and move token to next task in parent process.
@@ -248,14 +251,12 @@ class ProcessExecutor:
                 value = await self.state_manager.get_variable(
                     instance_id=token.instance_id,
                     name=subprocess_var,
-                    scope_id=token.scope_id
+                    scope_id=token.scope_id,
                 )
                 # Set value in parent scope
                 if value is not None:
                     await self.state_manager.set_variable(
-                        instance_id=token.instance_id,
-                        name=parent_var,
-                        value=value
+                        instance_id=token.instance_id, name=parent_var, value=value
                     )
 
         # Remove token from subprocess end event

@@ -7,13 +7,13 @@ interface AsyncState<T> {
   error: string | null;
 }
 
-interface UseAsyncOptions {
-  onSuccess?: (data: any) => void;
+interface UseAsyncOptions<T> {
+  onSuccess?: (data: T) => void;
   onError?: (error: Error) => void;
-  initialData?: any;
+  initialData?: T;
 }
 
-const useAsync = <T>(options: UseAsyncOptions = {}) => {
+const useAsync = <T>(options: UseAsyncOptions<T> = {}) => {
   const [state, setState] = useState<AsyncState<T>>({
     data: options.initialData || null,
     loading: false,
@@ -62,13 +62,20 @@ const useAsync = <T>(options: UseAsyncOptions = {}) => {
   };
 };
 
+interface PaginatedData<T> {
+  items: T[];
+  total: number;
+}
+
 // Helper hook for paginated data
-export const usePaginatedAsync = <T>(options: UseAsyncOptions = {}) => {
+export const usePaginatedAsync = <T>(
+  options: UseAsyncOptions<PaginatedData<T>> = {}
+) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
-  const asyncState = useAsync<T>({
+  const asyncState = useAsync<PaginatedData<T>>({
     ...options,
     onSuccess: (data) => {
       if (data?.total !== undefined) {

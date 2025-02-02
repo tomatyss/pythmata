@@ -61,7 +61,7 @@ const useConfirmDialog = () => {
       setDialogState((prev) => ({ ...prev, isOpen: false }));
       dialogState.resolve?.(confirmed);
     },
-    [dialogState.resolve]
+    [dialogState]
   );
 
   const ConfirmDialog = useCallback(() => {

@@ -49,9 +49,9 @@ export type ProcessVariableFormData = z.infer<typeof processVariableSchema>;
 // Generic form hook with validation
 const useFormWithValidation = <
   TFieldValues extends FieldValues = FieldValues,
-  TContext = any,
+  TContext = unknown,
 >(
-  schema: z.ZodType<any, any>,
+  schema: z.ZodType<TFieldValues>,
   options?: Omit<UseFormProps<TFieldValues, TContext>, 'resolver'>
 ) => {
   return useForm<TFieldValues>({

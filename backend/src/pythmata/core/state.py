@@ -75,7 +75,11 @@ class StateManager:
         await self.redis.set(key, json.dumps(state), ex=ttl)
 
     async def get_variable(
-        self, instance_id: str, name: str, scope_id: Optional[str] = None, check_parent: bool = True
+        self,
+        instance_id: str,
+        name: str,
+        scope_id: Optional[str] = None,
+        check_parent: bool = True,
     ) -> Any:
         """Get a process variable.
 
@@ -92,14 +96,14 @@ class StateManager:
             raise RuntimeError("Not connected to Redis")
 
         key = f"process:{instance_id}:vars"
-        
+
         # First try to get from specified scope
         if scope_id:
             scope_key = f"{scope_id}:{name}"
             value = await self.redis.hget(key, scope_key)
             if value:
                 return json.loads(value)
-            
+
             # If not found in subprocess scope and check_parent is True, try parent scope
             if check_parent:
                 value = await self.redis.hget(key, name)
@@ -216,7 +220,7 @@ class StateManager:
         # Clear variables in scope
         vars_key = f"process:{instance_id}:vars"
         all_vars = await self.redis.hgetall(vars_key)
-        
+
         # Remove variables in this scope
         for var_key in list(all_vars.keys()):
             if var_key.startswith(f"{scope_id}:"):

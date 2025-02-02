@@ -50,7 +50,12 @@ const useNotification = () => {
         </Alert>
       </Snackbar>
     );
-  }, [notification.open, notification.severity, notification.message]);
+  }, [
+    notification.open,
+    notification.severity,
+    notification.message,
+    hideNotification,
+  ]);
 
   return {
     showNotification,

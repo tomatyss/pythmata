@@ -85,7 +85,7 @@ axiosInstance.interceptors.response.use(
 export default axiosInstance;
 
 // API response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
 }

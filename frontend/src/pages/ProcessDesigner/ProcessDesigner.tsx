@@ -39,14 +39,13 @@ const ProcessDesigner = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
-  const modelerRef = useRef<any>(null);
+  const modelerRef = useRef<BpmnModeler | null>(null);
   const [loading, setLoading] = useState(true);
   const [processName, setProcessName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('ProcessDesigner mounted');
     if (id) {
       setProcessName('Existing Process');
     } else {
@@ -58,13 +57,6 @@ const ProcessDesigner = () => {
   useEffect(() => {
     if (loading || !containerRef.current) return;
 
-    console.log('Initializing BPMN modeler...');
-    console.log('Container ref:', containerRef.current);
-    console.log('Container dimensions:', {
-      width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight,
-    });
-
     try {
       modelerRef.current = new BpmnModeler({
         container: containerRef.current,
@@ -72,20 +64,8 @@ const ProcessDesigner = () => {
           bindTo: document,
         },
       });
-      console.log('BpmnModeler instance created:', modelerRef.current);
-
-      modelerRef.current.importXML(emptyBpmn).then(() => {
-        console.log('BPMN XML imported successfully');
-      });
-    } catch (error: any) {
-      console.error('Error initializing BPMN modeler:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-        });
-      }
+      modelerRef.current.importXML(emptyBpmn);
+    } catch (error) {
       setError(
         'Failed to initialize process designer. Please try refreshing the page.'
       );
@@ -93,7 +73,6 @@ const ProcessDesigner = () => {
 
     return () => {
       if (modelerRef.current) {
-        console.log('Cleaning up BPMN modeler');
         modelerRef.current.destroy();
         modelerRef.current = null;
       }
@@ -125,7 +104,6 @@ const ProcessDesigner = () => {
       // Navigate back to process list
       navigate('/processes');
     } catch (error) {
-      console.error('Error saving process:', error);
       // Show error notification
       alert('Failed to save process. Please try again.');
     } finally {

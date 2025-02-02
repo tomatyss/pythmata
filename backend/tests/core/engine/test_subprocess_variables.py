@@ -32,7 +32,9 @@ class TestSubprocessVariables:
 
         # Enter subprocess and set subprocess variable
         subprocess_token = await executor.enter_subprocess(token, subprocess_id)
-        await self.state_manager.set_variable(instance_id, "count", 2, scope_id=subprocess_id)
+        await self.state_manager.set_variable(
+            instance_id, "count", 2, scope_id=subprocess_id
+        )
 
         # Verify parent and subprocess variables are isolated
         parent_value = await self.state_manager.get_variable(instance_id, "count")

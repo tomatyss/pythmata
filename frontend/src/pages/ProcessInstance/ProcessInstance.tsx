@@ -17,7 +17,7 @@ import {
 
 interface ProcessVariable {
   name: string;
-  value: any;
+  value: string | number | boolean | Record<string, unknown>;
   type: string;
   scope: string;
   updatedAt: string;

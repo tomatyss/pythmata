@@ -7,8 +7,8 @@ export interface Column<T> {
   label: string;
   minWidth?: number;
   align?: 'left' | 'right' | 'center';
-  format?: (value: any) => ReactNode;
-  getValue: (row: T) => any;
+  format?: (value: string | number | boolean | null) => ReactNode;
+  getValue: (row: T) => string | number | boolean | null;
 }
 
 export interface DataTableProps<T> {

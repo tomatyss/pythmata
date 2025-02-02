@@ -52,7 +52,6 @@ const ProcessList = () => {
           }))
         );
       } catch (error) {
-        console.error('Failed to fetch processes:', error);
         alert('Failed to load processes. Please try again.');
       } finally {
         setLoading(false);
@@ -62,18 +61,18 @@ const ProcessList = () => {
     fetchProcesses();
   }, []);
 
-  const handleStartProcess = (processId: string) => {
+  const handleStartProcess = (_processId: string) => {
     // TODO: Implement process start
-    console.log('Starting process:', processId);
+    alert('Process start functionality not yet implemented');
   };
 
   const handleEditProcess = (processId: string) => {
     navigate(`/processes/${processId}`);
   };
 
-  const handleDeleteProcess = (processId: string) => {
+  const handleDeleteProcess = (_processId: string) => {
     // TODO: Implement process deletion
-    console.log('Deleting process:', processId);
+    alert('Process deletion functionality not yet implemented');
   };
 
   if (loading) {

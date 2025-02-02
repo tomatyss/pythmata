@@ -7,7 +7,7 @@ declare module 'bpmn-js/lib/Modeler' {
       container: HTMLElement;
       keyboard?: { bindTo: Document };
     });
-    importXML(xml: string): Promise<{ warnings: Array<any> }>;
+    importXML(xml: string): Promise<{ warnings: Array<string> }>;
     saveXML(options?: { format?: boolean }): Promise<{ xml: string }>;
     destroy(): void;
   }
@@ -35,7 +35,7 @@ declare module '*.jpg' {
 }
 
 declare module '*.json' {
-  const content: any;
+  const content: Record<string, unknown>;
   export default content;
 }
 

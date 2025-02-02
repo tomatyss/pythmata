@@ -40,7 +40,7 @@ interface ProcessState {
   fetchInstance: (id: string) => Promise<void>;
   startInstance: (
     definitionId: string,
-    variables?: Record<string, any>
+    variables?: Record<string, string | number | boolean | null>
   ) => Promise<void>;
   suspendInstance: (id: string) => Promise<void>;
   resumeInstance: (id: string) => Promise<void>;
@@ -172,7 +172,7 @@ const useProcessStore = create<ProcessState>()(
 
     startInstance: async (
       definitionId: string,
-      variables?: Record<string, any>
+      variables?: Record<string, string | number | boolean | null>
     ) => {
       try {
         set({ instancesLoading: true, instancesError: null });

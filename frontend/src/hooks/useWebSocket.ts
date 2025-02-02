@@ -1,8 +1,20 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+type WebSocketMessageType =
+  | 'ACTIVITY_COMPLETED'
+  | 'VARIABLE_UPDATED'
+  | 'STATUS_CHANGED';
+
+interface ProcessUpdate {
+  id: string;
+  timestamp: string;
+  type: WebSocketMessageType;
+  details: Record<string, unknown>;
+}
+
 interface WebSocketMessage {
-  type: string;
-  payload: any;
+  type: WebSocketMessageType;
+  payload: ProcessUpdate;
 }
 
 interface UseWebSocketOptions {
@@ -87,24 +99,27 @@ const useWebSocket = ({
     setIsConnected(false);
   }, []);
 
-  const send = useCallback((type: string, payload: any) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      setError('WebSocket is not connected');
-      return;
-    }
+  const send = useCallback(
+    (type: WebSocketMessageType, payload: ProcessUpdate) => {
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        setError('WebSocket is not connected');
+        return;
+      }
 
-    try {
-      wsRef.current.send(
-        JSON.stringify({
-          type,
-          payload,
-        })
-      );
-    } catch (error) {
-      setError('Failed to send message');
-      console.error('Failed to send WebSocket message:', error);
-    }
-  }, []);
+      try {
+        wsRef.current.send(
+          JSON.stringify({
+            type,
+            payload,
+          })
+        );
+      } catch (error) {
+        setError('Failed to send message');
+        console.error('Failed to send WebSocket message:', error);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     connect();
@@ -124,7 +139,7 @@ const useWebSocket = ({
 
 // Helper hook for process instance updates
 export const useProcessUpdates = (instanceId: string) => {
-  const [updates, setUpdates] = useState<any[]>([]);
+  const [updates, setUpdates] = useState<ProcessUpdate[]>([]);
 
   const { isConnected, error } = useWebSocket({
     url: `ws://${window.location.host}/api/ws/instances/${instanceId}`,
@@ -136,7 +151,7 @@ export const useProcessUpdates = (instanceId: string) => {
           setUpdates((prev) => [...prev, message.payload]);
           break;
         default:
-          console.warn('Unknown message type:', message.type);
+          console.warn(`Unknown message type: ${message.type as string}`);
       }
     },
   });

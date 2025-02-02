@@ -39,7 +39,7 @@ export interface ProcessVariable {
   instanceId: string;
   name: string;
   valueType: string;
-  valueData: any;
+  valueData: string | number | boolean | null;
   scopeId?: string;
   version: number;
   createdAt: string;
@@ -54,7 +54,7 @@ export interface ActivityLog {
   status: string;
   startTime: string;
   endTime?: string;
-  result?: any;
+  result?: Record<string, unknown>;
   errorMessage?: string;
   createdAt: string;
 }
@@ -77,7 +77,7 @@ export interface ScriptExecution {
   status: string;
   startTime: string;
   endTime?: string;
-  result?: any;
+  result?: Record<string, unknown>;
   errorMessage?: string;
   createdAt: string;
 }
@@ -112,7 +112,7 @@ export interface UpdateProcessDefinitionRequest {
 
 export interface StartProcessInstanceRequest {
   definitionId: string;
-  variables?: Record<string, any>;
+  variables?: Record<string, string | number | boolean | null>;
 }
 
 export interface UpdateScriptRequest {
