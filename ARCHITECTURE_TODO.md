@@ -166,7 +166,7 @@
 - [x] Create execution engine
   - [x] Token-based execution
   - [x] Gateway handling (parallel split)
-  - [ ] Gateway handling (exclusive, inclusive)
+  - [x] Gateway handling (exclusive, inclusive)
   - [x] Event handling (basic start/end)
   - [ ] Event handling (intermediate)
   - [ ] Compensation handling
@@ -178,7 +178,7 @@
 
 ## 12. Process Execution Features
 - [ ] Implement subprocess support
-  - [ ] Embedded subprocesses
+  - [x] Embedded subprocesses
   - [ ] Call activities
   - [ ] Event subprocesses
 - [ ] Add multi-instance activities
@@ -310,7 +310,112 @@
   - [ ] Process simulation
   - [ ] BPMN validation
   - [ ] Code generation
-i
+
+## 21. Process Data Management
+- [ ] Implement data object persistence
+  - [ ] Data object lifecycle management
+  - [ ] Version control for data objects
+  - [ ] Data object relationships
+- [ ] Add support for data stores
+  - [ ] Data store configuration
+  - [ ] Access control for data stores
+  - [ ] Data store monitoring
+- [ ] Create data input/output specifications
+  - [ ] Data mapping definitions
+  - [ ] Validation rules
+  - [ ] Default values
+- [ ] Implement data mapping between processes
+  - [ ] Variable mapping
+  - [ ] Type conversion
+  - [ ] Complex object mapping
+- [ ] Add support for complex data types
+  - [ ] Custom type definitions
+  - [ ] Serialization/deserialization
+  - [ ] Type validation
+
+## 22. Process Analytics
+- [ ] Implement process mining capabilities
+  - [ ] Process discovery
+  - [ ] Conformance checking
+  - [ ] Performance analysis
+- [ ] Add performance metrics collection
+  - [ ] Execution time tracking
+  - [ ] Resource utilization
+  - [ ] Bottleneck detection
+- [ ] Create process bottleneck detection
+  - [ ] Wait time analysis
+  - [ ] Resource contention detection
+  - [ ] Path analysis
+- [ ] Implement predictive analytics
+  - [ ] Process duration prediction
+  - [ ] Resource needs forecasting
+  - [ ] Anomaly detection
+- [ ] Add custom metric definitions
+  - [ ] Metric configuration
+  - [ ] Calculation rules
+  - [ ] Reporting integration
+
+## 23. Integration Patterns
+- [ ] Implement content-based routing
+  - [ ] Message content analysis
+  - [ ] Routing rule engine
+  - [ ] Dynamic endpoint selection
+- [ ] Add message transformation capabilities
+  - [ ] Data format conversion
+  - [ ] Schema mapping
+  - [ ] Content enrichment
+- [ ] Create service orchestration patterns
+  - [ ] Service registry
+  - [ ] Load balancing
+  - [ ] Circuit breaker
+- [ ] Implement saga patterns with compensation
+  - [ ] Saga coordination
+  - [ ] Failure recovery
+  - [ ] State tracking
+- [ ] Add support for business rule integration
+  - [ ] Rule engine integration
+  - [ ] Decision service calls
+  - [ ] Rule versioning
+
+## 24. Security Enhancements
+- [ ] Implement process-level access control
+  - [ ] Role-based permissions
+  - [ ] Activity-level security
+  - [ ] Data access control
+- [ ] Add data field encryption
+  - [ ] Field-level encryption
+  - [ ] Key management
+  - [ ] Encryption at rest
+- [ ] Create audit logging for sensitive operations
+  - [ ] User action tracking
+  - [ ] Data access logging
+  - [ ] Security event logging
+- [ ] Implement secure credential storage
+  - [ ] Credential encryption
+  - [ ] Access control
+  - [ ] Rotation management
+- [ ] Add support for OAuth2 integration
+  - [ ] OAuth2 flow implementation
+  - [ ] Token management
+  - [ ] Scope handling
+
+## 25. Enhanced API Capabilities
+- [ ] Add support for GraphQL queries
+  - [ ] Schema definition
+  - [ ] Resolver implementation
+  - [ ] Query optimization
+- [ ] Implement batch operations API
+  - [ ] Bulk create/update/delete
+  - [ ] Transaction handling
+  - [ ] Error handling
+- [ ] Add streaming API for real-time updates
+  - [ ] WebSocket implementation
+  - [ ] Server-sent events
+  - [ ] Real-time notifications
+- [ ] Create API versioning strategy
+  - [ ] Version management
+  - [ ] Compatibility handling
+  - [ ] Documentation
 ## Priority Order
 1. BPMN Engine Core (Foundation)
 2. Process Execution Features (Core functionality)
@@ -332,3 +437,8 @@ i
 18. Monitoring and Operations (Operations)
 19. Developer Tools (Development)
 20. Testing Infrastructure (Quality)
+21. Process Data Management (Data handling)
+22. Process Analytics (Insights)
+23. Integration Patterns (Connectivity)
+24. Security Enhancements (Security)
+25. Enhanced API Capabilities (API features)
