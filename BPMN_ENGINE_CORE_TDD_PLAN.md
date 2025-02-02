@@ -315,8 +315,8 @@
        """
    ```
    - Test transaction boundaries ✅
-   - Test rollback handling
-   - Test compensation triggers
+   - Test rollback handling ✅
+   - Test compensation triggers ✅
 
 2. Saga Pattern
    - Test saga orchestration
