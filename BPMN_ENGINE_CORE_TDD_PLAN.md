@@ -270,10 +270,10 @@
    - Test non-interrupting timers ✅
    - Test multiple timer events ✅
 
-3. Message Boundary Events
-   - Test message correlation
-   - Test interrupting vs non-interrupting
-   - Test message event ordering
+3. Message Boundary Events ✅
+   - Test message correlation ✅
+   - Test interrupting vs non-interrupting ✅
+   - Test message event ordering ✅
 
 ## 5. Compensation Handling
 
