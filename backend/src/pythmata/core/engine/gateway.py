@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
@@ -92,6 +92,115 @@ class ExclusiveGateway(Gateway):
         raise ValueError(
             f"No valid path found for gateway {self.id} and no default path defined"
         )
+
+class ParallelGateway(Gateway):
+    """
+    Implementation of BPMN Parallel Gateway (AND).
+    
+    Splits token into multiple parallel paths and synchronizes
+    tokens at join points.
+    """
+    
+    def __init__(self, gateway_id: str, state_manager: StateManager):
+        super().__init__(gateway_id, state_manager)
+        self._join_states: Dict[str, Dict] = {}  # Track join states per instance
+
+    async def select_paths(self, token: Token, flows: Dict) -> List[str]:
+        """
+        Return all outgoing paths for parallel split.
+        
+        Args:
+            token: Process token
+            flows: Dict of flow_id -> flow_data
+            
+        Returns:
+            List of all flow IDs (parallel gateway activates all paths)
+        """
+        return list(flows.keys())
+
+    async def select_path(self, token: Token, flows: Dict) -> str:
+        """
+        Required by Gateway ABC, but parallel gateways use select_paths.
+        Returns first path as a default implementation.
+        """
+        paths = await self.select_paths(token, flows)
+        return paths[0]
+
+    async def register_incoming_paths(self, instance_id: str, path_ids: List[str]):
+        """
+        Register expected incoming paths for an instance.
+        
+        Args:
+            instance_id: Process instance ID
+            path_ids: List of incoming path IDs to expect tokens from
+        """
+        self._join_states[instance_id] = {
+            "expected": set(path_ids),
+            "received": set(),
+            "tokens": {}
+        }
+
+    async def try_join(self, token: Token) -> Optional[Token]:
+        """
+        Try to join incoming token. Returns merged token if all expected
+        tokens have arrived, None otherwise.
+        
+        Args:
+            token: Incoming token to join
+            
+        Returns:
+            Merged token if all expected tokens received, None if still waiting
+            
+        Raises:
+            ValueError: If token is unexpected or duplicate
+        """
+        instance_id = token.instance_id
+        state = self._join_states.get(instance_id)
+        
+        if not state:
+            raise ValueError(f"No join state registered for instance {instance_id}")
+        
+        if token.node_id not in state["expected"]:
+            raise ValueError(f"Unexpected token from {token.node_id}")
+            
+        if token.node_id in state["received"]:
+            raise ValueError(f"Duplicate token from {token.node_id}")
+        
+        # Store token
+        state["received"].add(token.node_id)
+        state["tokens"][token.node_id] = token
+        
+        # Check if all tokens received
+        if state["received"] == state["expected"]:
+            merged_token = await self._merge_tokens(instance_id)
+            del self._join_states[instance_id]
+            return merged_token
+        
+        return None
+
+    async def _merge_tokens(self, instance_id: str) -> Token:
+        """
+        Merge data from all received tokens.
+        
+        Args:
+            instance_id: Process instance ID
+            
+        Returns:
+            New token with merged data from all received tokens
+        """
+        state = self._join_states[instance_id]
+        merged_data = {}
+        
+        # Merge data from all tokens (last write wins for conflicts)
+        for token in state["tokens"].values():
+            merged_data.update(token.data)
+        
+        return Token(
+            instance_id=instance_id,
+            node_id=self.id,
+            data=merged_data
+        )
+
 
 class InclusiveGateway(Gateway):
     """

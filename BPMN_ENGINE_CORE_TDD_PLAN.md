@@ -122,15 +122,15 @@
    - Path activation ✅
    - State copying ✅
 
-2. Join Behavior
-   - Token synchronization
-   - All paths required
-   - State merging
+2. Join Behavior ✅
+   - Token synchronization ✅
+   - All paths required ✅
+   - State merging ✅
 
-3. Error Cases
-   - Missing tokens
-   - Deadlock detection
-   - State inconsistencies
+3. Error Cases ✅
+   - Missing tokens ✅
+   - Deadlock detection ✅
+   - State inconsistencies ✅
 
 ### 3.3 Inclusive Gateway (OR) ✅
 #### Test Cases
