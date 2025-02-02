@@ -1,13 +1,14 @@
 """Tests for the expression evaluation system."""
 
-import pytest
 from datetime import datetime
 
+import pytest
+
 from pythmata.core.engine.expressions import (
-    ExpressionEvaluator,
     ExpressionError,
-    ExpressionSyntaxError,
     ExpressionEvalError,
+    ExpressionEvaluator,
+    ExpressionSyntaxError,
 )
 
 
@@ -94,7 +95,8 @@ class TestExpressionEvaluator:
 
         assert (
             evaluator.evaluate(
-                "${amount > 1000 && (status == 'approved' || priority == 'high')}", context
+                "${amount > 1000 && (status == 'approved' || priority == 'high')}",
+                context,
             )
             is True
         )

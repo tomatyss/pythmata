@@ -337,16 +337,24 @@ class ExpressionEvaluator:
 
     def _parse(self, tokens: List[Token]) -> Expression:
         """Parse tokens into expression tree."""
+
         # Simple recursive descent parser
         def parse_expression(pos: int) -> tuple[Expression, int]:
             expr, pos = parse_or(pos)
-            if pos < len(tokens) and tokens[pos].type not in (TokenType.EOF, TokenType.RPAREN):
+            if pos < len(tokens) and tokens[pos].type not in (
+                TokenType.EOF,
+                TokenType.RPAREN,
+            ):
                 raise ExpressionSyntaxError("Unexpected token")
             return expr, pos
 
         def parse_or(pos: int) -> tuple[Expression, int]:
             expr, pos = parse_and(pos)
-            while pos < len(tokens) and tokens[pos].type == TokenType.OPERATOR and tokens[pos].value == "or":
+            while (
+                pos < len(tokens)
+                and tokens[pos].type == TokenType.OPERATOR
+                and tokens[pos].value == "or"
+            ):
                 op = tokens[pos].value
                 pos += 1
                 right, pos = parse_and(pos)
@@ -355,7 +363,11 @@ class ExpressionEvaluator:
 
         def parse_and(pos: int) -> tuple[Expression, int]:
             expr, pos = parse_comparison(pos)
-            while pos < len(tokens) and tokens[pos].type == TokenType.OPERATOR and tokens[pos].value == "and":
+            while (
+                pos < len(tokens)
+                and tokens[pos].type == TokenType.OPERATOR
+                and tokens[pos].value == "and"
+            ):
                 op = tokens[pos].value
                 pos += 1
                 right, pos = parse_comparison(pos)
@@ -377,7 +389,13 @@ class ExpressionEvaluator:
             token = tokens[pos]
             pos += 1
 
-            if token.type in (TokenType.NUMBER, TokenType.STRING, TokenType.BOOLEAN, TokenType.DATE, TokenType.NULL):
+            if token.type in (
+                TokenType.NUMBER,
+                TokenType.STRING,
+                TokenType.BOOLEAN,
+                TokenType.DATE,
+                TokenType.NULL,
+            ):
                 return LiteralExpression(token.value), pos
             elif token.type == TokenType.IDENTIFIER:
                 expr = IdentifierExpression(token.value)

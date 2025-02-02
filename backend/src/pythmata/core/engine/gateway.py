@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
-from pythmata.core.engine.expressions import ExpressionEvaluator, ExpressionError
+from pythmata.core.engine.expressions import ExpressionError, ExpressionEvaluator
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
 from pythmata.utils.logger import get_logger
