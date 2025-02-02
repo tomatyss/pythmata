@@ -26,7 +26,7 @@ class TimerEvent(Event):
         self.timer_definition = timer_def
         self._parse_timer_definition(timer_def)
 
-    def _parse_timer_definition(self, timer_def: str):
+    def _parse_timer_definition(self, timer_def: str) -> None:
         """Parse ISO 8601 timer definition."""
         # Try parsing as duration (e.g., PT1H)
         if timer_def.startswith("PT"):
@@ -62,7 +62,7 @@ class TimerEvent(Event):
 
         raise ValueError(f"Invalid timer definition: {timer_def}")
 
-    def _parse_duration(self, duration_str: str) -> timedelta:
+    def _parse_duration(self, duration_str: str) -> timedelta | None:
         """Parse ISO 8601 duration string."""
         if not duration_str.startswith("PT"):
             raise ValueError(f"Invalid duration format: {duration_str}")
@@ -102,7 +102,7 @@ class TimerEvent(Event):
                 data=token.data,
             )
 
-    async def _execute_duration(self, token: Token):
+    async def _execute_duration(self, token: Token) -> None:
         """Execute duration timer."""
         await self.start(token)
         try:
@@ -112,7 +112,7 @@ class TimerEvent(Event):
         finally:
             await self._cleanup(token.instance_id)
 
-    async def _execute_date(self, token: Token):
+    async def _execute_date(self, token: Token) -> None:
         """Execute date timer."""
         await self.start(token)
         now = datetime.now()
@@ -123,7 +123,7 @@ class TimerEvent(Event):
                 raise TimerCancelled()
         await self._cleanup(token.instance_id)
 
-    async def _execute_cycle(self, token: Token):
+    async def _execute_cycle(self, token: Token) -> None:
         """Execute cycle timer."""
         await self.start(token)
         try:
@@ -138,7 +138,7 @@ class TimerEvent(Event):
         """Get Redis key for storing task info."""
         return f"process:{instance_id}:timer:{self.id}:task"
 
-    async def _store_task(self, instance_id: str, task: asyncio.Task):
+    async def _store_task(self, instance_id: str, task: asyncio.Task) -> None:
         """Store task info in Redis."""
         key = await self._get_task_key(instance_id)
         await self.state_manager.redis.set(key, str(id(task)))
@@ -154,12 +154,12 @@ class TimerEvent(Event):
                     return task
         return None
 
-    async def _remove_task(self, instance_id: str):
+    async def _remove_task(self, instance_id: str) -> None:
         """Remove task info from Redis."""
         key = await self._get_task_key(instance_id)
         await self.state_manager.redis.delete(key)
 
-    async def start(self, token: Token):
+    async def start(self, token: Token) -> None:
         """Start timer and save state."""
         state = {
             "timer_type": self.timer_type,
@@ -184,7 +184,7 @@ class TimerEvent(Event):
         if task:
             await self._store_task(token.instance_id, task)
 
-    async def cancel(self, instance_id: str):
+    async def cancel(self, instance_id: str) -> None:
         """Cancel timer execution."""
         task = await self._get_task(instance_id)
         if task:
@@ -192,7 +192,7 @@ class TimerEvent(Event):
             await self._remove_task(instance_id)
         await self._cleanup(instance_id)
 
-    async def _cleanup(self, instance_id: str):
+    async def _cleanup(self, instance_id: str) -> None:
         """Clean up timer state."""
         await self.state_manager.delete_timer_state(instance_id, self.id)
         await self._remove_task(instance_id)
@@ -236,7 +236,9 @@ class TimerBoundaryEvent(TimerEvent):
         super().__init__(event_id, timer_def, state_manager)
         self.activity_id = activity_id
         self.interrupting = interrupting
-        self._activity_completed = {}  # Track completion by instance ID
+        self._activity_completed: Dict[
+            str, bool
+        ] = {}  # Track completion by instance ID
 
     async def execute(self, token: Token) -> Token:
         """Execute timer boundary event behavior."""
@@ -320,12 +322,12 @@ class TimerBoundaryEvent(TimerEvent):
         if task:
             await self._store_task(token.instance_id, task)
 
-    async def on_activity_completed(self, instance_id: str):
+    async def on_activity_completed(self, instance_id: str) -> None:
         """Handle activity completion."""
         self._activity_completed[instance_id] = True
         await self.cancel(instance_id)
 
-    async def _cancel_other_boundary_events(self, instance_id: str):
+    async def _cancel_other_boundary_events(self, instance_id: str) -> None:
         """Cancel other boundary events on the same activity."""
         # Get all timer states for this instance
         pattern = f"process:{instance_id}:timer:*"
@@ -351,7 +353,7 @@ class TimerBoundaryEvent(TimerEvent):
                     await other_timer._remove_task(instance_id)
                     await self.state_manager.delete_timer_state(instance_id, timer_id)
 
-    async def _cleanup(self, instance_id: str):
+    async def _cleanup(self, instance_id: str) -> None:
         """Clean up timer and boundary event state."""
         await super()._cleanup(instance_id)
         self._activity_completed.pop(instance_id, None)

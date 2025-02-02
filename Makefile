@@ -54,7 +54,7 @@ lint:
 	@echo "Linting frontend..."
 	cd frontend && npm run lint
 	@echo "Type checking frontend..."
-	cd frontend && npm run build -- --noEmit
+	cd frontend && tsc --noEmit
 	@echo "Linting backend..."
 	cd backend && poetry run black --check .
 	cd backend && poetry run isort --check-only .
