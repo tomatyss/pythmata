@@ -8,6 +8,7 @@ class TokenState(str, Enum):
     SUSPENDED = "SUSPENDED"
     COMPLETED = "COMPLETED"
     ERROR = "ERROR"
+    CANCELLED = "CANCELLED"  # Added for timer cancellation
 
 class Token:
     """

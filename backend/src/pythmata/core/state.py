@@ -231,3 +231,60 @@ class StateManager:
 
         lock_key = f"lock:process:{instance_id}"
         await self.redis.delete(lock_key)
+
+    async def save_timer_state(
+        self,
+        instance_id: str,
+        timer_id: str,
+        state: Dict[str, Any]
+    ) -> None:
+        """Save timer state.
+        
+        Args:
+            instance_id: The process instance ID
+            timer_id: The timer event ID
+            state: Timer state to save
+        """
+        if not self.redis:
+            raise RuntimeError("Not connected to Redis")
+
+        key = f"process:{instance_id}:timer:{timer_id}"
+        await self.redis.set(key, json.dumps(state))
+
+    async def get_timer_state(
+        self,
+        instance_id: str,
+        timer_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get timer state.
+        
+        Args:
+            instance_id: The process instance ID
+            timer_id: The timer event ID
+            
+        Returns:
+            Timer state if exists, None otherwise
+        """
+        if not self.redis:
+            raise RuntimeError("Not connected to Redis")
+
+        key = f"process:{instance_id}:timer:{timer_id}"
+        state = await self.redis.get(key)
+        return json.loads(state) if state else None
+
+    async def delete_timer_state(
+        self,
+        instance_id: str,
+        timer_id: str
+    ) -> None:
+        """Delete timer state.
+        
+        Args:
+            instance_id: The process instance ID
+            timer_id: The timer event ID
+        """
+        if not self.redis:
+            raise RuntimeError("Not connected to Redis")
+
+        key = f"process:{instance_id}:timer:{timer_id}"
+        await self.redis.delete(key)

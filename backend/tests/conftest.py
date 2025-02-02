@@ -20,39 +20,31 @@ def test_settings() -> Settings:
         server=ServerSettings(
             host="localhost",
             port=8000,
-            debug=True,
-            workers=1,
-            reload=True
+            debug=True
         ),
         database=DatabaseSettings(
             url="postgresql://postgres:postgres@localhost:5432/pythmata_test",
             pool_size=5,
-            max_overflow=10,
-            echo=False
+            max_overflow=10
         ),
         redis=RedisSettings(
             url="redis://localhost:6379/0",
-            pool_size=10,
-            decode_responses=True,
-            socket_timeout=5,
-            socket_connect_timeout=5
+            pool_size=10
         ),
         rabbitmq=RabbitMQSettings(
             url="amqp://guest:guest@localhost:5672/",
             connection_attempts=3,
-            retry_delay=1,
-            heartbeat=60
+            retry_delay=1
         ),
         security=SecuritySettings(
             secret_key="test-secret-key",
-            token_expire_minutes=30,
             algorithm="HS256",
             access_token_expire_minutes=30
         ),
         process=ProcessSettings(
             script_timeout=30,
             max_instances=100,
-            cleanup_interval=60,
-            max_retries=3
-        )
+            cleanup_interval=60
+        ),
+        _env_file=None  # Disable environment file loading for tests
     )

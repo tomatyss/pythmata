@@ -217,7 +217,7 @@
 
 ### 4.1 Intermediate Events
 #### Test Cases
-1. Timer Events
+1. Timer Events ✅
    ```python
    def test_intermediate_timer_event():
        """Test intermediate timer event execution"""
@@ -229,10 +229,10 @@
        </bpmn:intermediateCatchEvent>
        """
    ```
-   - Test duration timers
-   - Test date timers
-   - Test cycle timers
-   - Test timer cancellation
+   - Test duration timers ✅
+   - Test date timers ✅
+   - Test cycle timers ✅
+   - Test timer cancellation ✅
 
 2. Message Events
    - Test message correlation
