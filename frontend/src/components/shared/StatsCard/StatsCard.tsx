@@ -1,10 +1,5 @@
 import { ReactNode } from 'react';
-import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-} from '@mui/material';
+import { Card, CardContent, Typography, Box } from '@mui/material';
 
 export interface StatsCardProps {
   title: string;
@@ -36,11 +31,7 @@ const StatsCard = ({
           }}
         >
           <Box>
-            <Typography
-              variant="subtitle2"
-              color="textSecondary"
-              gutterBottom
-            >
+            <Typography variant="subtitle2" color="textSecondary" gutterBottom>
               {title}
             </Typography>
             <Typography variant="h4">{value}</Typography>

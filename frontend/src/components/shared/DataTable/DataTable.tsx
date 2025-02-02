@@ -52,9 +52,7 @@ const DataTable = <T extends { id: string | number }>({
     onPageChange?.(newPage);
   };
 
-  const handlePageSizeChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handlePageSizeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onPageSizeChange?.(parseInt(event.target.value, 10));
   };
 
@@ -115,9 +113,7 @@ const DataTable = <T extends { id: string | number }>({
                   align="center"
                   sx={{ py: 8 }}
                 >
-                  <Typography color="textSecondary">
-                    {emptyMessage}
-                  </Typography>
+                  <Typography color="textSecondary">{emptyMessage}</Typography>
                 </TableCell>
               </TableRow>
             )}

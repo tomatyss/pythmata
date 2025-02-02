@@ -67,7 +67,14 @@ const useWebSocket = ({
       setError('Failed to establish WebSocket connection');
       console.error('WebSocket connection error:', error);
     }
-  }, [url, onMessage, onError, autoReconnect, reconnectAttempts, reconnectInterval]);
+  }, [
+    url,
+    onMessage,
+    onError,
+    autoReconnect,
+    reconnectAttempts,
+    reconnectInterval,
+  ]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -80,27 +87,24 @@ const useWebSocket = ({
     setIsConnected(false);
   }, []);
 
-  const send = useCallback(
-    (type: string, payload: any) => {
-      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        setError('WebSocket is not connected');
-        return;
-      }
+  const send = useCallback((type: string, payload: any) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setError('WebSocket is not connected');
+      return;
+    }
 
-      try {
-        wsRef.current.send(
-          JSON.stringify({
-            type,
-            payload,
-          })
-        );
-      } catch (error) {
-        setError('Failed to send message');
-        console.error('Failed to send WebSocket message:', error);
-      }
-    },
-    []
-  );
+    try {
+      wsRef.current.send(
+        JSON.stringify({
+          type,
+          payload,
+        })
+      );
+    } catch (error) {
+      setError('Failed to send message');
+      console.error('Failed to send WebSocket message:', error);
+    }
+  }, []);
 
   useEffect(() => {
     connect();

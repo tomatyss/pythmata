@@ -13,7 +13,13 @@ interface ConfirmDialogOptions {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  confirmColor?: 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
+  confirmColor?:
+    | 'primary'
+    | 'secondary'
+    | 'error'
+    | 'info'
+    | 'success'
+    | 'warning';
 }
 
 interface ConfirmDialogState extends ConfirmDialogOptions {
@@ -59,14 +65,8 @@ const useConfirmDialog = () => {
   );
 
   const ConfirmDialog = useCallback(() => {
-    const {
-      isOpen,
-      title,
-      message,
-      confirmText,
-      cancelText,
-      confirmColor,
-    } = dialogState;
+    const { isOpen, title, message, confirmText, cancelText, confirmColor } =
+      dialogState;
 
     return (
       <Dialog

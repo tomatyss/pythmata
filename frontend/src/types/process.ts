@@ -101,13 +101,13 @@ export interface PaginatedResponse<T> {
 export interface CreateProcessDefinitionRequest {
   name: string;
   bpmn_xml: string;
-  version?: number;  // Optional, defaults to 1
+  version?: number; // Optional, defaults to 1
 }
 
 export interface UpdateProcessDefinitionRequest {
   name?: string;
   bpmn_xml?: string;
-  version?: number;  // Optional, auto-increments if not provided
+  version?: number; // Optional, auto-increments if not provided
 }
 
 export interface StartProcessInstanceRequest {

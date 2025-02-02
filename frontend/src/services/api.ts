@@ -38,12 +38,16 @@ class ApiService {
   }
 
   // Process Definitions
-  async getProcessDefinitions(): Promise<ApiResponse<PaginatedResponse<ProcessDefinition>>> {
+  async getProcessDefinitions(): Promise<
+    ApiResponse<PaginatedResponse<ProcessDefinition>>
+  > {
     const response = await this.client.get('/processes');
     return response.data;
   }
 
-  async getProcessDefinition(id: string): Promise<ApiResponse<ProcessDefinition>> {
+  async getProcessDefinition(
+    id: string
+  ): Promise<ApiResponse<ProcessDefinition>> {
     const response = await this.client.get(`/processes/${id}`);
     return response.data;
   }
@@ -89,23 +93,32 @@ class ApiService {
     return response.data;
   }
 
-  async suspendProcessInstance(id: string): Promise<ApiResponse<ProcessInstance>> {
+  async suspendProcessInstance(
+    id: string
+  ): Promise<ApiResponse<ProcessInstance>> {
     const response = await this.client.post(`/instances/${id}/suspend`);
     return response.data;
   }
 
-  async resumeProcessInstance(id: string): Promise<ApiResponse<ProcessInstance>> {
+  async resumeProcessInstance(
+    id: string
+  ): Promise<ApiResponse<ProcessInstance>> {
     const response = await this.client.post(`/instances/${id}/resume`);
     return response.data;
   }
 
   // Scripts
   async getScripts(processDefId: string): Promise<ApiResponse<Script[]>> {
-    const response = await this.client.get(`/processes/${processDefId}/scripts`);
+    const response = await this.client.get(
+      `/processes/${processDefId}/scripts`
+    );
     return response.data;
   }
 
-  async getScript(processDefId: string, nodeId: string): Promise<ApiResponse<Script>> {
+  async getScript(
+    processDefId: string,
+    nodeId: string
+  ): Promise<ApiResponse<Script>> {
     const response = await this.client.get(
       `/processes/${processDefId}/scripts/${nodeId}`
     );

@@ -1,5 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { API_BASE_URL, API_TIMEOUT, AUTH_TOKEN_KEY, ERROR_MESSAGES } from '@/constants';
+import {
+  API_BASE_URL,
+  API_TIMEOUT,
+  AUTH_TOKEN_KEY,
+  ERROR_MESSAGES,
+} from '@/constants';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -15,12 +20,12 @@ axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Get token from storage
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    
+
     // Add auth header if token exists
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error: AxiosError) => {
@@ -53,7 +58,9 @@ axiosInstance.interceptors.response.use(
         default:
           return Promise.reject(
             new Error(
-              (error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data)
+              error.response.data &&
+              typeof error.response.data === 'object' &&
+              'message' in error.response.data
                 ? String(error.response.data.message)
                 : ERROR_MESSAGES.GENERIC
             )

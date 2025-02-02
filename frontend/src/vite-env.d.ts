@@ -3,7 +3,10 @@
 // Declare module types for packages that don't have TypeScript definitions
 declare module 'bpmn-js/lib/Modeler' {
   export default class BpmnModeler {
-    constructor(options: { container: HTMLElement; keyboard?: { bindTo: Document } });
+    constructor(options: {
+      container: HTMLElement;
+      keyboard?: { bindTo: Document };
+    });
     importXML(xml: string): Promise<{ warnings: Array<any> }>;
     saveXML(options?: { format?: boolean }): Promise<{ xml: string }>;
     destroy(): void;

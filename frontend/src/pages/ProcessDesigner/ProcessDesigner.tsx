@@ -62,15 +62,15 @@ const ProcessDesigner = () => {
     console.log('Container ref:', containerRef.current);
     console.log('Container dimensions:', {
       width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight
+      height: containerRef.current.clientHeight,
     });
 
     try {
       modelerRef.current = new BpmnModeler({
         container: containerRef.current,
         keyboard: {
-          bindTo: document
-        }
+          bindTo: document,
+        },
       });
       console.log('BpmnModeler instance created:', modelerRef.current);
 
@@ -83,10 +83,12 @@ const ProcessDesigner = () => {
         console.error('Error details:', {
           name: error.name,
           message: error.message,
-          stack: error.stack
+          stack: error.stack,
         });
       }
-      setError('Failed to initialize process designer. Please try refreshing the page.');
+      setError(
+        'Failed to initialize process designer. Please try refreshing the page.'
+      );
     }
 
     return () => {
@@ -109,14 +111,14 @@ const ProcessDesigner = () => {
         // Update existing process
         await apiService.updateProcessDefinition(id, {
           name: processName,
-          bpmn_xml: xml
+          bpmn_xml: xml,
         });
       } else {
         // Create new process
         await apiService.createProcessDefinition({
           name: processName,
           bpmn_xml: xml,
-          version: 1
+          version: 1,
         });
       }
 
@@ -140,7 +142,7 @@ const ProcessDesigner = () => {
           alignItems: 'center',
           minHeight: '400px',
           flexDirection: 'column',
-          gap: 2
+          gap: 2,
         }}
       >
         {error ? (
@@ -153,7 +155,13 @@ const ProcessDesigner = () => {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        height: 'calc(100vh - 64px)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <AppBar position="static" color="default" elevation={0}>
         <Toolbar sx={{ gap: 2 }}>
           <TextField
@@ -179,14 +187,14 @@ const ProcessDesigner = () => {
           flexGrow: 1,
           position: 'relative',
           bgcolor: '#fff',
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}
       >
         <div
           ref={containerRef}
           style={{
             width: '100%',
-            height: '100%'
+            height: '100%',
           }}
         />
       </Paper>

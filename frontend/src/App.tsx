@@ -22,7 +22,10 @@ const App = () => {
             <Route path="new" element={<ProcessDesigner />} />
             <Route path=":id">
               <Route index element={<ProcessDesigner />} />
-              <Route path="instances/:instanceId" element={<ProcessInstance />} />
+              <Route
+                path="instances/:instanceId"
+                element={<ProcessInstance />}
+              />
             </Route>
           </Route>
 

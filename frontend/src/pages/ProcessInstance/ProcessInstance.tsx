@@ -139,7 +139,9 @@ const ProcessInstance = () => {
                   <Typography>{instance.id}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography color="textSecondary">Process Definition</Typography>
+                  <Typography color="textSecondary">
+                    Process Definition
+                  </Typography>
                   <Typography>{instance.definitionName}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -150,8 +152,8 @@ const ProcessInstance = () => {
                       instance.status === 'RUNNING'
                         ? 'primary'
                         : instance.status === 'COMPLETED'
-                        ? 'success'
-                        : 'error'
+                          ? 'success'
+                          : 'error'
                     }
                     size="small"
                   />
@@ -193,7 +195,11 @@ const ProcessInstance = () => {
                           Value: {JSON.stringify(variable.value)}
                         </Typography>
                         <br />
-                        <Typography component="span" variant="body2" color="textSecondary">
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          color="textSecondary"
+                        >
                           Type: {variable.type} | Scope: {variable.scope}
                         </Typography>
                       </>
@@ -217,7 +223,9 @@ const ProcessInstance = () => {
                 <ListItem key={activity.id}>
                   <ListItemText
                     primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                      >
                         <Typography>{activity.type}</Typography>
                         <Chip
                           label={activity.status}
@@ -226,8 +234,8 @@ const ProcessInstance = () => {
                             activity.status === 'completed'
                               ? 'success'
                               : activity.status === 'running'
-                              ? 'primary'
-                              : 'default'
+                                ? 'primary'
+                                : 'default'
                           }
                         />
                       </Box>
@@ -246,7 +254,11 @@ const ProcessInstance = () => {
                             <br />
                           </>
                         )}
-                        <Typography component="span" variant="body2" color="textSecondary">
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          color="textSecondary"
+                        >
                           {new Date(activity.timestamp).toLocaleString()}
                         </Typography>
                       </>

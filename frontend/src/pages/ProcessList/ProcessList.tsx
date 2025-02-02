@@ -41,14 +41,16 @@ const ProcessList = () => {
     const fetchProcesses = async () => {
       try {
         const response = await apiService.getProcessDefinitions();
-        setProcesses(response.data.items.map(process => ({
-          id: process.id,
-          name: process.name,
-          version: process.version,
-          activeInstances: 0, // TODO: Implement instance counting
-          totalInstances: 0,
-          lastModified: process.updatedAt,
-        })));
+        setProcesses(
+          response.data.items.map((process) => ({
+            id: process.id,
+            name: process.name,
+            version: process.version,
+            activeInstances: 0, // TODO: Implement instance counting
+            totalInstances: 0,
+            lastModified: process.updatedAt,
+          }))
+        );
       } catch (error) {
         console.error('Failed to fetch processes:', error);
         alert('Failed to load processes. Please try again.');
