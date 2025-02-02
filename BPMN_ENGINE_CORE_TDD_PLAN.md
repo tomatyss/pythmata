@@ -240,14 +240,14 @@
    - Test multiple message subscriptions ✅
    - Test message expiration ✅
 
-3. Signal Events
-   - Test signal broadcasting
-   - Test multiple signal receivers
-   - Test signal payload handling
+3. Signal Events ✅
+   - Test signal broadcasting ✅
+   - Test multiple signal receivers ✅
+   - Test signal payload handling ✅
 
 ### 4.2 Boundary Events
 #### Test Cases
-1. Error Boundary Events
+1. Error Boundary Events ✅
    ```python
    def test_error_boundary_event():
        """Test error boundary event handling"""
@@ -259,10 +259,10 @@
        </bpmn:task>
        """
    ```
-   - Test error catching
-   - Test error propagation
-   - Test multiple boundary events
-   - Test non-interrupting behavior
+   - Test error catching ✅
+   - Test error propagation ✅
+   - Test multiple boundary events ✅
+   - Test non-interrupting behavior ✅
 
 2. Timer Boundary Events
    - Test timer activation
