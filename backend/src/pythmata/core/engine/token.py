@@ -9,6 +9,7 @@ class TokenState(str, Enum):
     COMPLETED = "COMPLETED"
     ERROR = "ERROR"
     CANCELLED = "CANCELLED"  # Added for timer cancellation
+    COMPENSATION = "COMPENSATION"  # Added for compensation handling
 
 class Token:
     """
