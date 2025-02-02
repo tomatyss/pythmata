@@ -416,6 +416,7 @@
   - [ ] Version management
   - [ ] Compatibility handling
   - [ ] Documentation
+  
 ## Priority Order
 1. BPMN Engine Core (Foundation)
 2. Process Execution Features (Core functionality)
