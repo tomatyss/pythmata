@@ -28,15 +28,22 @@ debug = true
 url = "postgresql+asyncpg://pythmata:pythmata@postgres:5432/pythmata"
 pool_size = 5
 max_overflow = 10
+connection_timeout = 30
+retry_attempts = 3
+retry_delay = 5
 
 [redis]
 url = "redis://redis:6379/0"
 pool_size = 10
+connection_timeout = 30
+retry_attempts = 3
+retry_delay = 5
 
 [rabbitmq]
 url = "amqp://guest:guest@rabbitmq:5672/"
 connection_attempts = 5
 retry_delay = 5
+connection_timeout = 30
 
 [security]
 secret_key = "development_secret_key"
@@ -94,9 +101,17 @@ class ServerSettings(BaseModel):
     debug: bool        # Debug mode flag
 ```
 
+### Connection Base Settings
+```python
+class ConnectionSettings(BaseModel):
+    connection_timeout: int = 30  # Connection timeout in seconds
+    retry_attempts: int = 3       # Number of retry attempts
+    retry_delay: int = 5         # Delay between retries in seconds
+```
+
 ### Database Settings
 ```python
-class DatabaseSettings(BaseModel):
+class DatabaseSettings(ConnectionSettings):
     url: PostgresDsn   # PostgreSQL connection URL
     pool_size: int     # Connection pool size
     max_overflow: int  # Maximum number of overflow connections
@@ -104,16 +119,16 @@ class DatabaseSettings(BaseModel):
 
 ### Redis Settings
 ```python
-class RedisSettings(BaseModel):
+class RedisSettings(ConnectionSettings):
     url: RedisDsn      # Redis connection URL
     pool_size: int     # Connection pool size
 ```
 
 ### RabbitMQ Settings
 ```python
-class RabbitMQSettings(BaseModel):
+class RabbitMQSettings(ConnectionSettings):
     url: AmqpDsn       # RabbitMQ connection URL
-    connection_attempts: int  # Number of connection attempts
+    connection_attempts: int  # Number of connection attempts (alias for retry_attempts)
     retry_delay: int   # Delay between retries in seconds
 ```
 
@@ -165,9 +180,37 @@ def get_settings() -> Settings:
     return Settings()
 ```
 
+## Connection Management
+
+### Connection Lifecycle
+The application uses a unified connection management system that provides:
+- Automatic connection establishment
+- Connection state tracking
+- Automatic reconnection on failures
+- Proper resource cleanup
+
+### Connection States
+- **Disconnected**: Initial state or after explicit disconnect
+- **Connecting**: During connection attempt
+- **Connected**: Successfully connected
+- **Failed**: Connection attempt failed
+- **Reconnecting**: Attempting to reestablish connection
+
+### Error Handling
+- Connection failures trigger automatic retry attempts
+- Retries follow exponential backoff strategy
+- Exceeded retry attempts raise ConnectionError
+- Connection state is accurately tracked
+
 ## Best Practices
 
-### 1. Environment-Specific Configuration
+### 1. Connection Management
+- Configure appropriate timeouts for your environment
+- Set retry attempts based on service reliability
+- Use reasonable retry delays to prevent overwhelming services
+- Monitor connection states and failures
+
+### 2. Environment-Specific Configuration
 - Use different TOML files for different environments (development.toml, production.toml)
 - Override sensitive values using environment variables
 - Never commit sensitive values to version control

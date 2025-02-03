@@ -42,7 +42,17 @@ Pythmata is a Python-based BPMN workflow engine designed to provide robust proce
 - **Instance Service**: Process instance execution
 - **Task Service**: Task management and assignment
 
-### 4. Storage Layer
+### 4. Connection Management
+- **Base Connection Manager**: Common connection lifecycle handling
+  - State tracking
+  - Automatic reconnection
+  - Error handling and recovery
+- **Service-Specific Implementations**:
+  - Database connections with connection pooling
+  - Redis state management connections
+  - RabbitMQ event system connections
+
+### 5. Storage Layer
 - **PostgreSQL**: Process definitions and instance data
 - **Redis**: State management and caching
 - **RabbitMQ**: Event handling and message queues
@@ -78,7 +88,14 @@ Pythmata is a Python-based BPMN workflow engine designed to provide robust proce
 - Facilitates transaction management
 - Enables state persistence and recovery
 
-### 2. Redis State Management
+### 2. Connection Management Pattern
+- **Unified Connection Interface**: Common connection lifecycle across services
+- **State Management**: Accurate tracking of connection states
+- **Automatic Recovery**: Built-in reconnection for transient failures
+- **Error Handling**: Consistent error propagation and recovery
+- **Resource Management**: Proper cleanup and disposal of connections
+
+### 3. Redis State Management
 - Fast in-memory state access
 - Built-in pub/sub for events
 - Atomic operations for consistency

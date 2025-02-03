@@ -84,6 +84,68 @@ BPMN is a standardized graphical notation for specifying business processes. Pyt
 
 ## Implementation in Pythmata
 
+### Connection Management
+```python
+from pythmata.core.common.connections import ConnectionManager, ensure_connected
+
+class Database(ConnectionManager):
+    """Database connection management example."""
+    
+    def __init__(self, settings: Settings):
+        super().__init__()
+        self.settings = settings
+        self.engine = create_async_engine(
+            str(settings.database.url),
+            pool_size=settings.database.pool_size,
+            max_overflow=settings.database.max_overflow
+        )
+    
+    async def _do_connect(self) -> None:
+        """Establish database connection."""
+        if not self.engine:
+            raise RuntimeError("Database engine not initialized")
+        
+        # Test connection
+        conn = await self.engine.connect()
+        try:
+            await conn.execute("SELECT 1")
+        finally:
+            await conn.close()
+    
+    async def _do_disconnect(self) -> None:
+        """Close database connection."""
+        if self.engine:
+            await self.engine.dispose()
+    
+    @ensure_connected
+    async def execute_query(self, query: str) -> Any:
+        """Execute a query with automatic connection management."""
+        async with self.engine.connect() as conn:
+            return await conn.execute(query)
+```
+
+### Using Connection-Managed Services
+```python
+# Initialize database with connection management
+db = Database(settings)
+
+# Connection is automatically established when needed
+result = await db.execute_query("SELECT * FROM processes")
+
+# Connection state is tracked
+assert db.is_connected
+
+# Automatic reconnection on failures
+try:
+    await db.execute_query("SELECT * FROM processes")
+except ConnectionError:
+    # Connection error is handled, retry attempted
+    pass
+
+# Clean up resources
+await db.disconnect()
+```
+
 ### Token-Based Execution
 ```python
 # Example of token movement
@@ -117,9 +179,41 @@ async def move_token(self, token: Token, target_node_id: str) -> Token:
 - Timer management
 - Error propagation
 
-## Best Practices
+## Connection Management Best Practices
 
-### Process Design
+### 1. Resource Management
+```python
+async with Database(settings) as db:
+    # Connection is automatically established
+    result = await db.execute_query("SELECT 1")
+    # Connection is automatically closed after context
+```
+
+### 2. Error Handling
+```python
+try:
+    await db.connect()
+except ConnectionError as e:
+    logger.error(f"Failed to connect: {e}")
+    # Handle connection failure
+
+# Or using the decorator
+@ensure_connected
+async def my_function(self):
+    # Connection is guaranteed here
+    pass
+```
+
+### 3. State Management
+```python
+if not db.is_connected:
+    await db.connect()
+
+# Check connection before operations
+assert db.is_connected
+```
+
+## Process Design Best Practices
 1. Use clear and meaningful names
 2. Keep processes focused and manageable
 3. Use appropriate level of detail

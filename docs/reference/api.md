@@ -119,13 +119,53 @@ Response:
 All error responses follow this format:
 ```json
 {
-  "detail": "Error message describing what went wrong"
+  "detail": "Error message describing what went wrong",
+  "code": "ERROR_CODE",
+  "context": {
+    "additional": "error context"
+  }
 }
 ```
 
 Common error scenarios:
 - 404: Process not found
 - 500: Internal server error (with error details)
+- 503: Service unavailable (connection issues)
+
+#### Connection-Related Errors
+
+Connection failures return 503 Service Unavailable with specific error codes:
+
+```json
+{
+  "detail": "Database connection failed: connection refused",
+  "code": "DB_CONNECTION_ERROR",
+  "context": {
+    "service": "database",
+    "attempt": 3,
+    "max_attempts": 3
+  }
+}
+```
+
+Common connection error codes:
+- DB_CONNECTION_ERROR: Database connection issues
+- REDIS_CONNECTION_ERROR: Redis connection issues
+- RABBITMQ_CONNECTION_ERROR: RabbitMQ connection issues
+
+The system will automatically attempt to reconnect based on configuration:
+```json
+{
+  "detail": "Service temporarily unavailable, retrying connection",
+  "code": "SERVICE_RECONNECTING",
+  "context": {
+    "service": "database",
+    "attempt": 2,
+    "max_attempts": 3,
+    "retry_delay": 5
+  }
+}
+```
 
 ### Data Models
 
@@ -179,9 +219,51 @@ All successful responses are wrapped in a data object:
 }
 ```
 
+### Connection Management
+
+#### Connection States
+The API provides connection state information through headers:
+```http
+X-Service-Status: connected
+X-Connection-Attempts: 1
+X-Last-Connected: 2025-02-03T12:00:00Z
+```
+
+#### Health Check Endpoint
+```http
+GET /health
+```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "services": {
+    "database": {
+      "status": "connected",
+      "last_connected": "2025-02-03T12:00:00Z"
+    },
+    "redis": {
+      "status": "connected",
+      "last_connected": "2025-02-03T12:00:00Z"
+    },
+    "rabbitmq": {
+      "status": "connected",
+      "last_connected": "2025-02-03T12:00:00Z"
+    }
+  }
+}
+```
+
 ### Best Practices
 
-1. Version Management
+1. Connection Management
+- Monitor connection states via health endpoint
+- Handle 503 errors with appropriate retry logic
+- Implement circuit breaker for failing services
+- Log connection-related errors for monitoring
+
+2. Version Management
    - Process definitions are versioned automatically
    - Version increments on updates unless specified
    - Keep track of version history
