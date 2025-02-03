@@ -295,7 +295,7 @@ class StateManager:
         await self.redis.delete(key)
 
     async def update_token_state(
-        self, instance_id: str, node_id: str, state: TokenState
+        self, instance_id: str, node_id: str, state: TokenState, scope_id: Optional[str] = None
     ) -> None:
         """Update the state of a token at a specific node.
 
@@ -303,6 +303,7 @@ class StateManager:
             instance_id: The process instance ID
             node_id: The node ID where the token is located
             state: The new token state
+            scope_id: Optional scope ID to match specific token
         """
         key = f"process:{instance_id}:tokens"
         tokens = await self.get_token_positions(instance_id)
@@ -310,13 +311,14 @@ class StateManager:
         # Find and update the token state
         updated = False
         for token in tokens:
-            if token["node_id"] == node_id:
+            if token["node_id"] == node_id and token.get("scope_id") == scope_id:
                 token["state"] = state.value
+                token["data"]["state"] = state.value  # Update state in data too
                 updated = True
                 break
 
         if not updated:
-            raise ValueError(f"No token found at node {node_id}")
+            raise ValueError(f"No token found at node {node_id} with scope {scope_id}")
 
         # Replace the token list
         await self.redis.delete(key)

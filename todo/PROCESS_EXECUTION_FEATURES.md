@@ -72,13 +72,13 @@
 
 ### Phase 3: Multi-instance Activities
 #### 3.1 Unit Tests
-- [ ] Test Case: Parallel Instance Creation
+- [x] Test Case: Parallel Instance Creation
   - Expected behavior: Correct instance creation and tracking
   - Edge cases: Empty collections, instance limits
   - Mock requirements: Instance manager
   - Assertions: Instance count, state management
 
-- [ ] Test Case: Sequential Execution
+- [x] Test Case: Sequential Execution
   - Expected behavior: Ordered instance execution
   - Edge cases: Instance failures, cancellation
   - Mock requirements: Execution controller
