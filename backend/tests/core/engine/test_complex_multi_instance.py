@@ -36,17 +36,19 @@ class TestComplexMultiInstance:
         employees = {
             "HR": ["Alice", "Bob"],
             "IT": ["Charlie", "Dave", "Eve"],
-            "Finance": ["Frank", "Grace"]
+            "Finance": ["Frank", "Grace"],
         }
 
         # Create initial token for outer sequential activity
-        outer_token = await executor.create_initial_token(instance_id, outer_activity_id)
+        outer_token = await executor.create_initial_token(
+            instance_id, outer_activity_id
+        )
         outer_token.data["collection"] = departments
         outer_token.data["is_parallel"] = False
 
         # Start first sequential instance
         current_token = await executor.create_sequential_instance(outer_token, 0)
-        
+
         # Process each department sequentially
         for i, dept in enumerate(departments):
             # Set up inner parallel multi-instance
@@ -69,7 +71,9 @@ class TestComplexMultiInstance:
                         instance_id, inner_activity_id
                     )
                     # Clean up task tokens
-                    stored_tokens = await self.state_manager.get_token_positions(instance_id)
+                    stored_tokens = await self.state_manager.get_token_positions(
+                        instance_id
+                    )
                     for token in stored_tokens:
                         if token["node_id"] == "Task_1":
                             await self.state_manager.remove_token(
@@ -85,14 +89,12 @@ class TestComplexMultiInstance:
         final_token = await executor.complete_sequential_instance(
             current_token, len(departments)
         )
-        
+
         # Clean up outer activity token
         stored_tokens = await self.state_manager.get_token_positions(instance_id)
         for token in stored_tokens:
             if token["node_id"] == outer_activity_id:
-                await self.state_manager.remove_token(
-                    instance_id, token["node_id"]
-                )
+                await self.state_manager.remove_token(instance_id, token["node_id"])
 
         # Verify process completed correctly
         assert final_token.node_id == next_task_id
@@ -109,7 +111,7 @@ class TestComplexMultiInstance:
         executor = ProcessExecutor(self.state_manager)
         instance_id = "test-mi-vars-1"
         activity_id = "Activity_1"
-        
+
         # Create parallel instances with their own variables
         token = await executor.create_initial_token(instance_id, activity_id)
         token.data["collection"] = ["A", "B", "C"]
@@ -120,18 +122,13 @@ class TestComplexMultiInstance:
         # Set different variables in each instance scope
         for i, instance_token in enumerate(instance_tokens):
             await self.state_manager.set_variable(
-                instance_id,
-                "local_var",
-                f"value_{i}",
-                scope_id=instance_token.scope_id
+                instance_id, "local_var", f"value_{i}", scope_id=instance_token.scope_id
             )
 
         # Verify variable isolation
         for i, instance_token in enumerate(instance_tokens):
             value = await self.state_manager.get_variable(
-                instance_id,
-                "local_var",
-                scope_id=instance_token.scope_id
+                instance_id, "local_var", scope_id=instance_token.scope_id
             )
             assert value == f"value_{i}"
 
@@ -224,19 +221,20 @@ class TestComplexMultiInstance:
             instance_id,
             error_token.node_id,
             TokenState.ERROR,
-            scope_id=error_token.scope_id
+            scope_id=error_token.scope_id,
         )
 
         # Complete instances before error
-        await executor.complete_parallel_instance(
-            instance_tokens[0],
-            len(collection)
-        )
+        await executor.complete_parallel_instance(instance_tokens[0], len(collection))
 
         # Verify activity remains incomplete due to error
         stored_tokens = await self.state_manager.get_token_positions(instance_id)
-        error_tokens = [t for t in stored_tokens if t["state"] == TokenState.ERROR.value]
-        completed_tokens = [t for t in stored_tokens if t["state"] == TokenState.COMPLETED.value]
+        error_tokens = [
+            t for t in stored_tokens if t["state"] == TokenState.ERROR.value
+        ]
+        completed_tokens = [
+            t for t in stored_tokens if t["state"] == TokenState.COMPLETED.value
+        ]
         assert len(error_tokens) == 1
         assert len(completed_tokens) == 1  # Only instance[0] completed
 
@@ -246,18 +244,16 @@ class TestComplexMultiInstance:
             instance_id,
             error_token.node_id,
             TokenState.ACTIVE,
-            scope_id=error_token.scope_id
+            scope_id=error_token.scope_id,
         )
         await executor.complete_parallel_instance(error_token, len(collection))
 
         # Complete remaining instances in order
         await executor.complete_parallel_instance(
-            instance_tokens[2],  # Complete instance C
-            len(collection)
+            instance_tokens[2], len(collection)  # Complete instance C
         )
         final_token = await executor.complete_parallel_instance(
-            instance_tokens[3],  # Complete instance D
-            len(collection)
+            instance_tokens[3], len(collection)  # Complete instance D
         )
 
         # Verify activity completed after recovery

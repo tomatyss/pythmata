@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 
 from pythmata.core.types import TokenState
 
+
 class Token:
     """
     Represents a process execution token that moves through BPMN nodes.

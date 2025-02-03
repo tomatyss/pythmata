@@ -22,17 +22,17 @@ def test_no_circular_imports():
     # Get the path to the pythmata package
     package_path = os.path.join(os.path.dirname(__file__), "../../src/pythmata")
     package_name = "pythmata"
-    
+
     # Get all module paths
     modules = get_all_modules(package_path, package_name)
-    
+
     # Try importing each module
     for module_path in modules:
         try:
             # Clear the module from sys.modules if it was previously imported
             if module_path in sys.modules:
                 del sys.modules[module_path]
-            
+
             # Attempt to import the module
             importlib.import_module(module_path)
         except ImportError as e:
