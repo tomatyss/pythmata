@@ -9,6 +9,7 @@ from redis.exceptions import LockError
 from typing_extensions import TypeGuard
 
 from pythmata.core.config import Settings
+from pythmata.core.engine.token import TokenState
 
 logger = logging.getLogger(__name__)
 
@@ -292,3 +293,31 @@ class StateManager:
         """
         key = f"process:{instance_id}:timer:{timer_id}"
         await self.redis.delete(key)
+
+    async def update_token_state(
+        self, instance_id: str, node_id: str, state: TokenState
+    ) -> None:
+        """Update the state of a token at a specific node.
+
+        Args:
+            instance_id: The process instance ID
+            node_id: The node ID where the token is located
+            state: The new token state
+        """
+        key = f"process:{instance_id}:tokens"
+        tokens = await self.get_token_positions(instance_id)
+
+        # Find and update the token state
+        updated = False
+        for token in tokens:
+            if token["node_id"] == node_id:
+                token["state"] = state.value
+                updated = True
+                break
+
+        if not updated:
+            raise ValueError(f"No token found at node {node_id}")
+
+        # Replace the token list
+        await self.redis.delete(key)
+        await self.redis.rpush(key, *[json.dumps(token) for token in tokens])

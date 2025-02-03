@@ -18,32 +18,32 @@
 
 ### Phase 1: Call Activities
 #### 1.1 Unit Tests
-- [ ] Test Case: Basic Call Activity Creation
+- [x] Test Case: Basic Call Activity Creation
   - Expected behavior: Successfully create and initialize call activity
   - Edge cases: Invalid process references, missing process definitions
   - Mock requirements: Process definition repository
   - Assertions: Call activity properties, state initialization
 
-- [ ] Test Case: Variable Mapping
+- [x] Test Case: Variable Mapping
   - Expected behavior: Correctly map variables between processes
   - Edge cases: Missing variables, type mismatches
   - Mock requirements: Process context, variable scope
   - Assertions: Variable values, scope isolation
 
-- [ ] Test Case: Process Execution Flow
+- [x] Test Case: Process Execution Flow
   - Expected behavior: Successfully execute called process
   - Edge cases: Process termination, error handling
   - Mock requirements: Process executor, state manager
   - Assertions: Execution state, token flow
 
 #### 1.2 Integration Tests
-- [ ] Test Case: End-to-End Call Activity
+- [x] Test Case: End-to-End Call Activity
   - System components: Process engine, state manager, executor
   - Test data: Sample processes with call activities
   - Integration points: Process execution, variable handling
   - Success criteria: Complete process execution
 
-- [ ] Test Case: Error Propagation
+- [x] Test Case: Error Propagation
   - System components: Error handling, compensation
   - Test data: Processes with error scenarios
   - Integration points: Error events, compensation handling

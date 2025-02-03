@@ -12,6 +12,7 @@ class TokenState(str, Enum):
     ERROR = "ERROR"
     CANCELLED = "CANCELLED"  # Added for timer cancellation
     COMPENSATION = "COMPENSATION"  # Added for compensation handling
+    WAITING = "WAITING"  # Added for call activities
 
 
 class Token:
@@ -31,6 +32,8 @@ class Token:
         data: Optional[Dict] = None,
         token_id: Optional[UUID] = None,
         scope_id: Optional[str] = None,
+        parent_instance_id: Optional[str] = None,
+        parent_activity_id: Optional[str] = None,
     ):
         self.id = token_id or uuid4()
         self.instance_id = instance_id
@@ -38,6 +41,8 @@ class Token:
         self.state = state
         self.data = data or {}
         self.scope_id = scope_id
+        self.parent_instance_id = parent_instance_id
+        self.parent_activity_id = parent_activity_id
 
     def to_dict(self) -> Dict:
         """Convert token to dictionary for storage."""
@@ -48,6 +53,8 @@ class Token:
             "state": self.state.value,
             "data": self.data,
             "scope_id": self.scope_id,
+            "parent_instance_id": self.parent_instance_id,
+            "parent_activity_id": self.parent_activity_id,
         }
         return {k: v for k, v in data.items() if v is not None}
 
@@ -61,6 +68,8 @@ class Token:
             data=data.get("data", {}),
             token_id=UUID(data["id"]) if "id" in data else None,
             scope_id=data.get("scope_id"),
+            parent_instance_id=data.get("parent_instance_id"),
+            parent_activity_id=data.get("parent_activity_id"),
         )
 
     def copy(self, **kwargs) -> "Token":
