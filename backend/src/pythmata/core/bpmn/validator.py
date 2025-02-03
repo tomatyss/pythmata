@@ -16,6 +16,9 @@ class ValidationError:
             return f"{self.code}: {self.message} (element: {self.element_id})"
         return f"{self.code}: {self.message}"
 
+    def __repr__(self) -> str:
+        return self.__str__()
+
     def to_dict(self) -> Dict[str, str]:
         result = {"code": self.code, "message": self.message}
         if self.element_id:
@@ -39,11 +42,20 @@ class BPMNValidator:
     """Validates BPMN XML against schema and structural rules."""
 
     def __init__(self):
-        schema_dir = Path(__file__).parent / "schemas" / "bpmn20"
-        self.schema = xmlschema.XMLSchema(
-            schema_dir / "BPMN20.xsd",
+        schema_dir = Path(__file__).parent / "schemas"
+        bpmn_dir = schema_dir / "bpmn20"
+        
+        # Load BPMN schema
+        self.bpmn_schema = xmlschema.XMLSchema(
+            bpmn_dir / "BPMN20.xsd",
             validation="lax",  # Use lax validation to handle missing imports
-            base_url=str(schema_dir.absolute()),  # Set base URL for imports
+            base_url=str(bpmn_dir.absolute()),  # Set base URL for imports
+        )
+
+        # Load Pythmata extension schema
+        self.extension_schema = xmlschema.XMLSchema(
+            schema_dir / "pythmata.xsd",
+            validation="lax"
         )
 
     def validate(self, xml: str) -> ValidationResult:
@@ -64,12 +76,41 @@ class BPMNValidator:
             return result
 
         try:
-            # Validate against XML schema
-            validation_errors = list(self.schema.iter_errors(xml.strip()))
+            # Parse XML first
+            try:
+                doc = ET.fromstring(xml.strip())
+            except ET.ParseError as e:
+                result.add_error("XML_PARSE_ERROR", str(e))
+                return result
+
+            # Validate against BPMN schema with relaxed extension validation
+            validation_errors = []
+            for error in self.bpmn_schema.iter_errors(doc):
+                # Skip errors related to extension elements
+                if "extensionElements" not in str(error):
+                    validation_errors.append(error)
+
             if validation_errors:
                 for error in validation_errors:
                     result.add_error("SCHEMA_ERROR", str(error))
                 return result
+
+            # Validate extension elements separately
+            for task in doc.findall(".//{*}serviceTask"):
+                extensions = task.find("{*}extensionElements")
+                if extensions is not None:
+                    for config in extensions.findall(".//{*}taskConfig"):
+                        try:
+                            # Create a temporary XML document with just the extension
+                            extension_doc = ET.Element("{http://pythmata.org/schema/1.0/bpmn}taskConfig")
+                            extension_doc.extend(config)
+                            self.extension_schema.validate(extension_doc)
+                        except xmlschema.XMLSchemaValidationError as e:
+                            result.add_error(
+                                "EXTENSION_ERROR",
+                                f"Invalid extension in task {task.get('id')}: {str(e)}"
+                            )
+                            return result
 
             # Parse XML for additional validation
             try:

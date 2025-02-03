@@ -17,7 +17,7 @@ def test_debug_schema_validation():
     </bpmn:definitions>
     """
     validator = BPMNValidator()
-    validation_errors = list(validator.schema.iter_errors(xml.strip()))
+    validation_errors = list(validator.bpmn_schema.iter_errors(xml.strip()))
 
     print("\nSchema validation errors:")
     for error in validation_errors:
@@ -27,7 +27,7 @@ def test_debug_schema_validation():
             print(f"  Reason: {error.reason}")
 
     print("\nSchema info:")
-    print(f"Schema location: {validator.schema.url}")
-    print(f"Schema validation mode: {validator.schema.validation}")
-    print(f"Schema imports: {validator.schema.imports}")
-    print(f"Schema includes: {validator.schema.includes}")
+    print(f"Schema location: {validator.bpmn_schema.url}")
+    print(f"Schema validation mode: {validator.bpmn_schema.validation}")
+    print(f"Schema imports: {validator.bpmn_schema.imports}")
+    print(f"Schema includes: {validator.bpmn_schema.includes}")

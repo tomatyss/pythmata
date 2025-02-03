@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
+           targetNamespace="http://pythmata.org/schema/1.0/bpmn"
+           elementFormDefault="qualified">
+
+    <!-- Task Configuration -->
+    <xs:element name="taskConfig">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="script" type="xs:string" minOccurs="0"/>
+                <xs:element name="inputVariables" minOccurs="0">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="variable" type="pythmata:variableType" maxOccurs="unbounded"/>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="outputVariables" minOccurs="0">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="variable" type="pythmata:variableType" maxOccurs="unbounded"/>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Variable Type -->
+    <xs:complexType name="variableType">
+        <xs:attribute name="name" type="xs:string" use="required"/>
+        <xs:attribute name="type" use="required">
+            <xs:simpleType>
+                <xs:restriction base="xs:string">
+                    <xs:enumeration value="string"/>
+                    <xs:enumeration value="integer"/>
+                    <xs:enumeration value="float"/>
+                    <xs:enumeration value="boolean"/>
+                    <xs:enumeration value="object"/>
+                    <xs:enumeration value="array"/>
+                </xs:restriction>
+            </xs:simpleType>
+        </xs:attribute>
+    </xs:complexType>
+</xs:schema>
