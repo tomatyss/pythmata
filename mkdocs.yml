@@ -1,0 +1,58 @@
+site_name: Pythmata Documentation
+site_description: Documentation for the Pythmata BPMN workflow engine
+site_author: Ivan Iufriakov
+repo_url: https://github.com/tomatyss/pythmata
+repo_name: pythmata
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: guides/getting-started/installation.md
+    - Basic Concepts: guides/getting-started/basic-concepts.md
+  - Architecture:
+    - Overview: architecture/overview.md
+  - Examples:
+    - Basic:
+      - Order Process: examples/basic/order-process.md
+  - Reference:
+    - BPMN: reference/bpmn.md
+    - API: reference/api.md
+    - Configuration: reference/configuration.md
+    - Security: reference/security.md
+    - Performance: reference/performance.md
