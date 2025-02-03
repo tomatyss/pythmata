@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,25 +9,11 @@ from pythmata.core.database import get_db, init_db
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
 
-app = FastAPI(
-    title="Pythmata",
-    description="A Python-based BPMN workflow engine",
-    version="0.1.0",
-)
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on startup."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle application startup and shutdown events."""
+    # Startup
     settings = Settings()
     app.state.event_bus = EventBus(settings)
     app.state.state_manager = StateManager(settings)
@@ -36,14 +24,30 @@ async def startup_event():
     await app.state.event_bus.connect()
     await app.state.state_manager.connect()
 
+    yield
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown."""
+    # Shutdown
     db = get_db()
     await db.close()  # Close database connection
     await app.state.event_bus.disconnect()
     await app.state.state_manager.disconnect()
+
+
+app = FastAPI(
+    title="Pythmata",
+    description="A Python-based BPMN workflow engine",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
