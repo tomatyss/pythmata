@@ -295,7 +295,11 @@ class StateManager:
         await self.redis.delete(key)
 
     async def update_token_state(
-        self, instance_id: str, node_id: str, state: TokenState, scope_id: Optional[str] = None
+        self,
+        instance_id: str,
+        node_id: str,
+        state: TokenState,
+        scope_id: Optional[str] = None,
     ) -> None:
         """Update the state of a token at a specific node.
 

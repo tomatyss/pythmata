@@ -469,7 +469,9 @@ class ProcessExecutor:
         """
         collection = token.data.get("collection", [])
         if index >= len(collection):
-            raise ValueError(f"Index {index} out of range for collection size {len(collection)}")
+            raise ValueError(
+                f"Index {index} out of range for collection size {len(collection)}"
+            )
 
         instance_token = token.copy(
             scope_id=f"{token.node_id}_instance_{index}",
@@ -515,24 +517,20 @@ class ProcessExecutor:
             instance_id=token.instance_id,
             node_id=token.node_id,
             state=TokenState.COMPLETED,
-            scope_id=token.scope_id
+            scope_id=token.scope_id,
         )
 
         # Get fresh token list AFTER the update
         stored_tokens = await self.state_manager.get_token_positions(token.instance_id)
         print(f"\nDEBUG: All stored tokens: {stored_tokens}")
-        
+
         # Get all tokens for this activity by node_id
-        activity_tokens = [
-            t for t in stored_tokens 
-            if t["node_id"] == token.node_id
-        ]
+        activity_tokens = [t for t in stored_tokens if t["node_id"] == token.node_id]
         print(f"DEBUG: Activity tokens: {activity_tokens}")
-        
+
         # Count completed tokens from fresh state
         completed_tokens = [
-            t for t in activity_tokens 
-            if t.get("state") == TokenState.COMPLETED.value
+            t for t in activity_tokens if t.get("state") == TokenState.COMPLETED.value
         ]
         print(f"DEBUG: Completed tokens: {completed_tokens}")
         print(f"DEBUG: Total instances needed: {total_instances}")
@@ -540,24 +538,21 @@ class ProcessExecutor:
         if len(completed_tokens) == total_instances:
             # All instances complete, create new token
             next_task_id = "Task_1"  # This should come from process definition
-            
+
             # Preserve original token data except instance-specific fields
             token_data = token.data.copy()
             token_data.pop("item", None)
             token_data.pop("index", None)
             token_data.pop("scope_id", None)
-            
+
             new_token = Token(
-                instance_id=token.instance_id,
-                node_id=next_task_id,
-                data=token_data
+                instance_id=token.instance_id, node_id=next_task_id, data=token_data
             )
 
             # Remove all instance tokens
             for t in activity_tokens:
                 await self.state_manager.remove_token(
-                    instance_id=token.instance_id,
-                    node_id=t["node_id"]
+                    instance_id=token.instance_id, node_id=t["node_id"]
                 )
 
             # Clear Redis cache
@@ -567,7 +562,7 @@ class ProcessExecutor:
             await self.state_manager.add_token(
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
-                data=new_token.to_dict()
+                data=new_token.to_dict(),
             )
             return new_token
 
@@ -609,9 +604,7 @@ class ProcessExecutor:
             )
             return new_token
 
-    async def handle_empty_collection(
-        self, token: Token, next_task_id: str
-    ) -> Token:
+    async def handle_empty_collection(self, token: Token, next_task_id: str) -> Token:
         """
         Handle case when multi-instance activity has empty collection.
 

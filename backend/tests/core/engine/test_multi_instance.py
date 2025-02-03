@@ -38,7 +38,7 @@ class TestMultiInstance:
 
         # Verify correct number of instances created
         assert len(instance_tokens) == len(collection_data)
-        
+
         # Verify each instance token properties
         for i, instance_token in enumerate(instance_tokens):
             assert instance_token.instance_id == instance_id
@@ -152,7 +152,9 @@ class TestMultiInstance:
         # Verify first instance completed but activity not complete
         stored_tokens = await self.state_manager.get_token_positions(instance_id)
         assert len(stored_tokens) == 2
-        completed = [t for t in stored_tokens if t["state"] == TokenState.COMPLETED.value]
+        completed = [
+            t for t in stored_tokens if t["state"] == TokenState.COMPLETED.value
+        ]
         active = [t for t in stored_tokens if t["state"] == TokenState.ACTIVE.value]
         assert len(completed) == 1
         assert len(active) == 1
