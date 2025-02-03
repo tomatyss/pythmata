@@ -35,17 +35,17 @@ class TestCallActivitiesIntegration:
         parent_token = await executor.create_initial_token(
             parent_instance_id, call_activity_id
         )
-        parent_token.data.update({
-            "called_process_id": called_process_id,
-            "input_vars": {"subprocess_var": "parent_var"},
-            "parent_var": "test_value"
-        })
+        parent_token.data.update(
+            {
+                "called_process_id": called_process_id,
+                "input_vars": {"subprocess_var": "parent_var"},
+                "parent_var": "test_value",
+            }
+        )
 
         # Set variable in parent scope
         await self.state_manager.set_variable(
-            instance_id=parent_instance_id,
-            name="parent_var",
-            value="test_value"
+            instance_id=parent_instance_id, name="parent_var", value="test_value"
         )
 
         # Create call activity
@@ -58,15 +58,16 @@ class TestCallActivitiesIntegration:
 
         # Verify variable mapping
         subprocess_var = await self.state_manager.get_variable(
-            instance_id=subprocess_token.instance_id,
-            name="subprocess_var"
+            instance_id=subprocess_token.instance_id, name="subprocess_var"
         )
         assert subprocess_var == "test_value"
 
         # Stop measuring call activity creation overhead
         creation_time = time.perf_counter()
         creation_overhead = (creation_time - start_time) * 1000
-        assert creation_overhead < 50, f"Call activity creation overhead too high: {creation_overhead}ms"
+        assert (
+            creation_overhead < 50
+        ), f"Call activity creation overhead too high: {creation_overhead}ms"
 
         # 2. Execute subprocess tasks (simulated)
         task_token = await executor.move_token(subprocess_token, "Task_1")
@@ -77,9 +78,7 @@ class TestCallActivitiesIntegration:
         completion_start = time.perf_counter()  # Start measuring completion overhead
         output_vars = {"parent_result": "result"}
         await self.state_manager.set_variable(
-            instance_id=subprocess_token.instance_id,
-            name="result",
-            value="success"
+            instance_id=subprocess_token.instance_id, name="result", value="success"
         )
 
         final_token = await executor.complete_call_activity(
@@ -93,8 +92,7 @@ class TestCallActivitiesIntegration:
 
         # Verify variable mapping back to parent
         parent_result = await self.state_manager.get_variable(
-            instance_id=parent_instance_id,
-            name="parent_result"
+            instance_id=parent_instance_id, name="parent_result"
         )
         assert parent_result == "success"
 
@@ -107,11 +105,15 @@ class TestCallActivitiesIntegration:
         # Check completion performance
         completion_time = time.perf_counter()
         completion_overhead = (completion_time - completion_start) * 1000
-        assert completion_overhead < 50, f"Call activity completion overhead too high: {completion_overhead}ms"
+        assert (
+            completion_overhead < 50
+        ), f"Call activity completion overhead too high: {completion_overhead}ms"
 
         # Total overhead should be less than 100ms (excluding task execution time)
         total_overhead = creation_overhead + completion_overhead
-        assert total_overhead < 100, f"Total call activity overhead too high: {total_overhead}ms"
+        assert (
+            total_overhead < 100
+        ), f"Total call activity overhead too high: {total_overhead}ms"
 
     async def test_error_propagation_with_compensation(self):
         """Test error propagation and compensation handling in call activities."""
@@ -135,7 +137,7 @@ class TestCallActivitiesIntegration:
         await self.state_manager.set_variable(
             instance_id=subprocess_token.instance_id,
             name="task_1_result",
-            value="completed"
+            value="completed",
         )
 
         # Move to error event

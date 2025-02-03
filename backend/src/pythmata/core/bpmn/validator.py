@@ -44,7 +44,7 @@ class BPMNValidator:
     def __init__(self):
         schema_dir = Path(__file__).parent / "schemas"
         bpmn_dir = schema_dir / "bpmn20"
-        
+
         # Load BPMN schema
         self.bpmn_schema = xmlschema.XMLSchema(
             bpmn_dir / "BPMN20.xsd",
@@ -54,8 +54,7 @@ class BPMNValidator:
 
         # Load Pythmata extension schema
         self.extension_schema = xmlschema.XMLSchema(
-            schema_dir / "pythmata.xsd",
-            validation="lax"
+            schema_dir / "pythmata.xsd", validation="lax"
         )
 
     def validate(self, xml: str) -> ValidationResult:
@@ -102,13 +101,15 @@ class BPMNValidator:
                     for config in extensions.findall(".//{*}taskConfig"):
                         try:
                             # Create a temporary XML document with just the extension
-                            extension_doc = ET.Element("{http://pythmata.org/schema/1.0/bpmn}taskConfig")
+                            extension_doc = ET.Element(
+                                "{http://pythmata.org/schema/1.0/bpmn}taskConfig"
+                            )
                             extension_doc.extend(config)
                             self.extension_schema.validate(extension_doc)
                         except xmlschema.XMLSchemaValidationError as e:
                             result.add_error(
                                 "EXTENSION_ERROR",
-                                f"Invalid extension in task {task.get('id')}: {str(e)}"
+                                f"Invalid extension in task {task.get('id')}: {str(e)}",
                             )
                             return result
 

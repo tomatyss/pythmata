@@ -248,21 +248,18 @@ class ProcessExecutor:
         await self.state_manager.update_token_state(
             instance_id=token.instance_id,
             node_id=token.node_id,
-            state=TokenState.WAITING
+            state=TokenState.WAITING,
         )
 
         # Map input variables if specified
         input_vars = token.data.get("input_vars", {})
         for subprocess_var, parent_var in input_vars.items():
             value = await self.state_manager.get_variable(
-                instance_id=token.instance_id,
-                name=parent_var
+                instance_id=token.instance_id, name=parent_var
             )
             if value is not None:
                 await self.state_manager.set_variable(
-                    instance_id=new_instance_id,
-                    name=subprocess_var,
-                    value=value
+                    instance_id=new_instance_id, name=subprocess_var, value=value
                 )
 
         # Create new token in called process
@@ -270,12 +267,10 @@ class ProcessExecutor:
             instance_id=new_instance_id,
             node_id="Start_1",
             parent_instance_id=token.instance_id,
-            parent_activity_id=token.node_id
+            parent_activity_id=token.node_id,
         )
         await self.state_manager.add_token(
-            instance_id=new_instance_id,
-            node_id="Start_1",
-            data=new_token.to_dict()
+            instance_id=new_instance_id, node_id="Start_1", data=new_token.to_dict()
         )
 
         return new_token
@@ -284,7 +279,7 @@ class ProcessExecutor:
         self,
         token: Token,
         next_task_id: str,
-        output_vars: Optional[Dict[str, str]] = None
+        output_vars: Optional[Dict[str, str]] = None,
     ) -> Token:
         """
         Complete a call activity and return to parent process.
@@ -305,46 +300,39 @@ class ProcessExecutor:
         if output_vars:
             for parent_var, subprocess_var in output_vars.items():
                 value = await self.state_manager.get_variable(
-                    instance_id=token.instance_id,
-                    name=subprocess_var
+                    instance_id=token.instance_id, name=subprocess_var
                 )
                 if value is not None:
                     await self.state_manager.set_variable(
                         instance_id=token.parent_instance_id,
                         name=parent_var,
-                        value=value
+                        value=value,
                     )
 
         # Remove token from subprocess end event
         await self.state_manager.remove_token(
-            instance_id=token.instance_id,
-            node_id=token.node_id
+            instance_id=token.instance_id, node_id=token.node_id
         )
         await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
 
         # Clean up any remaining tokens in subprocess
         await self.state_manager.clear_scope_tokens(
             instance_id=token.instance_id,
-            scope_id=None  # Clear all tokens in subprocess
+            scope_id=None,  # Clear all tokens in subprocess
         )
 
         # Create new token in parent process
-        new_token = Token(
-            instance_id=token.parent_instance_id,
-            node_id=next_task_id
-        )
+        new_token = Token(instance_id=token.parent_instance_id, node_id=next_task_id)
         await self.state_manager.add_token(
             instance_id=new_token.instance_id,
             node_id=new_token.node_id,
-            data=new_token.to_dict()
+            data=new_token.to_dict(),
         )
 
         return new_token
 
     async def propagate_call_activity_error(
-        self,
-        token: Token,
-        error_boundary_id: str
+        self, token: Token, error_boundary_id: str
     ) -> Token:
         """
         Propagate an error from called process to parent error boundary event.
@@ -361,27 +349,70 @@ class ProcessExecutor:
 
         # Remove token from subprocess error event
         await self.state_manager.remove_token(
-            instance_id=token.instance_id,
-            node_id=token.node_id
+            instance_id=token.instance_id, node_id=token.node_id
         )
         await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
 
         # Clean up any remaining tokens in subprocess
         await self.state_manager.clear_scope_tokens(
             instance_id=token.instance_id,
-            scope_id=None  # Clear all tokens in subprocess
+            scope_id=None,  # Clear all tokens in subprocess
         )
 
         # Create new token at parent error boundary event
         new_token = Token(
             instance_id=token.parent_instance_id,
             node_id=error_boundary_id,
-            data={"error_code": token.data.get("error_code")}
+            data={"error_code": token.data.get("error_code")},
         )
         await self.state_manager.add_token(
             instance_id=new_token.instance_id,
             node_id=new_token.node_id,
-            data=new_token.to_dict()
+            data=new_token.to_dict(),
+        )
+
+        return new_token
+
+    async def trigger_event_subprocess(
+        self, token: Token, event_subprocess_id: str, event_data: Dict
+    ) -> Token:
+        """
+        Trigger an event subprocess when a matching event occurs.
+
+        Args:
+            token: Token from the parent process
+            event_subprocess_id: ID of the event subprocess to trigger
+            event_data: Event data including type, name, and interrupting flag
+
+        Returns:
+            New token in the event subprocess scope
+        """
+        # Create new token in event subprocess scope
+        start_event_id = f"StartEvent_{event_subprocess_id.split('_')[-1]}"
+        new_token = token.copy(
+            node_id=start_event_id,
+            scope_id=event_subprocess_id,
+            data={"event_data": event_data},
+        )
+
+        # If interrupting event, cancel the parent token
+        if event_data.get("interrupting", False):
+            await self.state_manager.update_token_state(
+                instance_id=token.instance_id,
+                node_id=token.node_id,
+                state=TokenState.CANCELLED,
+            )
+            # Remove the cancelled token
+            await self.state_manager.remove_token(
+                instance_id=token.instance_id, node_id=token.node_id
+            )
+            await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
+
+        # Add the new token
+        await self.state_manager.add_token(
+            instance_id=new_token.instance_id,
+            node_id=new_token.node_id,
+            data=new_token.to_dict(),
         )
 
         return new_token

@@ -3,7 +3,7 @@ from uuid import UUID
 import pytest
 
 from pythmata.core.engine.executor import ProcessExecutor
-from pythmata.core.engine.token import Token, TokenState
+from pythmata.core.engine.token import TokenState
 from pythmata.core.state import StateManager
 
 

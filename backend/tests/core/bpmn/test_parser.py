@@ -1,13 +1,21 @@
-import pytest
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from pythmata.core.bpmn.parser import BPMNParser
+import pytest
+
+from pythmata.core.bpmn.parser import (
+    BPMNParser,
+    DataObject,
+    Event,
+    Gateway,
+    SequenceFlow,
+    SubProcess,
+    Task,
+)
 from pythmata.core.bpmn.validator import BPMNValidator
-from pythmata.core.bpmn.parser import Task, Gateway, Event, SubProcess, SequenceFlow, DataObject
 
 # Sample BPMN XML for testing basic flow elements
-BASIC_PROCESS_XML = '''<?xml version="1.0" encoding="UTF-8"?>
+BASIC_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
@@ -28,10 +36,10 @@ BASIC_PROCESS_XML = '''<?xml version="1.0" encoding="UTF-8"?>
     <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_1" />
     <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="EndEvent_1" />
   </bpmn:process>
-</bpmn:definitions>'''
+</bpmn:definitions>"""
 
 # Sample BPMN XML for testing gateways
-GATEWAY_PROCESS_XML = '''<?xml version="1.0" encoding="UTF-8"?>
+GATEWAY_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -68,10 +76,10 @@ GATEWAY_PROCESS_XML = '''<?xml version="1.0" encoding="UTF-8"?>
     <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_1" targetRef="EndEvent_1" />
     <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_2" targetRef="EndEvent_1" />
   </bpmn:process>
-</bpmn:definitions>'''
+</bpmn:definitions>"""
 
 # Sample BPMN XML for testing advanced elements
-ADVANCED_PROCESS_XML = '''<?xml version="1.0" encoding="UTF-8"?>
+ADVANCED_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -108,10 +116,10 @@ ADVANCED_PROCESS_XML = '''<?xml version="1.0" encoding="UTF-8"?>
     <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="SubProcess_1" />
     <bpmn:sequenceFlow id="Flow_4" sourceRef="SubProcess_1" targetRef="EndEvent_1" />
   </bpmn:process>
-</bpmn:definitions>'''
+</bpmn:definitions>"""
 
 # Sample BPMN XML for testing custom extensions
-EXTENSION_PROCESS_XML = '''<?xml version="1.0" encoding="UTF-8"?>
+EXTENSION_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                   xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
@@ -146,7 +154,7 @@ EXTENSION_PROCESS_XML = '''<?xml version="1.0" encoding="UTF-8"?>
     <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_1" />
     <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="EndEvent_1" />
   </bpmn:process>
-</bpmn:definitions>'''
+</bpmn:definitions>"""
 
 
 @pytest.mark.asyncio
@@ -159,13 +167,15 @@ class TestBPMNParser:
         """Test parsing of basic BPMN flow elements (start event, task, end event)."""
         # Parse basic process XML
         result = parser.parse(BASIC_PROCESS_XML)
-        
+
         # Verify nodes were parsed correctly
         nodes = result["nodes"]
         flows = result["flows"]
-        
+
         # Test start event
-        start_event = next(n for n in nodes if isinstance(n, Event) and n.event_type == "start")
+        start_event = next(
+            n for n in nodes if isinstance(n, Event) and n.event_type == "start"
+        )
         assert start_event.id == "StartEvent_1"
         assert len(start_event.outgoing) == 1
         assert len(start_event.incoming) == 0
@@ -177,14 +187,16 @@ class TestBPMNParser:
         assert len(task.outgoing) == 1
 
         # Test end event
-        end_event = next(n for n in nodes if isinstance(n, Event) and n.event_type == "end")
+        end_event = next(
+            n for n in nodes if isinstance(n, Event) and n.event_type == "end"
+        )
         assert end_event.id == "EndEvent_1"
         assert len(end_event.incoming) == 1
         assert len(end_event.outgoing) == 0
 
         # Test sequence flows
         assert len(flows) == 2
-        
+
         flow1 = next(f for f in flows if f.id == "Flow_1")
         assert flow1.source_ref == "StartEvent_1"
         assert flow1.target_ref == "Task_1"
@@ -197,7 +209,7 @@ class TestBPMNParser:
         """Test parsing of gateway structures and conditions."""
         # Parse gateway process XML
         result = parser.parse(GATEWAY_PROCESS_XML)
-        
+
         nodes = result["nodes"]
         flows = result["flows"]
 
@@ -218,7 +230,7 @@ class TestBPMNParser:
         # Test tasks after gateway
         tasks = [n for n in nodes if isinstance(n, Task)]
         assert len(tasks) == 2
-        
+
         task1 = next(t for t in tasks if t.id == "Task_1")
         assert len(task1.incoming) == 1
         assert len(task1.outgoing) == 1
@@ -228,14 +240,16 @@ class TestBPMNParser:
         assert len(task2.outgoing) == 1
 
         # Test end event with multiple incoming flows
-        end_event = next(n for n in nodes if isinstance(n, Event) and n.event_type == "end")
+        end_event = next(
+            n for n in nodes if isinstance(n, Event) and n.event_type == "end"
+        )
         assert len(end_event.incoming) == 2
 
     async def test_parse_advanced_elements(self, parser):
         """Test parsing of advanced BPMN elements (subprocesses, multi-instance, data objects)."""
         # Parse advanced process XML
         result = parser.parse(ADVANCED_PROCESS_XML)
-        
+
         nodes = result["nodes"]
         data_objects = result["data_objects"]
 
@@ -251,14 +265,18 @@ class TestBPMNParser:
 
         # Test subprocess internal elements
         sub_nodes = subprocess.nodes
-        
-        sub_start = next(n for n in sub_nodes if isinstance(n, Event) and n.event_type == "start")
+
+        sub_start = next(
+            n for n in sub_nodes if isinstance(n, Event) and n.event_type == "start"
+        )
         assert sub_start.id == "SubStart_1"
 
         sub_task = next(n for n in sub_nodes if isinstance(n, Task))
         assert sub_task.id == "SubTask_1"
 
-        sub_end = next(n for n in sub_nodes if isinstance(n, Event) and n.event_type == "end")
+        sub_end = next(
+            n for n in sub_nodes if isinstance(n, Event) and n.event_type == "end"
+        )
         assert sub_end.id == "SubEnd_1"
 
         # Test data objects
@@ -270,7 +288,7 @@ class TestBPMNParser:
         """Test parsing of custom Pythmata extensions."""
         # Parse process with extensions XML
         result = parser.parse(EXTENSION_PROCESS_XML)
-        
+
         nodes = result["nodes"]
 
         # Test service task with extensions

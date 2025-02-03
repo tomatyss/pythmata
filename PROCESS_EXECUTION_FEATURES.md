@@ -51,20 +51,20 @@
 
 ### Phase 2: Event Subprocesses
 #### 2.1 Unit Tests
-- [ ] Test Case: Event Subprocess Triggering
+- [x] Test Case: Event Subprocess Triggering
   - Expected behavior: Correct event detection and triggering
   - Edge cases: Multiple triggers, concurrent events
   - Mock requirements: Event dispatcher, process context
   - Assertions: Event handling, subprocess activation
 
-- [ ] Test Case: Interrupting vs Non-interrupting
+- [x] Test Case: Interrupting vs Non-interrupting
   - Expected behavior: Proper interruption behavior
   - Edge cases: Concurrent interruptions, nested events
   - Mock requirements: Process state manager
   - Assertions: Process state, token management
 
 #### 2.2 Integration Tests
-- [ ] Test Case: Complex Event Scenarios
+- [x] Test Case: Complex Event Scenarios
   - System components: Event system, process engine
   - Test data: Multi-event process definitions
   - Integration points: Event handling, process execution

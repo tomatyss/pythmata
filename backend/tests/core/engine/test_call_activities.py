@@ -49,7 +49,9 @@ class TestCallActivities:
         assert parent_tokens[0]["node_id"] == call_activity_id
         assert parent_tokens[0]["state"] == TokenState.WAITING.value
 
-        child_tokens = await self.state_manager.get_token_positions(new_token.instance_id)
+        child_tokens = await self.state_manager.get_token_positions(
+            new_token.instance_id
+        )
         assert len(child_tokens) == 1
         assert child_tokens[0]["node_id"] == "Start_1"
 
@@ -62,17 +64,17 @@ class TestCallActivities:
 
         # Create token with variables
         token = await executor.create_initial_token(instance_id, call_activity_id)
-        token.data.update({
-            "called_process_id": called_process_id,
-            "input_vars": {"subprocess_var": "parent_var"},
-            "parent_var": "test_value"
-        })
+        token.data.update(
+            {
+                "called_process_id": called_process_id,
+                "input_vars": {"subprocess_var": "parent_var"},
+                "parent_var": "test_value",
+            }
+        )
 
         # Set variable in parent scope
         await self.state_manager.set_variable(
-            instance_id=instance_id,
-            name="parent_var",
-            value="test_value"
+            instance_id=instance_id, name="parent_var", value="test_value"
         )
 
         # Create call activity
@@ -80,8 +82,7 @@ class TestCallActivities:
 
         # Verify variable was mapped to subprocess
         subprocess_var = await self.state_manager.get_variable(
-            instance_id=new_token.instance_id,
-            name="subprocess_var"
+            instance_id=new_token.instance_id, name="subprocess_var"
         )
         assert subprocess_var == "test_value"
 
@@ -103,14 +104,12 @@ class TestCallActivities:
             instance_id=subprocess_instance_id,
             node_id="End_1",
             parent_instance_id=parent_instance_id,
-            parent_activity_id=call_activity_id
+            parent_activity_id=call_activity_id,
         )
 
         # Set output variable in subprocess
         await self.state_manager.set_variable(
-            instance_id=subprocess_instance_id,
-            name="result",
-            value="success"
+            instance_id=subprocess_instance_id, name="result", value="success"
         )
 
         # Complete call activity
@@ -126,8 +125,7 @@ class TestCallActivities:
 
         # Verify variable mapping
         parent_result = await self.state_manager.get_variable(
-            instance_id=parent_instance_id,
-            name="parent_result"
+            instance_id=parent_instance_id, name="parent_result"
         )
         assert parent_result == "success"
 
@@ -156,7 +154,7 @@ class TestCallActivities:
             node_id="Error_1",
             parent_instance_id=parent_instance_id,
             parent_activity_id=call_activity_id,
-            data={"error_code": "test_error"}
+            data={"error_code": "test_error"},
         )
 
         # Propagate error to parent

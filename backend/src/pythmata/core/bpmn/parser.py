@@ -8,6 +8,7 @@ from pythmata.core.bpmn.validator import BPMNValidator
 @dataclass
 class FlowNode:
     """Base class for BPMN flow nodes."""
+
     id: str
     type: str
     incoming: List[str]
@@ -17,6 +18,7 @@ class FlowNode:
 @dataclass
 class Task(FlowNode):
     """Represents a BPMN task."""
+
     name: Optional[str] = None
     script: Optional[str] = None
     input_variables: Optional[Dict[str, str]] = None
@@ -26,6 +28,7 @@ class Task(FlowNode):
 @dataclass
 class Gateway(FlowNode):
     """Represents a BPMN gateway."""
+
     gateway_type: str  # exclusive, parallel, inclusive
     default_flow: Optional[str] = None
 
@@ -33,6 +36,7 @@ class Gateway(FlowNode):
 @dataclass
 class Event(FlowNode):
     """Represents a BPMN event."""
+
     event_type: str  # start, end, intermediate
     event_definition: Optional[str] = None  # message, timer, etc.
 
@@ -40,14 +44,16 @@ class Event(FlowNode):
 @dataclass
 class SubProcess(FlowNode):
     """Represents a BPMN subprocess."""
+
     nodes: List[FlowNode]
-    flows: List['SequenceFlow']
+    flows: List["SequenceFlow"]
     multi_instance: Optional[Dict[str, str]] = None
 
 
 @dataclass
 class SequenceFlow:
     """Represents a BPMN sequence flow."""
+
     id: str
     source_ref: str
     target_ref: str
@@ -57,6 +63,7 @@ class SequenceFlow:
 @dataclass
 class DataObject:
     """Represents a BPMN data object."""
+
     id: str
     name: Optional[str] = None
     type: Optional[str] = None
@@ -68,8 +75,8 @@ class BPMNParser:
     def __init__(self):
         self.validator = BPMNValidator()
         self.ns = {
-            'bpmn': 'http://www.omg.org/spec/BPMN/20100524/MODEL',
-            'pythmata': 'http://pythmata.org/schema/1.0/bpmn'
+            "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
+            "pythmata": "http://pythmata.org/schema/1.0/bpmn",
         }
 
     def parse(self, xml: str) -> Dict[str, Union[List[FlowNode], List[SequenceFlow]]]:
@@ -115,11 +122,7 @@ class BPMNParser:
             elif elem.tag.endswith("}dataObject"):
                 data_objects.append(self._parse_data_object(elem))
 
-        return {
-            "nodes": nodes,
-            "flows": flows,
-            "data_objects": data_objects
-        }
+        return {"nodes": nodes, "flows": flows, "data_objects": data_objects}
 
     def _parse_task(self, elem: ET.Element) -> Task:
         """Parse a BPMN task element."""
@@ -143,11 +146,15 @@ class BPMNParser:
                     script = script_elem.text.strip()
 
                 input_vars = {}
-                for var in config.findall(".//pythmata:inputVariables/pythmata:variable", self.ns):
+                for var in config.findall(
+                    ".//pythmata:inputVariables/pythmata:variable", self.ns
+                ):
                     input_vars[var.get("name")] = var.get("type")
 
                 output_vars = {}
-                for var in config.findall(".//pythmata:outputVariables/pythmata:variable", self.ns):
+                for var in config.findall(
+                    ".//pythmata:outputVariables/pythmata:variable", self.ns
+                ):
                     output_vars[var.get("name")] = var.get("type")
 
         return Task(
@@ -158,7 +165,7 @@ class BPMNParser:
             name=name,
             script=script,
             input_variables=input_vars,
-            output_variables=output_vars
+            output_variables=output_vars,
         )
 
     def _parse_gateway(self, elem: ET.Element) -> Gateway:
@@ -175,7 +182,7 @@ class BPMNParser:
             gateway_type=gateway_type,
             incoming=incoming,
             outgoing=outgoing,
-            default_flow=default_flow
+            default_flow=default_flow,
         )
 
     def _parse_event(self, elem: ET.Element, event_type: str) -> Event:
@@ -194,7 +201,7 @@ class BPMNParser:
             event_type=event_type,
             event_definition=event_definition,
             incoming=incoming,
-            outgoing=outgoing
+            outgoing=outgoing,
         )
 
     def _parse_subprocess(self, elem: ET.Element) -> SubProcess:
@@ -215,7 +222,7 @@ class BPMNParser:
         # Recursively parse subprocess contents
         nodes = []
         flows = []
-        
+
         for child in elem:
             if child.tag.endswith("}task"):
                 nodes.append(self._parse_task(child))
@@ -233,7 +240,7 @@ class BPMNParser:
             outgoing=outgoing,
             nodes=nodes,
             flows=flows,
-            multi_instance=multi_instance
+            multi_instance=multi_instance,
         )
 
     def _parse_sequence_flow(self, elem: ET.Element) -> SequenceFlow:
@@ -250,7 +257,7 @@ class BPMNParser:
             id=flow_id,
             source_ref=source_ref,
             target_ref=target_ref,
-            condition_expression=condition_expression
+            condition_expression=condition_expression,
         )
 
     def _parse_data_object(self, elem: ET.Element) -> DataObject:
@@ -259,8 +266,4 @@ class BPMNParser:
         name = elem.get("name")
         data_type = elem.get("itemSubjectRef")
 
-        return DataObject(
-            id=data_id,
-            name=name,
-            type=data_type
-        )
+        return DataObject(id=data_id, name=name, type=data_type)
