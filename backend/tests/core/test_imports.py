@@ -3,6 +3,7 @@ import importlib
 import os
 import pkgutil
 import sys
+import warnings
 from typing import List
 
 import pytest
@@ -26,20 +27,31 @@ def test_no_circular_imports():
     # Get all module paths
     modules = get_all_modules(package_path, package_name)
 
-    # Try importing each module
-    for module_path in modules:
-        try:
-            # Clear the module from sys.modules if it was previously imported
-            if module_path in sys.modules:
-                del sys.modules[module_path]
+    # Capture warnings during imports to analyze their source
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
 
-            # Attempt to import the module
-            importlib.import_module(module_path)
-        except ImportError as e:
-            if "circular import" in str(e).lower():
+        # Try importing each module
+        for module_path in modules:
+            try:
+                # Clear the module from sys.modules if it was previously imported
+                if module_path in sys.modules:
+                    del sys.modules[module_path]
+
+                # Attempt to import the module
+                importlib.import_module(module_path)
+            except ImportError as e:
+                if "circular import" in str(e).lower():
+                    pytest.fail(
+                        f"Circular import detected in module {module_path}: {str(e)}"
+                    )
+                else:
+                    # Re-raise other import errors
+                    raise
+
+        # Check if any warnings came from our own code
+        for warning in w:
+            if warning.category == DeprecationWarning and "pythmata" in str(warning.filename):
                 pytest.fail(
-                    f"Circular import detected in module {module_path}: {str(e)}"
+                    f"Deprecation warning from our code: {warning.message} in {warning.filename}"
                 )
-            else:
-                # Re-raise other import errors
-                raise
