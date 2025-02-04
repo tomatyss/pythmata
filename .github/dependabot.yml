@@ -9,3 +9,9 @@ updates:
     directory: "/frontend" # Location of package manifests
     schedule:
       interval: "weekly"
+    
+  - package-ecosystem: "pip" # For Python packages
+    directory: "/backend" # Location of requirements files
+    schedule:
+      interval: "weekly"
+    versioning-strategy: lockfile-only
