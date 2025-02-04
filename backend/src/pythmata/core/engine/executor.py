@@ -522,18 +522,14 @@ class ProcessExecutor:
 
         # Get fresh token list AFTER the update
         stored_tokens = await self.state_manager.get_token_positions(token.instance_id)
-        print(f"\nDEBUG: All stored tokens: {stored_tokens}")
 
         # Get all tokens for this activity by node_id
         activity_tokens = [t for t in stored_tokens if t["node_id"] == token.node_id]
-        print(f"DEBUG: Activity tokens: {activity_tokens}")
 
         # Count completed tokens from fresh state
         completed_tokens = [
             t for t in activity_tokens if t.get("state") == TokenState.COMPLETED.value
         ]
-        print(f"DEBUG: Completed tokens: {completed_tokens}")
-        print(f"DEBUG: Total instances needed: {total_instances}")
 
         if len(completed_tokens) == total_instances:
             # All instances complete, create new token

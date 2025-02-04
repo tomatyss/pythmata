@@ -3,8 +3,8 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from pythmata.core.bpmn.parser import (
-    BPMNParser,
+from pythmata.core.bpmn.parser import BPMNParser
+from pythmata.core.types import (
     DataObject,
     Event,
     Gateway,
