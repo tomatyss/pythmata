@@ -6,7 +6,7 @@ import httpx
 import pytest
 import redis.asyncio as redis
 from fastapi import FastAPI
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -44,7 +44,7 @@ async def redis_connection(test_settings: Settings) -> AsyncGenerator[Redis, Non
 @pytest.fixture(scope="function", autouse=True)
 async def setup_database(test_settings: Settings):
     """Initialize and setup test database."""
-    from pythmata.core.database import init_db, get_db
+    from pythmata.core.database import get_db, init_db
 
     # Initialize database
     init_db(test_settings)
@@ -107,8 +107,7 @@ def app(test_settings: Settings) -> FastAPI:
 async def async_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """Create an async test client."""
     async with AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test"
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:
         yield client
 

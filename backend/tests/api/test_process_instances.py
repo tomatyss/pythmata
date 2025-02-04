@@ -111,7 +111,7 @@ async def test_list_instances_filtering(
         ProcessStatus.RUNNING,
         ProcessStatus.COMPLETED,
         ProcessStatus.SUSPENDED,
-        ProcessStatus.ERROR
+        ProcessStatus.ERROR,
     ]
     # Create instances with timestamps after a reference date
     reference_date = datetime.now(timezone.utc).replace(microsecond=0)
@@ -119,7 +119,8 @@ async def test_list_instances_filtering(
         instance = ProcessInstance(
             definition_id=process_definition.id,
             status=status,
-            start_time=reference_date + timedelta(hours=1),  # Future time to ensure it's after reference
+            start_time=reference_date
+            + timedelta(hours=1),  # Future time to ensure it's after reference
         )
         session.add(instance)
     await session.commit()
@@ -135,6 +136,7 @@ async def test_list_instances_filtering(
 
     # Test date range filter using the reference date
     from urllib.parse import quote
+
     response = await async_client.get(
         f"/instances?start_date={quote(reference_date.isoformat())}"
     )
@@ -191,17 +193,13 @@ async def test_instance_state_management(
 ):
     """Test instance suspension and resumption."""
     # Test suspension
-    response = await async_client.post(
-        f"/instances/{process_instance.id}/suspend"
-    )
+    response = await async_client.post(f"/instances/{process_instance.id}/suspend")
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["status"] == ProcessStatus.SUSPENDED
 
     # Test resumption
-    response = await async_client.post(
-        f"/instances/{process_instance.id}/resume"
-    )
+    response = await async_client.post(f"/instances/{process_instance.id}/resume")
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["status"] == ProcessStatus.RUNNING
@@ -209,9 +207,7 @@ async def test_instance_state_management(
     # Test invalid state transitions
     process_instance.status = ProcessStatus.COMPLETED
     await session.commit()  # Commit the status change
-    response = await async_client.post(
-        f"/instances/{process_instance.id}/suspend"
-    )
+    response = await async_client.post(f"/instances/{process_instance.id}/suspend")
     assert response.status_code == 400
 
 
@@ -260,9 +256,7 @@ async def test_script_management(
 ):
     """Test script management endpoints."""
     # Test list scripts
-    response = await async_client.get(
-        f"/processes/{process_definition.id}/scripts"
-    )
+    response = await async_client.get(f"/processes/{process_definition.id}/scripts")
     assert response.status_code == 200
     data = response.json()["data"]
     assert len(data) == 1

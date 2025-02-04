@@ -22,12 +22,10 @@ from pythmata.api.schemas import (
     ScriptResponse,
 )
 from pythmata.core.database import get_db
-from pythmata.models.process import (
-    ProcessDefinition as ProcessDefinitionModel,
-    ProcessInstance as ProcessInstanceModel,
-    ProcessStatus,
-    Script as ScriptModel,
-)
+from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
+from pythmata.models.process import ProcessInstance as ProcessInstanceModel
+from pythmata.models.process import ProcessStatus
+from pythmata.models.process import Script as ScriptModel
 from pythmata.utils.logger import get_logger, log_error
 
 router = APIRouter()
@@ -169,13 +167,14 @@ async def delete_process(process_id: str, session: AsyncSession = Depends(get_se
 
 # Process Instance Endpoints
 
+
 async def parse_datetime(date_str: Optional[str] = Query(None)) -> Optional[datetime]:
     """Parse datetime string to datetime object."""
     if not date_str:
         return None
     try:
         # Parse ISO format datetime string
-        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         # Ensure timezone-aware
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
@@ -183,8 +182,9 @@ async def parse_datetime(date_str: Optional[str] = Query(None)) -> Optional[date
     except ValueError as e:
         raise HTTPException(
             status_code=422,
-            detail=f"Invalid datetime format. Expected ISO format with timezone: {str(e)}"
+            detail=f"Invalid datetime format. Expected ISO format with timezone: {str(e)}",
         )
+
 
 @router.get(
     "/instances",
@@ -202,7 +202,7 @@ async def list_instances(
     """Get process instances with filtering and pagination."""
     try:
         query = select(ProcessInstanceModel)
-        
+
         # Apply filters
         conditions = []
         if status:
@@ -213,25 +213,25 @@ async def list_instances(
             conditions.append(ProcessInstanceModel.start_time <= end_date)
         if definition_id:
             conditions.append(ProcessInstanceModel.definition_id == definition_id)
-        
+
         if conditions:
             query = query.where(and_(*conditions))
-        
+
         # Add ordering
         query = query.order_by(ProcessInstanceModel.created_at.desc())
-        
+
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
         total = await session.scalar(count_query)
-        
+
         # Apply pagination
         query = query.offset((page - 1) * page_size).limit(page_size)
-        
+
         result = await session.execute(query)
         instances = result.scalars().all()
-        
+
         total_pages = (total + page_size - 1) // page_size
-        
+
         return {
             "data": {
                 "items": instances,
@@ -319,16 +319,16 @@ async def suspend_instance(
         instance = result.scalar_one_or_none()
         if not instance:
             raise HTTPException(status_code=404, detail="Process instance not found")
-        
+
         # Refresh instance to get latest status
         await session.refresh(instance)
-        
+
         if instance.status != ProcessStatus.RUNNING:
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot suspend instance in {instance.status} status. Only RUNNING instances can be suspended.",
             )
-        
+
         instance.status = ProcessStatus.SUSPENDED
         await session.commit()
         await session.refresh(instance)
@@ -356,13 +356,13 @@ async def resume_instance(
         instance = result.scalar_one_or_none()
         if not instance:
             raise HTTPException(status_code=404, detail="Process instance not found")
-        
+
         if instance.status != ProcessStatus.SUSPENDED:
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot resume instance in {instance.status} status. Only SUSPENDED instances can be resumed.",
             )
-        
+
         instance.status = ProcessStatus.RUNNING
         await session.commit()
         await session.refresh(instance)
@@ -384,17 +384,14 @@ async def get_statistics(session: AsyncSession = Depends(get_session)):
 
         # Get status counts
         status_query = select(
-            ProcessInstanceModel.status,
-            func.count(ProcessInstanceModel.id)
+            ProcessInstanceModel.status, func.count(ProcessInstanceModel.id)
         ).group_by(ProcessInstanceModel.status)
         status_result = await session.execute(status_query)
         status_counts = dict(status_result.all())
 
         # Get average completion time for completed instances
         completion_query = select(
-            func.avg(
-                ProcessInstanceModel.end_time - ProcessInstanceModel.start_time
-            )
+            func.avg(ProcessInstanceModel.end_time - ProcessInstanceModel.start_time)
         ).where(ProcessInstanceModel.status == ProcessStatus.COMPLETED)
         avg_completion_time = await session.scalar(completion_query)
         avg_completion_seconds = (
@@ -425,6 +422,7 @@ async def get_statistics(session: AsyncSession = Depends(get_session)):
 
 
 # Script Management Endpoints
+
 
 @router.get(
     "/processes/{process_def_id}/scripts",

@@ -38,9 +38,7 @@ class ProcessDefinitionResponse(ProcessDefinitionBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True  # Allow ORM model conversion
-    }
+    model_config = {"from_attributes": True}  # Allow ORM model conversion
 
 
 T = TypeVar("T")
@@ -66,7 +64,9 @@ class ProcessInstanceCreate(BaseModel):
     """Schema for creating a process instance."""
 
     definition_id: UUID
-    variables: Optional[Dict[str, Union[str, int, float, bool, dict]]] = Field(default_factory=dict)
+    variables: Optional[Dict[str, Union[str, int, float, bool, dict]]] = Field(
+        default_factory=dict
+    )
 
 
 class ProcessInstanceResponse(BaseModel):
@@ -80,9 +80,7 @@ class ProcessInstanceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 
 class ProcessInstanceFilter(BaseModel):
@@ -122,6 +120,4 @@ class ScriptResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
