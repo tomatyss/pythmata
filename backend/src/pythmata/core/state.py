@@ -1,15 +1,13 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 import redis.asyncio as redis
 from redis.asyncio import Redis
-from redis.exceptions import LockError
-from typing_extensions import TypeGuard
 
 from pythmata.core.config import Settings
-from pythmata.core.engine.token import TokenState
+from pythmata.core.types import TokenState
 
 logger = logging.getLogger(__name__)
 

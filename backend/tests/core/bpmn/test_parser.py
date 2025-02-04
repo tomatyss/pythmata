@@ -3,8 +3,9 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from pythmata.core.bpmn.parser import (
-    BPMNParser,
+from pythmata.core.bpmn.parser import BPMNParser
+from pythmata.core.bpmn.validator import BPMNValidator
+from pythmata.core.types import (
     DataObject,
     Event,
     Gateway,
@@ -12,7 +13,6 @@ from pythmata.core.bpmn.parser import (
     SubProcess,
     Task,
 )
-from pythmata.core.bpmn.validator import BPMNValidator
 
 # Sample BPMN XML for testing basic flow elements
 BASIC_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
