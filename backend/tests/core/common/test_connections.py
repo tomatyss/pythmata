@@ -1,20 +1,26 @@
-import pytest
 from typing import Optional
 from unittest.mock import AsyncMock, patch
 
-from pythmata.core.common.connections import ConnectionManager, ConnectionError, ensure_connected
+import pytest
+
+from pythmata.core.common.connections import (
+    ConnectionError,
+    ConnectionManager,
+    ensure_connected,
+)
 
 
 class MockConnectionManager(ConnectionManager):
     """Mock implementation of ConnectionManager for testing."""
+
     def __init__(self):
         super().__init__()
         self.mock_connection: Optional[str] = None
-        
+
     async def _do_connect(self) -> None:
         """Mock connection implementation."""
         self.mock_connection = "connected"
-        
+
     async def _do_disconnect(self) -> None:
         """Mock disconnection implementation."""
         self.mock_connection = None
@@ -64,7 +70,9 @@ async def test_disconnect_when_not_connected(connection_manager):
 @pytest.mark.asyncio
 async def test_connection_error_handling(connection_manager):
     """Test error handling during connection."""
-    with patch.object(connection_manager, '_do_connect', side_effect=Exception("Connection failed")):
+    with patch.object(
+        connection_manager, "_do_connect", side_effect=Exception("Connection failed")
+    ):
         with pytest.raises(ConnectionError) as exc_info:
             await connection_manager.connect()
         assert "Failed to connect" in str(exc_info.value)
@@ -75,7 +83,11 @@ async def test_connection_error_handling(connection_manager):
 async def test_disconnection_error_handling(connection_manager):
     """Test error handling during disconnection."""
     await connection_manager.connect()
-    with patch.object(connection_manager, '_do_disconnect', side_effect=Exception("Disconnection failed")):
+    with patch.object(
+        connection_manager,
+        "_do_disconnect",
+        side_effect=Exception("Disconnection failed"),
+    ):
         with pytest.raises(ConnectionError) as exc_info:
             await connection_manager.disconnect()
         assert "Failed to disconnect" in str(exc_info.value)
@@ -104,10 +116,11 @@ async def test_context_manager_with_error(connection_manager):
 @pytest.mark.asyncio
 async def test_ensure_connected_decorator(connection_manager):
     """Test the ensure_connected decorator."""
+
     @ensure_connected
     async def test_function(self):
         return "success"
-    
+
     # Should auto-connect before running
     result = await test_function(connection_manager)
     assert result == "success"
@@ -123,7 +136,7 @@ async def test_ensure_connected_decorator(connection_manager):
 async def test_ensure_connected_reconnection(connection_manager):
     """Test that ensure_connected attempts reconnection on connection errors."""
     connection_attempts = 0
-    
+
     @ensure_connected
     async def test_function(self):
         nonlocal connection_attempts
@@ -131,7 +144,7 @@ async def test_ensure_connected_reconnection(connection_manager):
         if connection_attempts == 1:
             raise ConnectionError("Test connection error")
         return "success"
-    
+
     # Should reconnect and succeed on second attempt
     result = await test_function(connection_manager)
     assert result == "success"

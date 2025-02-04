@@ -51,7 +51,9 @@ def test_no_circular_imports():
 
         # Check if any warnings came from our own code
         for warning in w:
-            if warning.category == DeprecationWarning and "pythmata" in str(warning.filename):
+            if warning.category == DeprecationWarning and "pythmata" in str(
+                warning.filename
+            ):
                 pytest.fail(
                     f"Deprecation warning from our code: {warning.message} in {warning.filename}"
                 )
