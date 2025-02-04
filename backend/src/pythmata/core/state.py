@@ -102,13 +102,27 @@ class StateManager:
             if value:
                 return json.loads(value)
 
-            # If not found in subprocess scope and check_parent is True, try parent scope
+            # If not found and check_parent is True, traverse up the scope hierarchy
             if check_parent:
+                # Split scope path into parts
+                scope_parts = scope_id.split('/')
+                while scope_parts:
+                    # Remove last part to get parent scope
+                    scope_parts.pop()
+                    parent_scope = '/'.join(scope_parts)
+                    
+                    # Try to get variable from parent scope
+                    parent_key = f"{parent_scope}:{name}" if parent_scope else name
+                    value = await self.redis.hget(key, parent_key)
+                    if value:
+                        return json.loads(value)
+                
+                # If still not found, try root scope
                 value = await self.redis.hget(key, name)
                 return json.loads(value) if value else None
             return None
         else:
-            # Direct access to parent scope
+            # Direct access to root scope
             value = await self.redis.hget(key, name)
             return json.loads(value) if value else None
 

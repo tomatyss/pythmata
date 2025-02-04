@@ -62,9 +62,11 @@ class TestAdvancedMultiInstance:
 
         # Complete all inner instances
         for inner_token in all_inner_tokens:
+            # Find parent token by matching scope hierarchy
+            parent_scope = inner_token.data.get("parent_scope", "")
             dept = departments[department_tokens.index(next(
-                t for t in department_tokens 
-                if t.scope_id in inner_token.scope_id
+                t for t in department_tokens
+                if t.scope_id == parent_scope
             ))]
             await executor.complete_parallel_instance(
                 inner_token, 

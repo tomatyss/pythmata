@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 from uuid import UUID, uuid4
@@ -5,6 +6,8 @@ from uuid import UUID, uuid4
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessInstance, ProcessStatus
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from pythmata.core.engine.instance import ProcessInstanceManager
@@ -437,15 +440,24 @@ class ProcessExecutor:
         await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
 
         # Create instance tokens
+        parent_scope = token.scope_id or ""
         for i, item in enumerate(collection):
+            # Create hierarchical scope ID
+            instance_scope = f"{parent_scope}/{token.node_id}_instance_{i}".lstrip("/")
+            
+            # Preserve original token data and update with instance-specific data
+            instance_data = token.data.copy()
+            instance_data.update({
+                "item": item,
+                "index": i,
+                "collection": collection,
+                "is_parallel": True,
+                "parent_scope": parent_scope,  # Store parent scope for reference
+            })
+            
             instance_token = token.copy(
-                scope_id=f"{token.node_id}_instance_{i}",
-                data={
-                    "item": item,
-                    "index": i,
-                    "collection": collection,
-                    "is_parallel": True,
-                },
+                scope_id=instance_scope,
+                data=instance_data,
             )
             await self.state_manager.add_token(
                 instance_id=instance_token.instance_id,
@@ -473,14 +485,18 @@ class ProcessExecutor:
                 f"Index {index} out of range for collection size {len(collection)}"
             )
 
+        # Preserve original token data and update with instance-specific data
+        instance_data = token.data.copy()
+        instance_data.update({
+            "item": collection[index],
+            "index": index,
+            "collection": collection,
+            "is_parallel": False,
+        })
+
         instance_token = token.copy(
             scope_id=f"{token.node_id}_instance_{index}",
-            data={
-                "item": collection[index],
-                "index": index,
-                "collection": collection,
-                "is_parallel": False,
-            },
+            data=instance_data,
         )
 
         # For first instance, remove the original token
@@ -531,8 +547,24 @@ class ProcessExecutor:
             t for t in activity_tokens if t.get("state") == TokenState.COMPLETED.value
         ]
 
-        if len(completed_tokens) == total_instances:
-            # All instances complete, create new token
+        # Check completion condition if specified
+        completion_condition = token.data.get("completion_condition")
+        should_complete = False
+        
+        if completion_condition:
+            # Create context for condition evaluation
+            context = {"count": len(completed_tokens)}
+            try:
+                should_complete = eval(completion_condition, {"__builtins__": {}}, context)
+            except Exception as e:
+                logger.error(f"Error evaluating completion condition: {e}")
+                should_complete = False
+        else:
+            # Default behavior: complete when all instances are done
+            should_complete = len(completed_tokens) == total_instances
+
+        if should_complete:
+            # Completion condition met, create new token
             next_task_id = "Task_1"  # This should come from process definition
 
             # Preserve original token data except instance-specific fields
