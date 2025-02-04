@@ -5,14 +5,14 @@ from xml.etree import ElementTree as ET
 from pythmata.core.bpmn.builders import BuilderFactory
 from pythmata.core.bpmn.validator import BPMNValidator
 from pythmata.core.types import (
-    FlowNode,
-    Task,
-    Gateway,
-    Event,
-    SequenceFlow,
     DataObject,
-    SubProcess,
+    Event,
     EventType,
+    FlowNode,
+    Gateway,
+    SequenceFlow,
+    SubProcess,
+    Task,
 )
 
 
@@ -121,7 +121,5 @@ class BPMNParser:
     def _parse_data_object(self, elem: ET.Element) -> DataObject:
         """Parse a BPMN data object element."""
         return DataObject(
-            id=elem.get("id"),
-            name=elem.get("name"),
-            type=elem.get("itemSubjectRef")
+            id=elem.get("id"), name=elem.get("name"), type=elem.get("itemSubjectRef")
         )
