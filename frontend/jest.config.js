@@ -1,7 +1,19 @@
 export default {
   testEnvironment: 'jsdom',
   transform: {
-    '^.+\\.(ts|tsx)$': ['@swc/jest'],
+    '^.+\\.(ts|tsx)$': ['@swc/jest', {
+      jsc: {
+        parser: {
+          syntax: 'typescript',
+          tsx: true
+        },
+        transform: {
+          react: {
+            runtime: 'automatic'  // This matches our tsconfig.json "jsx": "react-jsx"
+          }
+        }
+      }
+    }]
   },
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
