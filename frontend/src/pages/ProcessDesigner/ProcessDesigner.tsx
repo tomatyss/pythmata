@@ -42,34 +42,56 @@ const ProcessDesigner = () => {
   const modelerRef = useRef<BpmnModeler | null>(null);
   const [loading, setLoading] = useState(true);
   const [processName, setProcessName] = useState('');
+  const [bpmnXml, setBpmnXml] = useState(emptyBpmn);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      setProcessName('Existing Process');
-    } else {
-      setProcessName('New Process');
-    }
-    setLoading(false);
+    const loadProcess = async () => {
+      if (id) {
+        try {
+          const response = await apiService.getProcessDefinition(id);
+          setProcessName(response.data.name);
+          setBpmnXml(response.data.bpmn_xml);
+        } catch (error) {
+          console.error('Failed to load process:', error);
+          setError('Failed to load process. Please try again.');
+          return;
+        }
+      } else {
+        setProcessName('New Process');
+        setBpmnXml(emptyBpmn);
+      }
+      setLoading(false);
+    };
+
+    loadProcess();
   }, [id]);
 
   useEffect(() => {
     if (loading || !containerRef.current) return;
 
-    try {
-      modelerRef.current = new BpmnModeler({
-        container: containerRef.current,
-        keyboard: {
-          bindTo: document,
-        },
-      });
-      modelerRef.current.importXML(emptyBpmn);
-    } catch {
-      setError(
-        'Failed to initialize process designer. Please try refreshing the page.'
-      );
-    }
+    const initializeModeler = async () => {
+      try {
+        if (!containerRef.current) return;
+
+        modelerRef.current = new BpmnModeler({
+          container: containerRef.current as HTMLElement,
+          keyboard: {
+            bindTo: document,
+          },
+        });
+
+        await modelerRef.current.importXML(bpmnXml);
+      } catch (error) {
+        console.error('Failed to initialize modeler:', error);
+        setError(
+          'Failed to initialize process designer. Please try refreshing the page.'
+        );
+      }
+    };
+
+    initializeModeler();
 
     return () => {
       if (modelerRef.current) {
@@ -77,7 +99,7 @@ const ProcessDesigner = () => {
         modelerRef.current = null;
       }
     };
-  }, [loading]);
+  }, [loading, bpmnXml]); // Add bpmnXml as dependency to reinitialize when it changes
 
   const handleSave = async () => {
     if (!modelerRef.current || !processName) return;
@@ -103,8 +125,8 @@ const ProcessDesigner = () => {
 
       // Navigate back to process list
       navigate('/processes');
-    } catch {
-      // Show error notification
+    } catch (error) {
+      console.error('Failed to save process:', error);
       alert('Failed to save process. Please try again.');
     } finally {
       setSaving(false);
