@@ -108,8 +108,7 @@ class Database(ConnectionManager):
         """
         await self.disconnect()
 
-    @ensure_connected
-    async def session(self) -> AsyncContextManager[AsyncSession]:
+    def session(self) -> AsyncContextManager[AsyncSession]:
         """Get a database session.
 
         This context manager ensures proper session lifecycle management
@@ -122,6 +121,8 @@ class Database(ConnectionManager):
         Returns:
             AsyncContextManager yielding an AsyncSession
         """
+        if not self.is_connected:
+            raise RuntimeError("Database not connected. Call connect() first")
         if not self.async_session:
             raise RuntimeError("Session maker not initialized")
 
