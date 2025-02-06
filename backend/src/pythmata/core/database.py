@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy import text
 
 from pythmata.core.common.connections import ConnectionManager, ensure_connected
 from pythmata.core.config import Settings
@@ -59,7 +60,7 @@ class Database(ConnectionManager):
         # Test connection by creating a new connection
         conn = await self.engine.connect()
         try:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         finally:
             await conn.close()
 
@@ -82,8 +83,7 @@ class Database(ConnectionManager):
         if not self.engine:
             raise RuntimeError("Database engine not initialized")
 
-        begin_ctx = await self.engine.begin()
-        async with begin_ctx as conn:
+        async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             logger.info("Database tables created")
 
@@ -97,10 +97,16 @@ class Database(ConnectionManager):
         if not self.engine:
             raise RuntimeError("Database engine not initialized")
 
-        begin_ctx = await self.engine.begin()
-        async with begin_ctx as conn:
+        async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             logger.info("Database tables dropped")
+
+    async def close(self) -> None:
+        """Close database connection.
+
+        Alias for disconnect() to maintain compatibility with test fixtures.
+        """
+        await self.disconnect()
 
     @ensure_connected
     async def session(self) -> AsyncContextManager[AsyncSession]:
