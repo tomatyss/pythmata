@@ -65,7 +65,7 @@ const ProcessDesigner = () => {
         },
       });
       modelerRef.current.importXML(emptyBpmn);
-    } catch (error) {
+    } catch {
       setError(
         'Failed to initialize process designer. Please try refreshing the page.'
       );
@@ -103,7 +103,7 @@ const ProcessDesigner = () => {
 
       // Navigate back to process list
       navigate('/processes');
-    } catch (error) {
+    } catch {
       // Show error notification
       alert('Failed to save process. Please try again.');
     } finally {

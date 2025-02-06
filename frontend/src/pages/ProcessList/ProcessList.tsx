@@ -51,7 +51,7 @@ const ProcessList = () => {
             lastModified: process.updatedAt,
           }))
         );
-      } catch (error) {
+      } catch {
         alert('Failed to load processes. Please try again.');
       } finally {
         setLoading(false);
