@@ -1,9 +1,8 @@
 """Database connection and session management."""
 import logging
-from contextlib import asynccontextmanager
-from typing import AsyncContextManager, AsyncGenerator, Optional
+from typing import AsyncContextManager, Optional
 
-from fastapi import Request
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -61,7 +60,7 @@ class Database(ConnectionManager):
         # Test connection by creating a new connection
         conn = await self.engine.connect()
         try:
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         finally:
             await conn.close()
 
@@ -84,8 +83,7 @@ class Database(ConnectionManager):
         if not self.engine:
             raise RuntimeError("Database engine not initialized")
 
-        begin_ctx = await self.engine.begin()
-        async with begin_ctx as conn:
+        async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             logger.info("Database tables created")
 
@@ -99,13 +97,18 @@ class Database(ConnectionManager):
         if not self.engine:
             raise RuntimeError("Database engine not initialized")
 
-        begin_ctx = await self.engine.begin()
-        async with begin_ctx as conn:
+        async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             logger.info("Database tables dropped")
 
-    @ensure_connected
-    async def session(self) -> AsyncContextManager[AsyncSession]:
+    async def close(self) -> None:
+        """Close database connection.
+
+        Alias for disconnect() to maintain compatibility with test fixtures.
+        """
+        await self.disconnect()
+
+    def session(self) -> AsyncContextManager[AsyncSession]:
         """Get a database session.
 
         This context manager ensures proper session lifecycle management
@@ -118,6 +121,8 @@ class Database(ConnectionManager):
         Returns:
             AsyncContextManager yielding an AsyncSession
         """
+        if not self.is_connected:
+            raise RuntimeError("Database not connected. Call connect() first")
         if not self.async_session:
             raise RuntimeError("Session maker not initialized")
 

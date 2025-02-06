@@ -32,7 +32,14 @@
       "jsx": true
     }
   },
-  "plugins": ["react-refresh", "@typescript-eslint", "react", "react-hooks"],
+  "plugins": [
+    "react-refresh",
+    "@typescript-eslint",
+    "react",
+    "react-hooks",
+    "import",
+    "unused-imports"
+  ],
   "rules": {
     "react-refresh/only-export-components": [
       "warn",
@@ -41,9 +48,16 @@
     "react/react-in-jsx-scope": "off",
     "react/prop-types": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
-    "no-console": ["warn", { "allow": ["warn", "error"] }]
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-unnecessary-type-assertion": "error",
+    "@typescript-eslint/no-inferrable-types": "error",
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/consistent-type-assertions": "error",
+    "@typescript-eslint/prefer-optional-chain": "error",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "import/no-unused-modules": "error",
+    "unused-imports/no-unused-imports": "error"
   },
   "settings": {
     "react": {

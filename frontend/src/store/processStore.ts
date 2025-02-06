@@ -75,7 +75,7 @@ const useProcessStore = create<ProcessState>()(
           definitions: response.data.items,
           definitionsLoading: false,
         });
-      } catch (error) {
+      } catch {
         set({
           definitionsLoading: false,
           definitionsError: 'Failed to fetch process definitions',
@@ -91,7 +91,7 @@ const useProcessStore = create<ProcessState>()(
           selectedDefinition: response.data,
           definitionsLoading: false,
         });
-      } catch (error) {
+      } catch {
         set({
           definitionsLoading: false,
           definitionsError: 'Failed to fetch process definition',
@@ -104,7 +104,7 @@ const useProcessStore = create<ProcessState>()(
         set({ definitionsLoading: true, definitionsError: null });
         await apiService.createProcessDefinition({ name, bpmn_xml });
         await get().fetchDefinitions();
-      } catch (error) {
+      } catch {
         set({
           definitionsLoading: false,
           definitionsError: 'Failed to create process definition',
@@ -117,7 +117,7 @@ const useProcessStore = create<ProcessState>()(
         set({ definitionsLoading: true, definitionsError: null });
         await apiService.updateProcessDefinition(id, { name, bpmn_xml });
         await get().fetchDefinitions();
-      } catch (error) {
+      } catch {
         set({
           definitionsLoading: false,
           definitionsError: 'Failed to update process definition',
@@ -130,7 +130,7 @@ const useProcessStore = create<ProcessState>()(
         set({ definitionsLoading: true, definitionsError: null });
         await apiService.deleteProcessDefinition(id);
         await get().fetchDefinitions();
-      } catch (error) {
+      } catch {
         set({
           definitionsLoading: false,
           definitionsError: 'Failed to delete process definition',
@@ -146,7 +146,7 @@ const useProcessStore = create<ProcessState>()(
           instances: response.data.items,
           instancesLoading: false,
         });
-      } catch (error) {
+      } catch {
         set({
           instancesLoading: false,
           instancesError: 'Failed to fetch process instances',
@@ -162,7 +162,7 @@ const useProcessStore = create<ProcessState>()(
           selectedInstance: response.data,
           instancesLoading: false,
         });
-      } catch (error) {
+      } catch {
         set({
           instancesLoading: false,
           instancesError: 'Failed to fetch process instance',
@@ -178,7 +178,7 @@ const useProcessStore = create<ProcessState>()(
         set({ instancesLoading: true, instancesError: null });
         await apiService.startProcessInstance({ definitionId, variables });
         await get().fetchInstances();
-      } catch (error) {
+      } catch {
         set({
           instancesLoading: false,
           instancesError: 'Failed to start process instance',
@@ -191,7 +191,7 @@ const useProcessStore = create<ProcessState>()(
         set({ instancesLoading: true, instancesError: null });
         await apiService.suspendProcessInstance(id);
         await get().fetchInstance(id);
-      } catch (error) {
+      } catch {
         set({
           instancesLoading: false,
           instancesError: 'Failed to suspend process instance',
@@ -204,7 +204,7 @@ const useProcessStore = create<ProcessState>()(
         set({ instancesLoading: true, instancesError: null });
         await apiService.resumeProcessInstance(id);
         await get().fetchInstance(id);
-      } catch (error) {
+      } catch {
         set({
           instancesLoading: false,
           instancesError: 'Failed to resume process instance',
@@ -220,7 +220,7 @@ const useProcessStore = create<ProcessState>()(
           stats: response.data,
           statsLoading: false,
         });
-      } catch (error) {
+      } catch {
         set({
           statsLoading: false,
           statsError: 'Failed to fetch process stats',

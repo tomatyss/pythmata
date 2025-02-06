@@ -1,6 +1,4 @@
-from datetime import datetime
-from typing import Dict, Optional
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,19 +7,12 @@ from pythmata.core.config import Settings
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.instance import (
     InvalidProcessDefinitionError,
-    InvalidStateTransitionError,
     InvalidVariableError,
-    ProcessInstanceError,
     ProcessInstanceManager,
 )
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
-from pythmata.models.process import (
-    ProcessDefinition,
-    ProcessInstance,
-    ProcessStatus,
-    Variable,
-)
+from pythmata.models.process import ProcessDefinition, ProcessStatus
 
 # Test Data
 SIMPLE_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>

@@ -24,9 +24,17 @@ import {
 const drawerWidth = 240;
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { text: 'Processes', icon: <ListIcon />, path: '/processes' },
-  { text: 'New Process', icon: <AddIcon />, path: '/processes/new' },
+  { text: 'Dashboard', icon: React.createElement(DashboardIcon), path: '/' },
+  {
+    text: 'Processes',
+    icon: React.createElement(ListIcon),
+    path: '/processes',
+  },
+  {
+    text: 'New Process',
+    icon: React.createElement(AddIcon),
+    path: '/processes/new',
+  },
 ];
 
 const Layout = () => {
