@@ -6,6 +6,7 @@
 :root {
   --header-height: 64px;
   --drawer-width: 240px;
+  --palette-width: 96px;
 }
 
 /* Global styles */
@@ -47,8 +48,19 @@ body {
 }
 
 .djs-palette {
-  position: fixed !important;
-  left: var(--drawer-width) !important;
+  position: absolute !important;
+  left: auto !important;
+  right: 0 !important;
+  top: 0 !important;
+  height: 100% !important;
+  z-index: 10;
+  background-color: #f8f9fa;
+  border-left: 1px solid #e9ecef;
+  width: var(--palette-width) !important;
+}
+
+.djs-palette.two-column {
+  width: var(--palette-width) !important;
 }
 
 .djs-container {

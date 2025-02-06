@@ -188,6 +188,7 @@ const ProcessDesigner = () => {
           position: 'relative',
           bgcolor: '#fff',
           overflow: 'hidden',
+          mr: 'var(--palette-width)', // Space for palette
         }}
       >
         <div
