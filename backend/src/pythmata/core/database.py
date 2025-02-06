@@ -1,9 +1,7 @@
 """Database connection and session management."""
 import logging
-from contextlib import asynccontextmanager
-from typing import AsyncContextManager, AsyncGenerator, Optional
+from typing import AsyncContextManager, Optional
 
-from fastapi import Request
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
