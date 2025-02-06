@@ -1,4 +1,5 @@
 """Connection management utilities."""
+
 import functools
 import logging
 from abc import ABC, abstractmethod
@@ -14,14 +15,11 @@ class Connectable(Protocol):
     """Protocol for objects that can be connected/disconnected."""
 
     @property
-    def is_connected(self) -> bool:
-        ...
+    def is_connected(self) -> bool: ...
 
-    async def connect(self) -> None:
-        ...
+    async def connect(self) -> None: ...
 
-    async def disconnect(self) -> None:
-        ...
+    async def disconnect(self) -> None: ...
 
 
 def ensure_connected(func: Callable[..., T]) -> Callable[..., T]:

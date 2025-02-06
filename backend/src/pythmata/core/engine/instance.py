@@ -65,9 +65,9 @@ class ProcessInstanceManager:
         self.session = session
         self.executor = executor
         self.state_manager = state_manager
-        self._active_transactions: Dict[
-            str, Transaction
-        ] = {}  # instance_id -> Transaction
+        self._active_transactions: Dict[str, Transaction] = (
+            {}
+        )  # instance_id -> Transaction
 
     async def create_instance(
         self,

@@ -21,9 +21,9 @@ class CompensationScope:
         self.scope_id = scope_id
         self.parent_scope = parent_scope
         self.handlers: List[CompensationBoundaryEvent] = []
-        self._ordered_handlers: Dict[
-            str, int
-        ] = {}  # Maps handler IDs to execution order
+        self._ordered_handlers: Dict[str, int] = (
+            {}
+        )  # Maps handler IDs to execution order
 
     def add_handler(self, handler: "CompensationBoundaryEvent") -> None:
         """Add a compensation handler to this scope"""

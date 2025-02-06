@@ -5,13 +5,21 @@ export default {
       jsc: {
         parser: {
           syntax: 'typescript',
-          tsx: true
+          tsx: true,
+          decorators: true
         },
         transform: {
           react: {
-            runtime: 'automatic'  // This matches our tsconfig.json "jsx": "react-jsx"
+            runtime: 'automatic',
+            importSource: 'react',
+            pragma: 'React.createElement',
+            pragmaFrag: 'React.Fragment',
+            throwIfNamespace: true,
+            development: false,
+            useBuiltins: true
           }
-        }
+        },
+        target: 'es2020'
       }
     }]
   },

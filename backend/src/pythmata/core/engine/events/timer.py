@@ -236,9 +236,9 @@ class TimerBoundaryEvent(TimerEvent):
         super().__init__(event_id, timer_def, state_manager)
         self.activity_id = activity_id
         self.interrupting = interrupting
-        self._activity_completed: Dict[
-            str, bool
-        ] = {}  # Track completion by instance ID
+        self._activity_completed: Dict[str, bool] = (
+            {}
+        )  # Track completion by instance ID
 
     async def execute(self, token: Token) -> Token:
         """Execute timer boundary event behavior."""

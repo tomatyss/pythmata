@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'node:util';
+import * as React from 'react';
 
+// Make React available globally for tests
+global.React = React;
 global.TextEncoder = TextEncoder as typeof global.TextEncoder;
 global.TextDecoder = TextDecoder as typeof global.TextDecoder;
 
