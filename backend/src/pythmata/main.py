@@ -18,19 +18,37 @@ async def lifespan(app: FastAPI):
     app.state.event_bus = EventBus(settings)
     app.state.state_manager = StateManager(settings)
 
-    # Initialize services
+    # Initialize and connect services
     init_db(settings)
+    db = get_db()
+    await db.connect()  # Establish database connection
 
     await app.state.event_bus.connect()
     await app.state.state_manager.connect()
 
     yield
 
-    # Shutdown
-    db = get_db()
-    await db.close()  # Close database connection
-    await app.state.event_bus.disconnect()
-    await app.state.state_manager.disconnect()
+    # Shutdown - ensure all services attempt to disconnect even if some fail
+    errors = []
+
+    try:
+        await db.disconnect()
+    except Exception as e:
+        errors.append(e)
+
+    try:
+        await app.state.event_bus.disconnect()
+    except Exception as e:
+        errors.append(e)
+
+    try:
+        await app.state.state_manager.disconnect()
+    except Exception as e:
+        errors.append(e)
+
+    # If any errors occurred during disconnect, raise the first one
+    if errors:
+        raise errors[0]
 
 
 app = FastAPI(

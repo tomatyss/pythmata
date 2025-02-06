@@ -61,7 +61,9 @@ async def database(mock_settings):
         # Create mock engine
         mock_engine = AsyncMock(spec=AsyncEngine)
         mock_engine.connect = AsyncMock(return_value=mock_conn)
-        mock_engine.begin = AsyncMock(return_value=mock_begin_ctx)
+        mock_engine.begin = MagicMock(
+            return_value=mock_begin_ctx
+        )  # Not AsyncMock since begin() returns context manager directly
         mock_engine.dispose = AsyncMock()
         mock_create_engine.return_value = mock_engine
 
@@ -141,7 +143,7 @@ async def test_session_context_manager(database):
     mock_session = database.async_session().mock_session
 
     # Use the session
-    session_ctx = await database.session()
+    session_ctx = database.session()
     async with session_ctx as session:
         assert session is not None
         await session.execute("SELECT 1")
@@ -160,16 +162,12 @@ async def test_session_rollback_on_error(database):
     mock_session.rollback = AsyncMock()
 
     # Configure session context to call rollback on error
-    session_ctx = await database.session()
+    session_ctx = database.session()
 
-    # Create a flag to track if rollback was called
-    rollback_called = False
-
+    # Configure session context manager to handle errors
     async def handle_exit(exc_type, exc_val, exc_tb):
-        nonlocal rollback_called
         if exc_type is not None:
             await mock_session.rollback()
-            rollback_called = True
         return False  # Don't suppress the exception
 
     session_ctx.__aexit__ = AsyncMock(side_effect=handle_exit)
@@ -180,7 +178,6 @@ async def test_session_rollback_on_error(database):
             await session.execute("SELECT 1")
             raise ValueError("Test error")
 
-    assert rollback_called, "Rollback should have been called"
     mock_session.rollback.assert_awaited_once()
 
 

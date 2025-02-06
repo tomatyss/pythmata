@@ -13,11 +13,6 @@ declare module 'bpmn-js/lib/Modeler' {
   }
 }
 
-// Extend Window interface for any global variables
-declare interface Window {
-  // Add any custom window properties here
-}
-
 // Declare module for any static assets
 declare module '*.svg' {
   const content: string;

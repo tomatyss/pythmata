@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import List
+from datetime import datetime, timezone
+from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import select
@@ -12,23 +12,16 @@ from pythmata.api.schemas import (
     ProcessDefinitionResponse,
     ProcessDefinitionUpdate,
 )
-from pythmata.core.database import get_db
+from pythmata.api.dependencies import get_session
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.utils.logger import get_logger, log_error
 
-router = APIRouter()
+router = APIRouter(prefix="/processes", tags=["processes"])
 logger = get_logger(__name__)
 
 
-async def get_session() -> AsyncSession:
-    """Get database session."""
-    db = get_db()
-    async with db.session() as session:
-        yield session
-
-
 @router.get(
-    "/processes",
+    "",
     response_model=ApiResponse[PaginatedResponse[ProcessDefinitionResponse]],
 )
 async def get_processes(session: AsyncSession = Depends(get_session)):
@@ -51,7 +44,8 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
 
 
 @router.get(
-    "/processes/{process_id}", response_model=ApiResponse[ProcessDefinitionResponse]
+    "/{process_id}",
+    response_model=ApiResponse[ProcessDefinitionResponse],
 )
 async def get_process(process_id: str, session: AsyncSession = Depends(get_session)):
     """Get a specific process definition."""
@@ -64,7 +58,7 @@ async def get_process(process_id: str, session: AsyncSession = Depends(get_sessi
     return {"data": process}
 
 
-@router.post("/processes", response_model=ApiResponse[ProcessDefinitionResponse])
+@router.post("", response_model=ApiResponse[ProcessDefinitionResponse])
 @log_error(logger)
 async def create_process(
     data: ProcessDefinitionCreate = Body(...),
@@ -96,7 +90,8 @@ async def create_process(
 
 
 @router.put(
-    "/processes/{process_id}", response_model=ApiResponse[ProcessDefinitionResponse]
+    "/{process_id}",
+    response_model=ApiResponse[ProcessDefinitionResponse],
 )
 async def update_process(
     process_id: str,
@@ -122,7 +117,7 @@ async def update_process(
             process.version = data.version
         else:
             process.version += 1  # Auto-increment version if not specified
-        process.updated_at = datetime.utcnow()
+        process.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
         await session.refresh(process)
@@ -132,7 +127,7 @@ async def update_process(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/processes/{process_id}")
+@router.delete("/{process_id}")
 async def delete_process(process_id: str, session: AsyncSession = Depends(get_session)):
     """Delete a process definition."""
     try:

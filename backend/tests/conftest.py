@@ -2,8 +2,11 @@ import asyncio
 from pathlib import Path
 from typing import AsyncGenerator, Optional
 
+import httpx
 import pytest
 import redis.asyncio as redis
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -38,38 +41,33 @@ async def redis_connection(test_settings: Settings) -> AsyncGenerator[Redis, Non
         await connection.aclose()  # Close connection
 
 
-@pytest.fixture(scope="function")
-async def engine(test_settings: Settings):
-    """Create a test database engine."""
-    engine = create_async_engine(
-        str(test_settings.database.url),  # Convert PostgresDsn to string
-        poolclass=NullPool,
-        echo=False,
-    )
+@pytest.fixture(scope="function", autouse=True)
+async def setup_database(test_settings: Settings):
+    """Initialize and setup test database."""
+    from pythmata.core.database import get_db, init_db
 
-    # Create all tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    # Initialize database
+    init_db(test_settings)
+    db = get_db()
 
-    yield engine
+    # Create tables
+    await db.create_tables()
 
-    # Clean up
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+    yield
+
+    # Cleanup
+    await db.drop_tables()
+    await db.close()
 
 
 @pytest.fixture
-async def session(engine) -> AsyncGenerator[AsyncSession, None]:
+async def session() -> AsyncGenerator[AsyncSession, None]:
     """Create a test database session."""
-    session_factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    from pythmata.core.database import get_db
 
-    async with session_factory() as session:
+    db = get_db()
+    async with db.session() as session:
         yield session
-        await session.rollback()
 
 
 @pytest.fixture
@@ -93,6 +91,25 @@ async def state_manager(test_settings: Settings, redis_connection: Redis):
     manager.redis = redis_connection  # Use the test Redis connection
 
     return manager
+
+
+@pytest.fixture
+def app(test_settings: Settings) -> FastAPI:
+    """Create a FastAPI test application."""
+    from pythmata.api.routes import router
+
+    app = FastAPI()
+    app.include_router(router)
+    return app
+
+
+@pytest.fixture
+async def async_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+    """Create an async test client."""
+    async with AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        yield client
 
 
 @pytest.fixture(scope="session")
