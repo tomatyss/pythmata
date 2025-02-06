@@ -1,4 +1,5 @@
 """Database connection and session management."""
+
 import logging
 from typing import AsyncContextManager, Optional
 

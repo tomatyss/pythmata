@@ -5,12 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.api.schemas import (
-    ApiResponse,
-    ScriptContent,
-    ScriptResponse,
-)
 from pythmata.api.dependencies import get_session
+from pythmata.api.schemas import ApiResponse, ScriptContent, ScriptResponse
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import Script as ScriptModel
 from pythmata.utils.logger import get_logger

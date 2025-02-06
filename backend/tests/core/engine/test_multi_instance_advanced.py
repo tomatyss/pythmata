@@ -136,9 +136,9 @@ class TestAdvancedMultiInstance:
         token = await executor.create_initial_token(instance_id, activity_id)
         token.data["collection"] = ["item1", "item2", "item3", "item4"]
         token.data["is_parallel"] = True
-        token.data[
-            "completion_condition"
-        ] = "count >= 2"  # Complete when 2 instances finish
+        token.data["completion_condition"] = (
+            "count >= 2"  # Complete when 2 instances finish
+        )
 
         # Create parallel instances
         instance_tokens = await executor.create_parallel_instances(token)

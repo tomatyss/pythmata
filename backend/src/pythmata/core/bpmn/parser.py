@@ -1,4 +1,5 @@
 """Parser for BPMN 2.0 XML documents."""
+
 from typing import Dict, List, Union
 from xml.etree import ElementTree as ET
 

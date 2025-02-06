@@ -80,9 +80,9 @@ class TransactionContext:
         """
         self.scope = transaction
         self.state = TransactionStatus.ACTIVE
-        self._participants: Dict[
-            str, Token
-        ] = {}  # Maps activity IDs to their completion tokens
+        self._participants: Dict[str, Token] = (
+            {}
+        )  # Maps activity IDs to their completion tokens
 
     async def record_completion(self, token: Token) -> None:
         """
