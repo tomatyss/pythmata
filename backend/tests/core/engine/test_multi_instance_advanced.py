@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from typing import List, Dict
 import pytest
 
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.asyncio
@@ -46,21 +49,35 @@ class TestAdvancedMultiInstance:
         # Create parallel instances for departments
         department_tokens = await executor.create_parallel_instances(outer_token)
         assert len(department_tokens) == len(departments)
+        
+        logger.debug("Created department tokens:")
+        for token in department_tokens:
+            logger.debug(f"Department token - node_id: {token.node_id}, scope_id: {token.scope_id}")
 
         # Track all inner instance tokens
         all_inner_tokens = []
 
         # Create inner parallel instances for each department
         for i, dept_token in enumerate(department_tokens):
-            dept_token.node_id = inner_activity_id
-            dept_token.data["collection"] = employees[departments[i]]
-            dept_token.data["is_parallel"] = True
+            # Create a copy of the department token for inner instances
+            inner_token = Token(
+                instance_id=dept_token.instance_id,
+                node_id=inner_activity_id,
+                scope_id=dept_token.scope_id,
+                data=dept_token.data.copy()
+            )
+            inner_token.data["collection"] = employees[departments[i]]
+            inner_token.data["is_parallel"] = True
 
-            inner_tokens = await executor.create_parallel_instances(dept_token)
+            inner_tokens = await executor.create_parallel_instances(inner_token)
             assert len(inner_tokens) == len(employees[departments[i]])
+            logger.debug(f"\nCreated inner tokens for department {departments[i]}:")
+            for token in inner_tokens:
+                logger.debug(f"Inner token - node_id: {token.node_id}, scope_id: {token.scope_id}, parent_scope: {token.data.get('parent_scope')}")
             all_inner_tokens.extend(inner_tokens)
 
         # Complete all inner instances
+        logger.debug("\nStarting inner instance completion:")
         for inner_token in all_inner_tokens:
             # Find parent token by matching scope hierarchy
             parent_scope = inner_token.data.get("parent_scope", "")
@@ -68,8 +85,14 @@ class TestAdvancedMultiInstance:
                 t for t in department_tokens
                 if t.scope_id == parent_scope
             ))]
+            logger.debug(f"\nCompleting inner token - node_id: {inner_token.node_id}, scope_id: {inner_token.scope_id}")
+            stored_tokens = await self.state_manager.get_token_positions(instance_id)
+            logger.debug("Current tokens in state:")
+            for token in stored_tokens:
+                logger.debug(f"Token - node_id: {token['node_id']}, scope_id: {token.get('scope_id')}, state: {token.get('state')}")
+            
             await executor.complete_parallel_instance(
-                inner_token, 
+                inner_token,
                 len(employees[dept])
             )
 

@@ -430,20 +430,28 @@ class ProcessExecutor:
         Returns:
             List of tokens for parallel instances
         """
+        logger.debug(f"\nCreating parallel instances for token at {token.node_id}")
+        logger.debug(f"Parent scope: {token.scope_id}")
+        
         collection = token.data.get("collection", [])
         instance_tokens = []
 
         # Remove the original token first to avoid conflicts
+        logger.debug("Removing original token")
         await self.state_manager.remove_token(
-            instance_id=token.instance_id, node_id=token.node_id
+            instance_id=token.instance_id, 
+            node_id=token.node_id,
+            scope_id=token.scope_id  # Only remove token with matching scope
         )
-        await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
 
         # Create instance tokens
         parent_scope = token.scope_id or ""
+        logger.debug(f"Creating {len(collection)} instances with parent scope: {parent_scope}")
+        
         for i, item in enumerate(collection):
             # Create hierarchical scope ID
             instance_scope = f"{parent_scope}/{token.node_id}_instance_{i}".lstrip("/")
+            logger.debug(f"Creating instance {i} with scope: {instance_scope}")
             
             # Preserve original token data and update with instance-specific data
             instance_data = token.data.copy()
@@ -455,8 +463,11 @@ class ProcessExecutor:
                 "parent_scope": parent_scope,  # Store parent scope for reference
             })
             
+            # Use target_node_id if specified, otherwise keep original node_id
+            target_node = instance_data.pop("target_node_id", token.node_id)
             instance_token = token.copy(
                 scope_id=instance_scope,
+                node_id=target_node,
                 data=instance_data,
             )
             await self.state_manager.add_token(
@@ -527,8 +538,11 @@ class ProcessExecutor:
         Returns:
             Token at next task if all instances complete, None otherwise
         """
+        logger.debug(f"\nCompleting parallel instance - node_id: {token.node_id}, scope_id: {token.scope_id}")
+        
         # Update token state with scope
         token.state = TokenState.COMPLETED
+        logger.debug("Updating token state to COMPLETED")
         await self.state_manager.update_token_state(
             instance_id=token.instance_id,
             node_id=token.node_id,
@@ -538,6 +552,9 @@ class ProcessExecutor:
 
         # Get fresh token list AFTER the update
         stored_tokens = await self.state_manager.get_token_positions(token.instance_id)
+        logger.debug("\nStored tokens after update:")
+        for t in stored_tokens:
+            logger.debug(f"Token - node_id: {t['node_id']}, scope_id: {t.get('scope_id')}, state: {t.get('state')}")
 
         # Get all tokens for this activity by node_id
         activity_tokens = [t for t in stored_tokens if t["node_id"] == token.node_id]
@@ -577,21 +594,60 @@ class ProcessExecutor:
                 instance_id=token.instance_id, node_id=next_task_id, data=token_data
             )
 
-            # Remove all instance tokens
-            for t in activity_tokens:
-                await self.state_manager.remove_token(
-                    instance_id=token.instance_id, node_id=t["node_id"]
+            # For inner activities, only remove tokens in the current scope level
+            if "/" in token.scope_id:  # This is an inner activity
+                parent_scope = token.data.get("parent_scope", "")
+                activity_scope_tokens = [
+                    t for t in activity_tokens 
+                    if t.get("scope_id", "").startswith(parent_scope)
+                ]
+                
+                # Remove tokens for this activity's scope
+                for t in activity_scope_tokens:
+                    await self.state_manager.remove_token(
+                        instance_id=token.instance_id,
+                        node_id=t["node_id"],
+                        scope_id=t.get("scope_id")
+                    )
+
+                # Add new token for inner activity completion
+                await self.state_manager.add_token(
+                    instance_id=new_token.instance_id,
+                    node_id=new_token.node_id,
+                    data=new_token.to_dict(),
                 )
+            else:  # This is an outer activity
+                # Check if all inner activities are complete
+                all_tokens = await self.state_manager.get_token_positions(token.instance_id)
+                inner_tokens = [t for t in all_tokens if t["node_id"] == "InnerActivity"]
+                if inner_tokens:
+                    # Still have inner activities, just mark this one complete
+                    return None
 
-            # Clear Redis cache
-            await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
+                # All inner activities are done, remove outer tokens and create final token
+                outer_tokens = [t for t in all_tokens if t["node_id"] == token.node_id]
+                for t in outer_tokens:
+                    await self.state_manager.remove_token(
+                        instance_id=token.instance_id,
+                        node_id=t["node_id"],
+                        scope_id=t.get("scope_id")
+                    )
 
-            # Add new token
-            await self.state_manager.add_token(
-                instance_id=new_token.instance_id,
-                node_id=new_token.node_id,
-                data=new_token.to_dict(),
-            )
+                # Clear any remaining Task_1 tokens
+                task_tokens = [t for t in all_tokens if t["node_id"] == next_task_id]
+                for t in task_tokens:
+                    await self.state_manager.remove_token(
+                        instance_id=token.instance_id,
+                        node_id=t["node_id"],
+                        scope_id=t.get("scope_id")
+                    )
+
+                # Add single final token
+                await self.state_manager.add_token(
+                    instance_id=new_token.instance_id,
+                    node_id=new_token.node_id,
+                    data=new_token.to_dict(),
+                )
             return new_token
 
         return None
