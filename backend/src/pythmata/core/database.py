@@ -2,13 +2,13 @@
 import logging
 from typing import AsyncContextManager, Optional
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy import text
 
 from pythmata.core.common.connections import ConnectionManager, ensure_connected
 from pythmata.core.config import Settings

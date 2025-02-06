@@ -432,37 +432,41 @@ class ProcessExecutor:
         """
         logger.debug(f"\nCreating parallel instances for token at {token.node_id}")
         logger.debug(f"Parent scope: {token.scope_id}")
-        
+
         collection = token.data.get("collection", [])
         instance_tokens = []
 
         # Remove the original token first to avoid conflicts
         logger.debug("Removing original token")
         await self.state_manager.remove_token(
-            instance_id=token.instance_id, 
+            instance_id=token.instance_id,
             node_id=token.node_id,
-            scope_id=token.scope_id  # Only remove token with matching scope
+            scope_id=token.scope_id,  # Only remove token with matching scope
         )
 
         # Create instance tokens
         parent_scope = token.scope_id or ""
-        logger.debug(f"Creating {len(collection)} instances with parent scope: {parent_scope}")
-        
+        logger.debug(
+            f"Creating {len(collection)} instances with parent scope: {parent_scope}"
+        )
+
         for i, item in enumerate(collection):
             # Create hierarchical scope ID
             instance_scope = f"{parent_scope}/{token.node_id}_instance_{i}".lstrip("/")
             logger.debug(f"Creating instance {i} with scope: {instance_scope}")
-            
+
             # Preserve original token data and update with instance-specific data
             instance_data = token.data.copy()
-            instance_data.update({
-                "item": item,
-                "index": i,
-                "collection": collection,
-                "is_parallel": True,
-                "parent_scope": parent_scope,  # Store parent scope for reference
-            })
-            
+            instance_data.update(
+                {
+                    "item": item,
+                    "index": i,
+                    "collection": collection,
+                    "is_parallel": True,
+                    "parent_scope": parent_scope,  # Store parent scope for reference
+                }
+            )
+
             # Use target_node_id if specified, otherwise keep original node_id
             target_node = instance_data.pop("target_node_id", token.node_id)
             instance_token = token.copy(
@@ -498,12 +502,14 @@ class ProcessExecutor:
 
         # Preserve original token data and update with instance-specific data
         instance_data = token.data.copy()
-        instance_data.update({
-            "item": collection[index],
-            "index": index,
-            "collection": collection,
-            "is_parallel": False,
-        })
+        instance_data.update(
+            {
+                "item": collection[index],
+                "index": index,
+                "collection": collection,
+                "is_parallel": False,
+            }
+        )
 
         instance_token = token.copy(
             scope_id=f"{token.node_id}_instance_{index}",
@@ -538,8 +544,10 @@ class ProcessExecutor:
         Returns:
             Token at next task if all instances complete, None otherwise
         """
-        logger.debug(f"\nCompleting parallel instance - node_id: {token.node_id}, scope_id: {token.scope_id}")
-        
+        logger.debug(
+            f"\nCompleting parallel instance - node_id: {token.node_id}, scope_id: {token.scope_id}"
+        )
+
         # Update token state with scope
         token.state = TokenState.COMPLETED
         logger.debug("Updating token state to COMPLETED")
@@ -554,7 +562,9 @@ class ProcessExecutor:
         stored_tokens = await self.state_manager.get_token_positions(token.instance_id)
         logger.debug("\nStored tokens after update:")
         for t in stored_tokens:
-            logger.debug(f"Token - node_id: {t['node_id']}, scope_id: {t.get('scope_id')}, state: {t.get('state')}")
+            logger.debug(
+                f"Token - node_id: {t['node_id']}, scope_id: {t.get('scope_id')}, state: {t.get('state')}"
+            )
 
         # Get all tokens for this activity by node_id
         activity_tokens = [t for t in stored_tokens if t["node_id"] == token.node_id]
@@ -567,12 +577,14 @@ class ProcessExecutor:
         # Check completion condition if specified
         completion_condition = token.data.get("completion_condition")
         should_complete = False
-        
+
         if completion_condition:
             # Create context for condition evaluation
             context = {"count": len(completed_tokens)}
             try:
-                should_complete = eval(completion_condition, {"__builtins__": {}}, context)
+                should_complete = eval(
+                    completion_condition, {"__builtins__": {}}, context
+                )
             except Exception as e:
                 logger.error(f"Error evaluating completion condition: {e}")
                 should_complete = False
@@ -598,16 +610,17 @@ class ProcessExecutor:
             if "/" in token.scope_id:  # This is an inner activity
                 parent_scope = token.data.get("parent_scope", "")
                 activity_scope_tokens = [
-                    t for t in activity_tokens 
+                    t
+                    for t in activity_tokens
                     if t.get("scope_id", "").startswith(parent_scope)
                 ]
-                
+
                 # Remove tokens for this activity's scope
                 for t in activity_scope_tokens:
                     await self.state_manager.remove_token(
                         instance_id=token.instance_id,
                         node_id=t["node_id"],
-                        scope_id=t.get("scope_id")
+                        scope_id=t.get("scope_id"),
                     )
 
                 # Add new token for inner activity completion
@@ -618,8 +631,12 @@ class ProcessExecutor:
                 )
             else:  # This is an outer activity
                 # Check if all inner activities are complete
-                all_tokens = await self.state_manager.get_token_positions(token.instance_id)
-                inner_tokens = [t for t in all_tokens if t["node_id"] == "InnerActivity"]
+                all_tokens = await self.state_manager.get_token_positions(
+                    token.instance_id
+                )
+                inner_tokens = [
+                    t for t in all_tokens if t["node_id"] == "InnerActivity"
+                ]
                 if inner_tokens:
                     # Still have inner activities, just mark this one complete
                     return None
@@ -630,7 +647,7 @@ class ProcessExecutor:
                     await self.state_manager.remove_token(
                         instance_id=token.instance_id,
                         node_id=t["node_id"],
-                        scope_id=t.get("scope_id")
+                        scope_id=t.get("scope_id"),
                     )
 
                 # Clear any remaining Task_1 tokens
@@ -639,7 +656,7 @@ class ProcessExecutor:
                     await self.state_manager.remove_token(
                         instance_id=token.instance_id,
                         node_id=t["node_id"],
-                        scope_id=t.get("scope_id")
+                        scope_id=t.get("scope_id"),
                     )
 
                 # Add single final token
