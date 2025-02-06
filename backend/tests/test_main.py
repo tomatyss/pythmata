@@ -1,8 +1,9 @@
 """Tests for main application functionality."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import FastAPI
+
 from pythmata.core.config import (
     DatabaseSettings,
     ProcessSettings,

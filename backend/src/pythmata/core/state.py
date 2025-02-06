@@ -105,18 +105,18 @@ class StateManager:
             # If not found and check_parent is True, traverse up the scope hierarchy
             if check_parent:
                 # Split scope path into parts
-                scope_parts = scope_id.split('/')
+                scope_parts = scope_id.split("/")
                 while scope_parts:
                     # Remove last part to get parent scope
                     scope_parts.pop()
-                    parent_scope = '/'.join(scope_parts)
-                    
+                    parent_scope = "/".join(scope_parts)
+
                     # Try to get variable from parent scope
                     parent_key = f"{parent_scope}:{name}" if parent_scope else name
                     value = await self.redis.hget(key, parent_key)
                     if value:
                         return json.loads(value)
-                
+
                 # If still not found, try root scope
                 value = await self.redis.hget(key, name)
                 return json.loads(value) if value else None
@@ -224,10 +224,7 @@ class StateManager:
                 await self.redis.hdel(vars_key, var_key)
 
     async def remove_token(
-        self, 
-        instance_id: str, 
-        node_id: str,
-        scope_id: Optional[str] = None
+        self, instance_id: str, node_id: str, scope_id: Optional[str] = None
     ) -> None:
         """Remove a token from a node.
 
@@ -241,9 +238,10 @@ class StateManager:
 
         # Filter out the token to remove, matching both node_id and scope_id if provided
         new_tokens = [
-            token for token in tokens 
-            if token["node_id"] != node_id or 
-               (scope_id is not None and token.get("scope_id") != scope_id)
+            token
+            for token in tokens
+            if token["node_id"] != node_id
+            or (scope_id is not None and token.get("scope_id") != scope_id)
         ]
 
         # Replace the token list
@@ -331,19 +329,25 @@ class StateManager:
             state: The new token state
             scope_id: Optional scope ID to match specific token
         """
-        logger.debug(f"\nUpdating token state - node_id: {node_id}, scope_id: {scope_id}, new_state: {state.value}")
-        
+        logger.debug(
+            f"\nUpdating token state - node_id: {node_id}, scope_id: {scope_id}, new_state: {state.value}"
+        )
+
         key = f"process:{instance_id}:tokens"
         tokens = await self.get_token_positions(instance_id)
-        
+
         logger.debug("Current tokens:")
         for t in tokens:
-            logger.debug(f"Token - node_id: {t['node_id']}, scope_id: {t.get('scope_id')}, state: {t.get('state')}")
+            logger.debug(
+                f"Token - node_id: {t['node_id']}, scope_id: {t.get('scope_id')}, state: {t.get('state')}"
+            )
 
         # Find and update the token state
         updated = False
         for token in tokens:
-            logger.debug(f"Checking token - node_id: {token['node_id']}, scope_id: {token.get('scope_id')}")
+            logger.debug(
+                f"Checking token - node_id: {token['node_id']}, scope_id: {token.get('scope_id')}"
+            )
             if token["node_id"] == node_id and token.get("scope_id") == scope_id:
                 token["state"] = state.value
                 token["data"]["state"] = state.value  # Update state in data too

@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown - ensure all services attempt to disconnect even if some fail
     errors = []
-    
+
     try:
         await db.disconnect()
     except Exception as e:

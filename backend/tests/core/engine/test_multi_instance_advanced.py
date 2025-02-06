@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import List, Dict
+from typing import Dict, List
+
 import pytest
 
 from pythmata.core.engine.executor import ProcessExecutor
@@ -42,17 +43,21 @@ class TestAdvancedMultiInstance:
         }
 
         # Create initial token for outer parallel activity
-        outer_token = await executor.create_initial_token(instance_id, outer_activity_id)
+        outer_token = await executor.create_initial_token(
+            instance_id, outer_activity_id
+        )
         outer_token.data["collection"] = departments
         outer_token.data["is_parallel"] = True
 
         # Create parallel instances for departments
         department_tokens = await executor.create_parallel_instances(outer_token)
         assert len(department_tokens) == len(departments)
-        
+
         logger.debug("Created department tokens:")
         for token in department_tokens:
-            logger.debug(f"Department token - node_id: {token.node_id}, scope_id: {token.scope_id}")
+            logger.debug(
+                f"Department token - node_id: {token.node_id}, scope_id: {token.scope_id}"
+            )
 
         # Track all inner instance tokens
         all_inner_tokens = []
@@ -64,7 +69,7 @@ class TestAdvancedMultiInstance:
                 instance_id=dept_token.instance_id,
                 node_id=inner_activity_id,
                 scope_id=dept_token.scope_id,
-                data=dept_token.data.copy()
+                data=dept_token.data.copy(),
             )
             inner_token.data["collection"] = employees[departments[i]]
             inner_token.data["is_parallel"] = True
@@ -73,7 +78,9 @@ class TestAdvancedMultiInstance:
             assert len(inner_tokens) == len(employees[departments[i]])
             logger.debug(f"\nCreated inner tokens for department {departments[i]}:")
             for token in inner_tokens:
-                logger.debug(f"Inner token - node_id: {token.node_id}, scope_id: {token.scope_id}, parent_scope: {token.data.get('parent_scope')}")
+                logger.debug(
+                    f"Inner token - node_id: {token.node_id}, scope_id: {token.scope_id}, parent_scope: {token.data.get('parent_scope')}"
+                )
             all_inner_tokens.extend(inner_tokens)
 
         # Complete all inner instances
@@ -81,27 +88,28 @@ class TestAdvancedMultiInstance:
         for inner_token in all_inner_tokens:
             # Find parent token by matching scope hierarchy
             parent_scope = inner_token.data.get("parent_scope", "")
-            dept = departments[department_tokens.index(next(
-                t for t in department_tokens
-                if t.scope_id == parent_scope
-            ))]
-            logger.debug(f"\nCompleting inner token - node_id: {inner_token.node_id}, scope_id: {inner_token.scope_id}")
+            dept = departments[
+                department_tokens.index(
+                    next(t for t in department_tokens if t.scope_id == parent_scope)
+                )
+            ]
+            logger.debug(
+                f"\nCompleting inner token - node_id: {inner_token.node_id}, scope_id: {inner_token.scope_id}"
+            )
             stored_tokens = await self.state_manager.get_token_positions(instance_id)
             logger.debug("Current tokens in state:")
             for token in stored_tokens:
-                logger.debug(f"Token - node_id: {token['node_id']}, scope_id: {token.get('scope_id')}, state: {token.get('state')}")
-            
-            await executor.complete_parallel_instance(
-                inner_token,
-                len(employees[dept])
-            )
+                logger.debug(
+                    f"Token - node_id: {token['node_id']}, scope_id: {token.get('scope_id')}, state: {token.get('state')}"
+                )
+
+            await executor.complete_parallel_instance(inner_token, len(employees[dept]))
 
         # Complete outer instances
         final_token = None
         for dept_token in department_tokens:
             result = await executor.complete_parallel_instance(
-                dept_token,
-                len(departments)
+                dept_token, len(departments)
             )
             if result:
                 final_token = result
@@ -128,7 +136,9 @@ class TestAdvancedMultiInstance:
         token = await executor.create_initial_token(instance_id, activity_id)
         token.data["collection"] = ["item1", "item2", "item3", "item4"]
         token.data["is_parallel"] = True
-        token.data["completion_condition"] = "count >= 2"  # Complete when 2 instances finish
+        token.data[
+            "completion_condition"
+        ] = "count >= 2"  # Complete when 2 instances finish
 
         # Create parallel instances
         instance_tokens = await executor.create_parallel_instances(token)
@@ -140,8 +150,7 @@ class TestAdvancedMultiInstance:
         for instance_token in instance_tokens[:2]:
             instance_token.data["count"] = completed_count + 1
             result = await executor.complete_parallel_instance(
-                instance_token,
-                len(token.data["collection"])
+                instance_token, len(token.data["collection"])
             )
             completed_count += 1
             if result:
@@ -182,8 +191,7 @@ class TestAdvancedMultiInstance:
 
         # Complete current instance and create next
         next_token = await executor.complete_sequential_instance(
-            current_token,
-            len(collection)
+            current_token, len(collection)
         )
         assert next_token.data["item"] == "item2"
         assert len(next_token.data["collection"]) == 5
@@ -191,8 +199,7 @@ class TestAdvancedMultiInstance:
         # Complete remaining instances
         while next_token.node_id == activity_id:
             next_token = await executor.complete_sequential_instance(
-                next_token,
-                len(collection)
+                next_token, len(collection)
             )
 
         # Verify final state
@@ -246,17 +253,14 @@ class TestAdvancedMultiInstance:
         # Simulate concurrent modifications
         async def modify_instance(token: Token, value: str):
             await self.state_manager.set_variable(
-                instance_id,
-                "test_var",
-                value,
-                scope_id=token.scope_id
+                instance_id, "test_var", value, scope_id=token.scope_id
             )
 
         # Create concurrent tasks
         tasks = [
             modify_instance(instance_tokens[0], "value1"),
             modify_instance(instance_tokens[1], "value2"),
-            modify_instance(instance_tokens[2], "value3")
+            modify_instance(instance_tokens[2], "value3"),
         ]
 
         # Run modifications concurrently
@@ -265,9 +269,7 @@ class TestAdvancedMultiInstance:
         # Verify each instance has correct value
         for i, token in enumerate(instance_tokens):
             value = await self.state_manager.get_variable(
-                instance_id,
-                "test_var",
-                scope_id=token.scope_id
+                instance_id, "test_var", scope_id=token.scope_id
             )
             assert value == f"value{i+1}"
 
@@ -293,18 +295,19 @@ class TestAdvancedMultiInstance:
             instance_id,
             failed_token.node_id,
             TokenState.ERROR,
-            scope_id=failed_token.scope_id
+            scope_id=failed_token.scope_id,
         )
 
         # Complete first instance
         await executor.complete_parallel_instance(
-            instance_tokens[0],
-            len(token.data["collection"])
+            instance_tokens[0], len(token.data["collection"])
         )
 
         # Verify activity remains incomplete
         stored_tokens = await self.state_manager.get_token_positions(instance_id)
-        error_tokens = [t for t in stored_tokens if t["state"] == TokenState.ERROR.value]
+        error_tokens = [
+            t for t in stored_tokens if t["state"] == TokenState.ERROR.value
+        ]
         assert len(error_tokens) == 1
 
         # Recover failed instance
@@ -313,14 +316,13 @@ class TestAdvancedMultiInstance:
             instance_id,
             failed_token.node_id,
             TokenState.ACTIVE,
-            scope_id=failed_token.scope_id
+            scope_id=failed_token.scope_id,
         )
 
         # Complete remaining instances
         for instance_token in instance_tokens[1:]:
             result = await executor.complete_parallel_instance(
-                instance_token,
-                len(token.data["collection"])
+                instance_token, len(token.data["collection"])
             )
             if result:
                 final_token = result
@@ -337,7 +339,9 @@ class TestAdvancedMultiInstance:
         inner_activity_id = "InnerActivity"
 
         # Create outer token
-        outer_token = await executor.create_initial_token(instance_id, outer_activity_id)
+        outer_token = await executor.create_initial_token(
+            instance_id, outer_activity_id
+        )
         outer_token.data["collection"] = ["A", "B"]
         outer_token.data["is_parallel"] = True
 
@@ -346,14 +350,11 @@ class TestAdvancedMultiInstance:
 
         # Set variables at different scopes
         await self.state_manager.set_variable(instance_id, "root_var", "root")
-        
+
         for i, outer_token in enumerate(outer_tokens):
             # Set outer scope variables
             await self.state_manager.set_variable(
-                instance_id,
-                "outer_var",
-                f"outer_{i}",
-                scope_id=outer_token.scope_id
+                instance_id, "outer_var", f"outer_{i}", scope_id=outer_token.scope_id
             )
 
             # Create inner instances
@@ -368,24 +369,18 @@ class TestAdvancedMultiInstance:
                     instance_id,
                     "inner_var",
                     f"inner_{i}_{j}",
-                    scope_id=inner_token.scope_id
+                    scope_id=inner_token.scope_id,
                 )
 
                 # Verify variable access
                 root_val = await self.state_manager.get_variable(
-                    instance_id,
-                    "root_var",
-                    scope_id=inner_token.scope_id
+                    instance_id, "root_var", scope_id=inner_token.scope_id
                 )
                 outer_val = await self.state_manager.get_variable(
-                    instance_id,
-                    "outer_var",
-                    scope_id=inner_token.scope_id
+                    instance_id, "outer_var", scope_id=inner_token.scope_id
                 )
                 inner_val = await self.state_manager.get_variable(
-                    instance_id,
-                    "inner_var",
-                    scope_id=inner_token.scope_id
+                    instance_id, "inner_var", scope_id=inner_token.scope_id
                 )
 
                 assert root_val == "root"
@@ -402,7 +397,7 @@ class TestAdvancedMultiInstance:
         collection = [
             {"id": 1, "status": "pending"},
             {"id": 2, "status": "pending"},
-            {"id": 3, "status": "pending"}
+            {"id": 3, "status": "pending"},
         ]
 
         # Create initial token
@@ -418,18 +413,13 @@ class TestAdvancedMultiInstance:
             # Store updated item in instance scope
             collection[i]["status"] = "completed"
             await self.state_manager.set_variable(
-                instance_id,
-                "item",
-                collection[i],
-                scope_id=instance_token.scope_id
+                instance_id, "item", collection[i], scope_id=instance_token.scope_id
             )
 
         # Verify updates in each instance scope
         for i, instance_token in enumerate(instance_tokens):
             item = await self.state_manager.get_variable(
-                instance_id,
-                "item",
-                scope_id=instance_token.scope_id
+                instance_id, "item", scope_id=instance_token.scope_id
             )
             assert item["status"] == "completed"
             assert item["id"] == i + 1

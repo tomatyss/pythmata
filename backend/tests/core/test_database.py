@@ -61,7 +61,9 @@ async def database(mock_settings):
         # Create mock engine
         mock_engine = AsyncMock(spec=AsyncEngine)
         mock_engine.connect = AsyncMock(return_value=mock_conn)
-        mock_engine.begin = MagicMock(return_value=mock_begin_ctx)  # Not AsyncMock since begin() returns context manager directly
+        mock_engine.begin = MagicMock(
+            return_value=mock_begin_ctx
+        )  # Not AsyncMock since begin() returns context manager directly
         mock_engine.dispose = AsyncMock()
         mock_create_engine.return_value = mock_engine
 

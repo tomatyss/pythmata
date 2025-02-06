@@ -12,10 +12,7 @@ from pythmata.core.engine.instance import (
 )
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
-from pythmata.models.process import (
-    ProcessDefinition,
-    ProcessStatus,
-)
+from pythmata.models.process import ProcessDefinition, ProcessStatus
 
 # Test Data
 SIMPLE_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
