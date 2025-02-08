@@ -1,16 +1,14 @@
-import asyncio
 from pathlib import Path
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
-import httpx
 import pytest
 import redis.asyncio as redis
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from pythmata.api.dependencies import get_session, get_state_manager
 from pythmata.core.config import (
     DatabaseSettings,
     ProcessSettings,
@@ -20,7 +18,8 @@ from pythmata.core.config import (
     ServerSettings,
     Settings,
 )
-from pythmata.models.process import Base
+from pythmata.core.database import get_db, init_db
+from pythmata.core.state import StateManager
 
 
 @pytest.fixture(scope="function")
@@ -44,7 +43,6 @@ async def redis_connection(test_settings: Settings) -> AsyncGenerator[Redis, Non
 @pytest.fixture(scope="function", autouse=True)
 async def setup_database(test_settings: Settings):
     """Initialize and setup test database."""
-    from pythmata.core.database import get_db, init_db
 
     # Initialize database
     init_db(test_settings)
@@ -63,7 +61,6 @@ async def setup_database(test_settings: Settings):
 @pytest.fixture
 async def session() -> AsyncGenerator[AsyncSession, None]:
     """Create a test database session."""
-    from pythmata.core.database import get_db
 
     db = get_db()
     async with db.session() as session:
@@ -83,23 +80,36 @@ def setup_test_data_dir(test_data_dir: Path):
 
 
 @pytest.fixture
-async def state_manager(test_settings: Settings, redis_connection: Redis):
+async def state_manager(test_settings: Settings) -> AsyncGenerator:
     """Create a StateManager instance for testing."""
-    from pythmata.core.state import StateManager
-
     manager = StateManager(test_settings)
-    manager.redis = redis_connection  # Use the test Redis connection
+    await manager.connect()  # Connect to Redis
 
-    return manager
+    yield manager
+
+    await manager.disconnect()  # Clean up
 
 
 @pytest.fixture
-def app(test_settings: Settings) -> FastAPI:
+def app(test_settings: Settings, state_manager) -> FastAPI:
     """Create a FastAPI test application."""
     from pythmata.api.routes import router
 
     app = FastAPI()
     app.include_router(router)
+
+    # Override production dependencies with test ones
+    async def get_test_state_manager():
+        yield state_manager
+
+    async def get_test_session():
+        db = get_db()
+        async with db.session() as session:
+            yield session
+
+    app.dependency_overrides[get_state_manager] = get_test_state_manager
+    app.dependency_overrides[get_session] = get_test_session
+
     return app
 
 
@@ -107,7 +117,7 @@ def app(test_settings: Settings) -> FastAPI:
 async def async_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     """Create an async test client."""
     async with AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         yield client
 

@@ -1,7 +1,6 @@
-from uuid import UUID
-
 import pytest
 
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
@@ -74,7 +73,9 @@ class TestCallActivities:
 
         # Set variable in parent scope
         await self.state_manager.set_variable(
-            instance_id=instance_id, name="parent_var", value="test_value"
+            instance_id=instance_id,
+            name="parent_var",
+            variable=ProcessVariableValue(type="string", value="test_value"),
         )
 
         # Create call activity
@@ -84,7 +85,7 @@ class TestCallActivities:
         subprocess_var = await self.state_manager.get_variable(
             instance_id=new_token.instance_id, name="subprocess_var"
         )
-        assert subprocess_var == "test_value"
+        assert subprocess_var.value == "test_value"
 
     async def test_call_activity_completion(self):
         """Test completion of called process and return to parent."""
@@ -109,7 +110,9 @@ class TestCallActivities:
 
         # Set output variable in subprocess
         await self.state_manager.set_variable(
-            instance_id=subprocess_instance_id, name="result", value="success"
+            instance_id=subprocess_instance_id,
+            name="result",
+            variable=ProcessVariableValue(type="string", value="success"),
         )
 
         # Complete call activity
@@ -127,7 +130,7 @@ class TestCallActivities:
         parent_result = await self.state_manager.get_variable(
             instance_id=parent_instance_id, name="parent_result"
         )
-        assert parent_result == "success"
+        assert parent_result.value == "success"
 
         # Verify subprocess tokens were cleaned up
         subprocess_tokens = await self.state_manager.get_token_positions(

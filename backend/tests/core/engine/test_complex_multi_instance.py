@@ -3,6 +3,7 @@ from typing import List
 
 import pytest
 
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
@@ -122,7 +123,10 @@ class TestComplexMultiInstance:
         # Set different variables in each instance scope
         for i, instance_token in enumerate(instance_tokens):
             await self.state_manager.set_variable(
-                instance_id, "local_var", f"value_{i}", scope_id=instance_token.scope_id
+                instance_id=instance_id,
+                name="local_var",
+                variable=ProcessVariableValue(type="string", value=f"value_{i}"),
+                scope_id=instance_token.scope_id,
             )
 
         # Verify variable isolation
@@ -130,7 +134,7 @@ class TestComplexMultiInstance:
             value = await self.state_manager.get_variable(
                 instance_id, "local_var", scope_id=instance_token.scope_id
             )
-            assert value == f"value_{i}"
+            assert value.value == f"value_{i}"
 
     async def test_multi_instance_performance(self):
         """Test multi-instance creation performance meets requirements."""

@@ -17,10 +17,6 @@
     "dist",
     ".eslintrc.json",
     "coverage",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/__tests__/*",
-    "**/__mocks__/*",
     "node_modules"
   ],
   "parser": "@typescript-eslint/parser",

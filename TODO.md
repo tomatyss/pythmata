@@ -177,6 +177,9 @@
   - [ ] Saga pattern support
 
 ## 12. Process Execution Features
+- [ ] Need to define the basic process flow
+- [ ] Need to implement proper BPMN parsing and execution
+- [ ] Need to set up proper state management for process instances
 - [ ] Implement subprocess support
   - [x] Embedded subprocesses
   - [ ] Call activities

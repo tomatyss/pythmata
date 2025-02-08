@@ -8,13 +8,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.routes import router
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.models.process import (
     ProcessDefinition,
     ProcessInstance,
     ProcessStatus,
     Script,
 )
-from pythmata.api.schemas import ProcessVariableValue
 
 # Setup test application
 app = FastAPI()

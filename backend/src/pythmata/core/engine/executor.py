@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessInstance, ProcessStatus
@@ -262,7 +263,9 @@ class ProcessExecutor:
             )
             if value is not None:
                 await self.state_manager.set_variable(
-                    instance_id=new_instance_id, name=subprocess_var, value=value
+                    instance_id=new_instance_id,
+                    name=subprocess_var,
+                    variable=ProcessVariableValue(type=value.type, value=value.value),
                 )
 
         # Create new token in called process
@@ -309,7 +312,9 @@ class ProcessExecutor:
                     await self.state_manager.set_variable(
                         instance_id=token.parent_instance_id,
                         name=parent_var,
-                        value=value,
+                        variable=ProcessVariableValue(
+                            type=value.type, value=value.value
+                        ),
                     )
 
         # Remove token from subprocess end event
@@ -762,7 +767,11 @@ class ProcessExecutor:
                 # Set value in parent scope
                 if value is not None:
                     await self.state_manager.set_variable(
-                        instance_id=token.instance_id, name=parent_var, value=value
+                        instance_id=token.instance_id,
+                        name=parent_var,
+                        variable=ProcessVariableValue(
+                            type=value.type, value=value.value
+                        ),
                     )
 
         # Remove token from subprocess end event

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Generic, List, Optional, TypeVar, Union, Any
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -62,23 +62,18 @@ class ApiResponse(BaseModel, Generic[T]):
 
 class ProcessVariableValue(BaseModel):
     """Schema for process variable value."""
+
     type: str
     value: Union[str, int, float, bool, dict]
 
     def to_storage_format(self) -> Dict[str, Any]:
         """Convert to storage format for database and Redis."""
-        return {
-            "value_type": self.type,
-            "value_data": self.value
-        }
+        return {"value_type": self.type, "value_data": self.value}
 
     @classmethod
     def from_storage_format(cls, data: Dict[str, Any]) -> "ProcessVariableValue":
         """Create instance from storage format."""
-        return cls(
-            type=data["value_type"],
-            value=data["value_data"]
-        )
+        return cls(type=data["value_type"], value=data["value_data"])
 
 
 class ProcessInstanceCreate(BaseModel):

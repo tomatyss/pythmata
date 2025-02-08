@@ -22,6 +22,9 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
+import ProcessVariablesDialog, {
+  ProcessVariables,
+} from '@/components/shared/ProcessVariablesDialog/ProcessVariablesDialog';
 
 interface Process {
   id: string;
@@ -36,6 +39,10 @@ const ProcessList = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [processes, setProcesses] = useState<Process[]>([]);
+  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(
+    null
+  );
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchProcesses = async () => {
@@ -46,7 +53,7 @@ const ProcessList = () => {
             id: process.id,
             name: process.name,
             version: process.version,
-            activeInstances: 0, // TODO: Implement instance counting
+            activeInstances: 0,
             totalInstances: 0,
             lastModified: process.updatedAt,
           }))
@@ -61,9 +68,23 @@ const ProcessList = () => {
     fetchProcesses();
   }, []);
 
-  const handleStartProcess = (_processId: string) => {
-    // TODO: Implement process start
-    alert('Process start functionality not yet implemented');
+  const handleStartProcess = (processId: string) => {
+    setSelectedProcessId(processId);
+    setDialogOpen(true);
+  };
+
+  const handleStartProcessSubmit = async (variables: ProcessVariables) => {
+    if (!selectedProcessId) return;
+
+    try {
+      const response = await apiService.startProcessInstance({
+        definitionId: selectedProcessId,
+        variables,
+      });
+      navigate(`/instances/${response.data.id}`);
+    } catch {
+      alert('Failed to start process. Please try again.');
+    }
   };
 
   const handleEditProcess = (processId: string) => {
@@ -177,6 +198,12 @@ const ProcessList = () => {
           </Table>
         </TableContainer>
       </Card>
+
+      <ProcessVariablesDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSubmit={handleStartProcessSubmit}
+      />
     </Box>
   );
 };

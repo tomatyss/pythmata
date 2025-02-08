@@ -6,9 +6,9 @@ from uuid import uuid4
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.config import Settings
 from pythmata.core.types import TokenState
-from pythmata.api.schemas import ProcessVariableValue
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,11 @@ class StateManager:
             return None
 
     async def set_variable(
-        self, instance_id: str, name: str, variable: ProcessVariableValue, scope_id: Optional[str] = None
+        self,
+        instance_id: str,
+        name: str,
+        variable: ProcessVariableValue,
+        scope_id: Optional[str] = None,
     ) -> None:
         """Set a process variable.
 
