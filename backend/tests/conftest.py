@@ -1,18 +1,18 @@
-import asyncio
 import os
 import subprocess
 from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
-from pytest import Config, Session
+from pytest import Config
 import redis.asyncio as redis
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.api.dependencies import get_session, get_state_manager
+from pythmata.core.database import get_db, init_db
+from pythmata.api.dependencies import get_session, get_state_manager 
 from pythmata.core.config import (
     DatabaseSettings,
     ProcessSettings,
@@ -22,7 +22,6 @@ from pythmata.core.config import (
     ServerSettings,
     Settings,
 )
-from pythmata.models.process import Base
 
 
 def pytest_configure(config: Config) -> None:
