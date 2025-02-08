@@ -166,6 +166,66 @@
   - [ ] Compensation transactions
   - [ ] Saga pattern support
 
+## 11a. Core Engine Enhancements
+- [ ] Implement External Task Pattern
+  - [ ] REST API Layer
+    - [ ] Task fetch endpoint with filtering
+    - [ ] Task completion endpoint
+    - [ ] Task failure/error reporting
+    - [ ] Task lock extension
+    - [ ] Variable updates
+  - [ ] Worker Management
+    - [ ] Worker registration system
+    - [ ] Worker health monitoring
+    - [ ] Workload distribution
+    - [ ] Topic-based task routing
+  - [ ] Task Lifecycle
+    - [ ] Locking mechanism with timeouts
+    - [ ] Automatic lock extension
+    - [ ] Failed task handling
+    - [ ] Retry strategy configuration
+  - [ ] Error Handling
+    - [ ] Business error handling
+    - [ ] Technical error handling
+    - [ ] Incident creation
+    - [ ] Retry backoff strategy
+
+- [ ] Implement Complete BPMN Event Support
+  - [ ] Signal Events
+    - [ ] Global signal broadcasting
+    - [ ] Signal event subscriptions
+    - [ ] Signal payload handling
+    - [ ] Cross-process communication
+  - [ ] Message Events
+    - [ ] Message correlation
+    - [ ] Message payload handling
+    - [ ] Message subscription management
+    - [ ] Asynchronous message handling
+  - [ ] Timer Events
+    - [ ] Date-based timers
+    - [ ] Duration-based timers
+    - [ ] Cycle timers (cron)
+    - [ ] Timer management service
+  - [ ] Compensation Events
+    - [ ] Compensation handler registration
+    - [ ] Compensation scope management
+    - [ ] Transaction boundaries
+    - [ ] Compensation triggering
+  - [ ] Link Events
+    - [ ] Link event pairs
+    - [ ] Cross-subprocess links
+    - [ ] Link validation
+  - [ ] Conditional Events
+    - [ ] Condition expression evaluation
+    - [ ] Variable change detection
+    - [ ] Condition monitoring
+    - [ ] Event triggering
+  - [ ] Error Events
+    - [ ] Error definition management
+    - [ ] Error propagation
+    - [ ] Error handling strategies
+    - [ ] Error event hierarchy
+
 ## 12. Process Execution Features
 - [ ] Implement subprocess support
   - [x] Embedded subprocesses
