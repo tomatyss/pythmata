@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.core.engine.transaction import Transaction, TransactionStatus
+from pythmata.core.engine.transaction import Transaction
 from pythmata.core.state import StateManager
 from pythmata.models.process import (
     ProcessDefinition,
@@ -337,3 +337,51 @@ class ProcessInstanceManager:
         variables = result.scalars().all()
 
         return {var.name: var.value_data["value"] for var in variables}
+
+    async def start_instance(
+        self,
+        instance: ProcessInstance,
+        bpmn_xml: str,
+        variables: Optional[Dict] = None,
+        start_event_id: str = "Start_1",
+    ) -> ProcessInstance:
+        """
+        Start a process instance by initializing its execution state.
+
+        Args:
+            instance: The process instance to start
+            bpmn_xml: BPMN XML definition for the process
+            variables: Optional initial variables
+            start_event_id: ID of the start event (defaults to "Start_1")
+
+        Returns:
+            The started ProcessInstance
+
+        Raises:
+            InvalidProcessDefinitionError: If process definition is invalid
+            InvalidVariableError: If variable data is invalid
+        """
+        try:
+            # Set up variables if provided
+            if variables:
+                await self._setup_variables(instance, variables)
+                await self.session.commit()
+                await self.session.refresh(instance)
+
+            # Initialize process state with start event
+            await self.executor.create_initial_token(str(instance.id), start_event_id)
+
+            # Update instance status
+            instance.status = ProcessStatus.RUNNING
+            instance.start_time = datetime.now(UTC)
+            await self.session.commit()
+            await self.session.refresh(instance)
+
+            return instance
+
+        except Exception as e:
+            # Rollback on any error
+            await self.session.rollback()
+            # Set instance to error state
+            await self.set_error_state(instance.id, str(e))
+            raise

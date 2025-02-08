@@ -10,10 +10,7 @@ from pythmata.core.types import (
     Event,
     EventType,
     FlowNode,
-    Gateway,
     SequenceFlow,
-    SubProcess,
-    Task,
 )
 
 

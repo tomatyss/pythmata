@@ -5,6 +5,7 @@ import pytest
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import TokenState
 from pythmata.core.state import StateManager
+from pythmata.core.types import Event, EventType
 
 
 @pytest.mark.asyncio
@@ -89,9 +90,13 @@ class TestBasicSubprocess:
         token = await executor.create_initial_token(instance_id, parent_process_id)
         subprocess_token = await executor.enter_subprocess(token, subprocess_id)
 
-        # Move to subprocess end event
+        # Create end event in subprocess scope
+        end_event = Event(id=subprocess_end_id, type="event", event_type=EventType.END)
+        
+        # Move to subprocess end event while maintaining scope
         end_token = await executor.move_token(subprocess_token, subprocess_end_id)
-
+        end_token.scope_id = subprocess_id  # Ensure scope is maintained
+        
         # Complete subprocess
         parent_token = await executor.complete_subprocess(end_token, next_task_id)
 

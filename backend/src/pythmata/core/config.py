@@ -61,10 +61,24 @@ class Settings(BaseSettings):
     )
 
     def __init__(self, **kwargs):
+        # If all required settings are provided, skip TOML loading
+        if all(key in kwargs for key in ["server", "database", "redis", "rabbitmq", "security", "process"]):
+            super().__init__(**kwargs)
+            return
+
         # Load config from TOML file if specified
-        config_file = kwargs.pop("config_file", None) or Path(
-            "/app/config/development.toml"
-        )
+        config_file = kwargs.pop("config_file", None)
+        if not config_file:
+            # Try to find config file in standard locations
+            locations = [
+                Path("config/development.toml"),  # Local development
+                Path("/app/config/development.toml"),  # Docker
+            ]
+            for loc in locations:
+                if loc.exists():
+                    config_file = loc
+                    break
+
         if config_file and config_file.exists():
             config = toml.load(config_file)
             kwargs.update(config)

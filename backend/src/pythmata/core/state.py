@@ -28,21 +28,43 @@ class StateManager:
             raise RuntimeError("Not connected to Redis")
         return self._redis
 
-    async def connect(self) -> None:
-        """Establish connection to Redis."""
-        try:
-            self._redis = redis.from_url(
-                str(self.settings.redis.url),
-                encoding="utf-8",
-                decode_responses=True,
-                max_connections=self.settings.redis.pool_size,
-            )
-            # Test connection
-            await self._redis.ping()
-            logger.info("Successfully connected to Redis")
-        except Exception as e:
-            logger.error(f"Failed to connect to Redis: {e}")
-            raise
+    async def connect(self, max_retries: int = 3, retry_delay: float = 1.0) -> None:
+        """Establish connection to Redis with retries.
+
+        Args:
+            max_retries: Maximum number of connection attempts
+            retry_delay: Delay between retries in seconds
+
+        Raises:
+            RuntimeError: If connection fails after all retries
+        """
+        import asyncio
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                self._redis = redis.from_url(
+                    str(self.settings.redis.url),
+                    encoding="utf-8",
+                    decode_responses=True,
+                    max_connections=self.settings.redis.pool_size,
+                )
+                # Test connection
+                await self._redis.ping()
+                logger.info("Successfully connected to Redis")
+                return
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:  # Don't sleep on last attempt
+                    logger.warning(
+                        f"Failed to connect to Redis (attempt {attempt + 1}/{max_retries}): {e}"
+                    )
+                    await asyncio.sleep(retry_delay)
+                else:
+                    logger.error(f"Failed to connect to Redis after {max_retries} attempts: {e}")
+
+        # If we get here, all retries failed
+        raise RuntimeError(f"Failed to connect to Redis after {max_retries} attempts") from last_error
 
     async def disconnect(self) -> None:
         """Close Redis connection."""

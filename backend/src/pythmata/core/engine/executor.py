@@ -1,9 +1,11 @@
 import logging
 from datetime import UTC, datetime
+import asyncio
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
 from pythmata.api.schemas import ProcessVariableValue
+from pythmata.core.types import Event, EventType, Gateway, GatewayType, Task
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessInstance, ProcessStatus
@@ -50,6 +52,12 @@ class ProcessExecutor:
         token = Token(instance_id=instance_id, node_id=start_event_id)
         await self.state_manager.add_token(
             instance_id=instance_id, node_id=start_event_id, data=token.to_dict()
+        )
+        # Set initial token state to active
+        await self.state_manager.update_token_state(
+            instance_id=instance_id,
+            node_id=start_event_id,
+            state=TokenState.ACTIVE
         )
         return token
 
@@ -110,12 +118,18 @@ class ProcessExecutor:
         # Clear Redis cache for this instance
         await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
 
-        # Create new token at target node
-        new_token = token.copy(node_id=target_node_id)
+        # Create new token at target node, preserving scope
+        new_token = token.copy(node_id=target_node_id, scope_id=token.scope_id)
         await self.state_manager.add_token(
             instance_id=new_token.instance_id,
             node_id=new_token.node_id,
             data=new_token.to_dict(),
+        )
+        # Set new token state to active
+        await self.state_manager.update_token_state(
+            instance_id=new_token.instance_id,
+            node_id=new_token.node_id,
+            state=TokenState.ACTIVE
         )
 
         # Handle end events
@@ -171,6 +185,12 @@ class ProcessExecutor:
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
                 data=new_token.to_dict(),
+            )
+            # Set new token state to active
+            await self.state_manager.update_token_state(
+                instance_id=new_token.instance_id,
+                node_id=new_token.node_id,
+                state=TokenState.ACTIVE
             )
             new_tokens.append(new_token)
 
@@ -736,6 +756,448 @@ class ProcessExecutor:
         )
 
         return new_token
+
+    async def execute_process(self, instance_id: str, process_graph: Dict) -> None:
+        """Execute process instance.
+
+        Args:
+            instance_id: Process instance ID
+            process_graph: Parsed BPMN process graph
+        """
+        try:
+            while True:
+                # Get current tokens
+                tokens = await self.state_manager.get_token_positions(instance_id)
+                if not tokens:
+                    logger.info(f"No active tokens for instance {instance_id}")
+                    break
+
+                # Check if all tokens are at end events or in final state
+                active_tokens = [
+                    t for t in tokens
+                    if t["state"] == TokenState.ACTIVE.value
+                ]
+                if not active_tokens:
+                    logger.info(f"No active tokens remaining for instance {instance_id}")
+                    break
+
+                # Execute each active token
+                for token_data in active_tokens:
+                    token = Token.from_dict(token_data)
+                    node = self._find_node(process_graph, token.node_id)
+                    if node:
+                        await self.execute_node(token, node, process_graph)
+                    else:
+                        logger.error(f"Node {token.node_id} not found in process graph")
+
+                # Small delay to prevent tight loop
+                await asyncio.sleep(0.1)
+
+            # Process complete
+            if self.instance_manager:
+                await self.instance_manager.complete_instance(instance_id)
+
+        except Exception as e:
+            logger.error(f"Error executing process instance {instance_id}: {str(e)}")
+            if self.instance_manager:
+                await self.instance_manager.handle_error(instance_id, e)
+            raise
+
+    async def execute_node(
+        self,
+        token: Token,
+        node: Union[Task, Gateway, Event],
+        process_graph: Dict
+    ) -> None:
+        """Execute a process node.
+
+        Args:
+            token: Current token
+            node: Node to execute
+            process_graph: Complete process graph
+        """
+        try:
+            if isinstance(node, Task):
+                await self.execute_task(token, node)
+            elif isinstance(node, Gateway):
+                await self.handle_gateway(token, node, process_graph)
+            elif isinstance(node, Event):
+                await self.handle_event(token, node)
+            else:
+                logger.warning(f"Unknown node type: {type(node)}")
+
+        except Exception as e:
+            logger.error(
+                f"Error executing node {node.id} for instance {token.instance_id}: {str(e)}"
+            )
+            if self.instance_manager:
+                await self.instance_manager.handle_error(token.instance_id, e, node.id)
+            raise
+
+    async def execute_task(self, token: Token, task: Task) -> None:
+        """Execute a task.
+
+        Args:
+            token: Current token
+            task: Task to execute
+        """
+        try:
+            if task.script:
+                # Get process variables for script context
+                variables = await self.state_manager.get_variables(
+                    instance_id=token.instance_id,
+                    scope_id=token.scope_id
+                )
+                
+                # Create safe execution context
+                context = {
+                    "token": token,
+                    "variables": variables,
+                    "result": None,  # For script output
+                    "set_variable": lambda name, value: self.state_manager.set_variable(
+                        instance_id=token.instance_id,
+                        name=name,
+                        variable=ProcessVariableValue(
+                            type=type(value).__name__,
+                            value=value
+                        ),
+                        scope_id=token.scope_id
+                    ),
+                    # Safe built-ins
+                    "len": len,
+                    "str": str,
+                    "int": int,
+                    "float": float,
+                    "bool": bool,
+                    "list": list,
+                    "dict": dict,
+                    "sum": sum,
+                    "min": min,
+                    "max": max,
+                }
+
+                # Execute script in restricted environment
+                try:
+                    exec(
+                        task.script,
+                        {"__builtins__": {}},  # No built-ins
+                        context  # Our safe context
+                    )
+                    
+                    # Store script result if any
+                    if context["result"] is not None:
+                        await self.state_manager.set_variable(
+                            instance_id=token.instance_id,
+                            name=f"{task.id}_result",
+                            variable=ProcessVariableValue(
+                                type=type(context["result"]).__name__,
+                                value=context["result"]
+                            ),
+                            scope_id=token.scope_id
+                        )
+                except Exception as script_error:
+                    logger.error(f"Script execution error in task {task.id}: {str(script_error)}")
+                    if self.instance_manager:
+                        await self.instance_manager.handle_error(
+                            token.instance_id,
+                            script_error,
+                            task.id
+                        )
+                    raise
+
+            # Move token to next node
+            outgoing = task.outgoing[0] if task.outgoing else None
+            if outgoing:
+                await self.move_token(token, outgoing)
+            else:
+                logger.warning(f"Task {task.id} has no outgoing flows")
+
+        except Exception as e:
+            logger.error(f"Error executing task {task.id}: {str(e)}")
+            raise
+
+    async def handle_gateway(
+        self,
+        token: Token,
+        gateway: Gateway,
+        process_graph: Dict
+    ) -> None:
+        """Handle gateway logic.
+
+        Args:
+            token: Current token
+            gateway: Gateway to handle
+            process_graph: Process graph for flow evaluation
+        """
+        if gateway.gateway_type == GatewayType.EXCLUSIVE:
+            await self._handle_exclusive_gateway(token, gateway, process_graph)
+        elif gateway.gateway_type == GatewayType.PARALLEL:
+            await self._handle_parallel_gateway(token, gateway)
+        elif gateway.gateway_type == GatewayType.INCLUSIVE:
+            await self._handle_inclusive_gateway(token, gateway, process_graph)
+
+    async def _handle_exclusive_gateway(
+        self,
+        token: Token,
+        gateway: Gateway,
+        process_graph: Dict
+    ) -> None:
+        """Handle exclusive (XOR) gateway.
+
+        Args:
+            token: Current token
+            gateway: Gateway to handle
+            process_graph: Process graph for condition evaluation
+        """
+        # Get process variables for condition evaluation
+        variables = await self.state_manager.get_variables(
+            instance_id=token.instance_id,
+            scope_id=token.scope_id
+        )
+
+        # Create evaluation context
+        context = {
+            "token": token,
+            "variables": variables,
+            # Safe built-ins
+            "len": len,
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "list": list,
+            "dict": dict,
+            "sum": sum,
+            "min": min,
+            "max": max,
+        }
+
+        default_flow = None
+
+        # Find sequence flow with true condition
+        for flow in process_graph["flows"]:
+            if flow.source_ref == gateway.id:
+                if not flow.condition_expression:
+                    # Store default flow for later if no conditions are true
+                    default_flow = flow
+                    continue
+
+                try:
+                    # Evaluate condition in restricted environment
+                    condition_result = eval(
+                        flow.condition_expression,
+                        {"__builtins__": {}},  # No built-ins
+                        context  # Our safe context
+                    )
+
+                    if condition_result:
+                        await self.move_token(token, flow.id)
+                        return
+
+                except Exception as e:
+                    logger.error(
+                        f"Error evaluating condition for flow {flow.id}: {str(e)}"
+                    )
+                    if self.instance_manager:
+                        await self.instance_manager.handle_error(
+                            token.instance_id,
+                            e,
+                            gateway.id
+                        )
+                    raise
+
+        # If no conditions were true, take default flow if it exists
+        if default_flow:
+            await self.move_token(token, default_flow.id)
+            return
+
+        logger.warning(f"No valid path found at gateway {gateway.id}")
+
+    async def _handle_parallel_gateway(self, token: Token, gateway: Gateway) -> None:
+        """Handle parallel (AND) gateway.
+
+        Args:
+            token: Current token
+            gateway: Gateway to handle
+        """
+        if len(gateway.incoming) > 1:
+            # Join: Wait for all incoming tokens
+            tokens = await self.state_manager.get_token_positions(token.instance_id)
+            active_tokens = [
+                t for t in tokens
+                if t["node_id"] == gateway.id and t["state"] == TokenState.ACTIVE.value
+            ]
+            if len(active_tokens) == len(gateway.incoming):
+                # All tokens arrived, continue with one token
+                for t in active_tokens[1:]:
+                    await self.state_manager.remove_token(
+                        token.instance_id, gateway.id
+                    )
+                if gateway.outgoing:
+                    await self.move_token(token, gateway.outgoing[0])
+        else:
+            # Split: Create tokens for all outgoing paths
+            await self.split_token(token, gateway.outgoing)
+
+    async def _handle_inclusive_gateway(
+        self,
+        token: Token,
+        gateway: Gateway,
+        process_graph: Dict
+    ) -> None:
+        """Handle inclusive (OR) gateway.
+
+        Args:
+            token: Current token
+            gateway: Gateway to handle
+            process_graph: Process graph for condition evaluation
+        """
+        if len(gateway.incoming) > 1:
+            # Join: Wait for all incoming tokens from active paths
+            tokens = await self.state_manager.get_token_positions(token.instance_id)
+            active_tokens = [
+                t for t in tokens
+                if t["node_id"] == gateway.id and t["state"] == TokenState.ACTIVE.value
+            ]
+
+            # Get all incoming flows that were activated
+            active_flows = set()
+            for t in tokens:
+                if t.get("active_flows"):
+                    active_flows.update(t["active_flows"])
+
+            # Only proceed if we have tokens from all active paths
+            if len(active_tokens) == len(active_flows):
+                # Remove extra tokens
+                for t in active_tokens[1:]:
+                    await self.state_manager.remove_token(
+                        token.instance_id, gateway.id
+                    )
+                # Continue with one token
+                if gateway.outgoing:
+                    await self.move_token(token, gateway.outgoing[0])
+        else:
+            # Split: Evaluate conditions and create tokens for true paths
+            # Get process variables for condition evaluation
+            variables = await self.state_manager.get_variables(
+                instance_id=token.instance_id,
+                scope_id=token.scope_id
+            )
+
+            # Create evaluation context
+            context = {
+                "token": token,
+                "variables": variables,
+                # Safe built-ins
+                "len": len,
+                "str": str,
+                "int": int,
+                "float": float,
+                "bool": bool,
+                "list": list,
+                "dict": dict,
+                "sum": sum,
+                "min": min,
+                "max": max,
+            }
+
+            # Find all flows with true conditions
+            active_paths = []
+            default_flow = None
+
+            for flow in process_graph["flows"]:
+                if flow.source_ref == gateway.id:
+                    if not flow.condition_expression:
+                        default_flow = flow
+                        continue
+
+                    try:
+                        # Evaluate condition in restricted environment
+                        condition_result = eval(
+                            flow.condition_expression,
+                            {"__builtins__": {}},  # No built-ins
+                            context  # Our safe context
+                        )
+
+                        if condition_result:
+                            active_paths.append(flow.id)
+
+                    except Exception as e:
+                        logger.error(
+                            f"Error evaluating condition for flow {flow.id}: {str(e)}"
+                        )
+                        if self.instance_manager:
+                            await self.instance_manager.handle_error(
+                                token.instance_id,
+                                e,
+                                gateway.id
+                            )
+                        raise
+
+            # If no conditions were true, take default flow if it exists
+            if not active_paths and default_flow:
+                active_paths.append(default_flow.id)
+
+            if not active_paths:
+                logger.warning(f"No valid paths found at gateway {gateway.id}")
+                return
+
+            # Store active flows in token data for join synchronization
+            token.data["active_flows"] = active_paths
+
+            # Create tokens for all active paths
+            await self.split_token(token, active_paths)
+
+    async def handle_event(self, token: Token, event: Event) -> None:
+        """Handle process event.
+
+        Args:
+            token: Current token
+            event: Event to handle
+        """
+        if event.event_type == EventType.END:
+            # Mark token as completed before consuming
+            await self.state_manager.update_token_state(
+                instance_id=token.instance_id,
+                node_id=token.node_id,
+                state=TokenState.COMPLETED
+            )
+            await self.consume_token(token)
+        else:
+            # For other events, just move to next node
+            if event.outgoing:
+                # Mark current token as completed
+                await self.state_manager.update_token_state(
+                    instance_id=token.instance_id,
+                    node_id=token.node_id,
+                    state=TokenState.COMPLETED
+                )
+                # Move to next node with active state
+                new_token = await self.move_token(token, event.outgoing[0])
+                await self.state_manager.update_token_state(
+                    instance_id=new_token.instance_id,
+                    node_id=new_token.node_id,
+                    state=TokenState.ACTIVE
+                )
+
+    def _find_node(
+        self,
+        process_graph: Dict,
+        node_id: str
+    ) -> Optional[Union[Task, Gateway, Event]]:
+        """Find node in process graph by ID.
+
+        Args:
+            process_graph: Process graph to search
+            node_id: Node ID to find
+
+        Returns:
+            Found node or None
+        """
+        return next(
+            (node for node in process_graph["nodes"] if node.id == node_id),
+            None
+        )
 
     async def complete_subprocess(
         self,
