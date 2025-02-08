@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import and_
 
-from pythmata.api.dependencies import get_session
+from pythmata.api.dependencies import get_session, get_state_manager
 from pythmata.api.schemas import (
     ApiResponse,
     PaginatedResponse,
@@ -17,8 +17,10 @@ from pythmata.api.schemas import (
 )
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
-from pythmata.models.process import ProcessStatus
+from pythmata.models.process import ProcessStatus, Variable
 from pythmata.utils.logger import get_logger
+from pythmata.core.engine import ProcessExecutor
+from pythmata.core.state import StateManager
 
 router = APIRouter(prefix="/instances", tags=["instances"])
 logger = get_logger(__name__)
@@ -127,6 +129,7 @@ async def get_instance(
 async def create_instance(
     data: ProcessInstanceCreate,
     session: AsyncSession = Depends(get_session),
+    state_manager: StateManager = Depends(get_state_manager),
 ):
     """Create a new process instance."""
     try:
@@ -136,19 +139,52 @@ async def create_instance(
                 ProcessDefinitionModel.id == data.definition_id
             )
         )
-        if not result.scalar_one_or_none():
+        definition = result.scalar_one_or_none()
+        if not definition:
             raise HTTPException(
                 status_code=404,
                 detail=f"Process definition {data.definition_id} not found",
             )
 
+        # Create instance
         instance = ProcessInstanceModel(
             definition_id=data.definition_id,
             status=ProcessStatus.RUNNING,
+            start_time=datetime.now(timezone.utc),
         )
         session.add(instance)
         await session.commit()
         await session.refresh(instance)
+
+        # Initialize process engine
+        executor = ProcessExecutor(state_manager)
+
+        # Store variables if provided
+        if data.variables:
+            for name, variable in data.variables.items():
+                # Store in Redis
+                await state_manager.set_variable(
+                    instance_id=str(instance.id),
+                    name=name,
+                    variable=variable,
+                )
+
+                # Store in database
+                storage_format = variable.to_storage_format()
+                db_variable = Variable(
+                    instance_id=instance.id,
+                    name=name,
+                    value_type=storage_format["value_type"],
+                    value_data=storage_format["value_data"],
+                    version=1,
+                )
+                session.add(db_variable)
+
+            await session.commit()
+
+        # Create initial token
+        await executor.create_initial_token(str(instance.id), "Start_1")
+
         return {"data": instance}
     except HTTPException:
         raise

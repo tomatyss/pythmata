@@ -8,6 +8,7 @@ from redis.asyncio import Redis
 
 from pythmata.core.config import Settings
 from pythmata.core.types import TokenState
+from pythmata.api.schemas import ProcessVariableValue
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class StateManager:
         name: str,
         scope_id: Optional[str] = None,
         check_parent: bool = True,
-    ) -> Any:
+    ) -> Optional[ProcessVariableValue]:
         """Get a process variable.
 
         Args:
@@ -100,7 +101,8 @@ class StateManager:
             scope_key = f"{scope_id}:{name}"
             value = await self.redis.hget(key, scope_key)
             if value:
-                return json.loads(value)
+                data = json.loads(value)
+                return ProcessVariableValue.from_storage_format(data)
 
             # If not found and check_parent is True, traverse up the scope hierarchy
             if check_parent:
@@ -115,31 +117,38 @@ class StateManager:
                     parent_key = f"{parent_scope}:{name}" if parent_scope else name
                     value = await self.redis.hget(key, parent_key)
                     if value:
-                        return json.loads(value)
+                        data = json.loads(value)
+                        return ProcessVariableValue.from_storage_format(data)
 
                 # If still not found, try root scope
                 value = await self.redis.hget(key, name)
-                return json.loads(value) if value else None
+                if value:
+                    data = json.loads(value)
+                    return ProcessVariableValue.from_storage_format(data)
             return None
         else:
             # Direct access to root scope
             value = await self.redis.hget(key, name)
-            return json.loads(value) if value else None
+            if value:
+                data = json.loads(value)
+                return ProcessVariableValue.from_storage_format(data)
+            return None
 
     async def set_variable(
-        self, instance_id: str, name: str, value: Any, scope_id: Optional[str] = None
+        self, instance_id: str, name: str, variable: ProcessVariableValue, scope_id: Optional[str] = None
     ) -> None:
         """Set a process variable.
 
         Args:
             instance_id: The process instance ID
             name: Variable name
-            value: Variable value
+            variable: Variable value and type
             scope_id: Optional scope ID (e.g., subprocess ID)
         """
         key = f"process:{instance_id}:vars"
         scope_key = f"{scope_id}:{name}" if scope_id else name
-        await self.redis.hset(key, scope_key, json.dumps(value))
+        storage_format = variable.to_storage_format()
+        await self.redis.hset(key, scope_key, json.dumps(storage_format))
 
     async def get_token_positions(self, instance_id: str) -> List[Dict[str, Any]]:
         """Get current token positions for a process instance.

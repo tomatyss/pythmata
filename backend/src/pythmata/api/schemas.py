@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Generic, List, Optional, TypeVar, Union
+from typing import Dict, Generic, List, Optional, TypeVar, Union, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -60,12 +60,34 @@ class ApiResponse(BaseModel, Generic[T]):
     data: T
 
 
+class ProcessVariableValue(BaseModel):
+    """Schema for process variable value."""
+    type: str
+    value: Union[str, int, float, bool, dict]
+
+    def to_storage_format(self) -> Dict[str, Any]:
+        """Convert to storage format for database and Redis."""
+        return {
+            "value_type": self.type,
+            "value_data": self.value
+        }
+
+    @classmethod
+    def from_storage_format(cls, data: Dict[str, Any]) -> "ProcessVariableValue":
+        """Create instance from storage format."""
+        return cls(
+            type=data["value_type"],
+            value=data["value_data"]
+        )
+
+
 class ProcessInstanceCreate(BaseModel):
     """Schema for creating a process instance."""
 
     definition_id: UUID
-    variables: Optional[Dict[str, Union[str, int, float, bool, dict]]] = Field(
-        default_factory=dict
+    variables: Optional[Dict[str, ProcessVariableValue]] = Field(
+        default_factory=dict,
+        description="Dictionary of process variables. Each variable has a type and value.",
     )
 
 
