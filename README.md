@@ -168,6 +168,59 @@ The project uses a modern containerized architecture with:
    - Redis: localhost:6379
    - RabbitMQ: localhost:5672 (Management: 15672)
 
+## Test Setup
+
+1. **Test Database**:
+   - The test suite uses a separate database (`pythmata_test` by default)
+   - Database is automatically created and migrated before tests run
+   - Tables are created fresh for each test and cleaned up afterward
+
+2. **Environment Variables**:
+   ```bash
+   # Database Configuration
+   POSTGRES_USER=pythmata          # Database user
+   POSTGRES_PASSWORD=pythmata      # Database password
+   POSTGRES_HOST=localhost         # Database host
+   POSTGRES_PORT=5432             # Database port
+   POSTGRES_TEST_DB=pythmata_test # Test database name
+   DB_POOL_SIZE=5                # Database connection pool size
+   DB_MAX_OVERFLOW=10            # Maximum pool overflow
+
+   # Redis Configuration
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
+   REDIS_POOL_SIZE=10
+
+   # RabbitMQ Configuration
+   RABBITMQ_USER=guest
+   RABBITMQ_PASSWORD=guest
+   RABBITMQ_HOST=localhost
+   RABBITMQ_PORT=5672
+   RABBITMQ_CONNECTION_ATTEMPTS=3
+   RABBITMQ_RETRY_DELAY=1
+   ```
+
+3. **Running Tests**:
+   ```bash
+   # Navigate to backend directory
+   cd backend
+
+   # Run all tests
+   pytest
+
+   # Run specific test file
+   pytest tests/path/to/test_file.py
+
+   # Run with coverage report
+   pytest --cov=src
+   ```
+
+4. **CI/CD Integration**:
+   - Test database is automatically created if it doesn't exist
+   - Migrations are applied before test execution
+   - Environment variables can be configured in CI/CD pipeline
+   - Test results and coverage reports are generated
+
 ## Project Structure
 
 ```
