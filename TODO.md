@@ -50,17 +50,7 @@
   - [ ] Document all configuration options
   - [ ] Add validation rules and defaults
 
-## 5. State Management
-- [ ] Enhance service initialization
-  - [ ] Add proper error handling for EventBus
-  - [ ] Add proper error handling for StateManager
-  - [ ] Implement graceful startup/shutdown
-- [ ] Improve health checks
-  - [ ] Add detailed service health status
-  - [ ] Implement readiness/liveness probes
-  - [ ] Add dependency health checks
-
-## 6. API Response Standardization
+## 5. API Response Standardization
 - [ ] Fix nested response structure issue
   - [ ] Remove redundant data wrapping (`{data: {data: ...}}`)
   - [ ] Standardize success response format to `{data: T, message?: string}`
@@ -141,20 +131,20 @@
   - [ ] Add security headers
 
 ## 10. Testing Infrastructure
-- [ ] Add unit tests
-  - [ ] Backend route tests
-  - [ ] Service layer tests
-  - [ ] Frontend component tests
-- [ ] Add integration tests
-  - [ ] API integration tests
-  - [ ] Database integration tests
-  - [ ] Frontend integration tests
+- [x] Add unit tests
+  - [x] Backend route tests
+  - [x] Service layer tests
+  - [x] Frontend component tests
+- [x] Add integration tests
+  - [x] API integration tests
+  - [x] Database integration tests
+  - [x] Frontend integration tests
 - [ ] Add end-to-end tests
   - [ ] Critical path tests
   - [ ] Performance tests
   - [ ] Load tests
-- [ ] Setup CI/CD pipeline
-  - [ ] Add automated testing
+- [x] Setup CI/CD pipeline
+  - [x] Add automated testing
   - [ ] Add code coverage reporting
   - [ ] Implement deployment automation
 
@@ -176,6 +166,66 @@
   - [ ] Compensation transactions
   - [ ] Saga pattern support
 
+## 11a. Core Engine Enhancements
+- [ ] Implement External Task Pattern
+  - [ ] REST API Layer
+    - [ ] Task fetch endpoint with filtering
+    - [ ] Task completion endpoint
+    - [ ] Task failure/error reporting
+    - [ ] Task lock extension
+    - [ ] Variable updates
+  - [ ] Worker Management
+    - [ ] Worker registration system
+    - [ ] Worker health monitoring
+    - [ ] Workload distribution
+    - [ ] Topic-based task routing
+  - [ ] Task Lifecycle
+    - [ ] Locking mechanism with timeouts
+    - [ ] Automatic lock extension
+    - [ ] Failed task handling
+    - [ ] Retry strategy configuration
+  - [ ] Error Handling
+    - [ ] Business error handling
+    - [ ] Technical error handling
+    - [ ] Incident creation
+    - [ ] Retry backoff strategy
+
+- [ ] Implement Complete BPMN Event Support
+  - [ ] Signal Events
+    - [ ] Global signal broadcasting
+    - [ ] Signal event subscriptions
+    - [ ] Signal payload handling
+    - [ ] Cross-process communication
+  - [ ] Message Events
+    - [ ] Message correlation
+    - [ ] Message payload handling
+    - [ ] Message subscription management
+    - [ ] Asynchronous message handling
+  - [ ] Timer Events
+    - [ ] Date-based timers
+    - [ ] Duration-based timers
+    - [ ] Cycle timers (cron)
+    - [ ] Timer management service
+  - [ ] Compensation Events
+    - [ ] Compensation handler registration
+    - [ ] Compensation scope management
+    - [ ] Transaction boundaries
+    - [ ] Compensation triggering
+  - [ ] Link Events
+    - [ ] Link event pairs
+    - [ ] Cross-subprocess links
+    - [ ] Link validation
+  - [ ] Conditional Events
+    - [ ] Condition expression evaluation
+    - [ ] Variable change detection
+    - [ ] Condition monitoring
+    - [ ] Event triggering
+  - [ ] Error Events
+    - [ ] Error definition management
+    - [ ] Error propagation
+    - [ ] Error handling strategies
+    - [ ] Error event hierarchy
+
 ## 12. Process Execution Features
 - [ ] Need to define the basic process flow
 - [ ] Need to implement proper BPMN parsing and execution
@@ -184,10 +234,10 @@
   - [x] Embedded subprocesses
   - [ ] Call activities
   - [ ] Event subprocesses
-- [ ] Add multi-instance activities
-  - [ ] Parallel multi-instance
-  - [ ] Sequential multi-instance
-  - [ ] Loop activities
+- [x] Add multi-instance activities
+  - [x] Parallel multi-instance
+  - [x] Sequential multi-instance
+  - [x] Loop activities
 - [ ] Implement timer functionality
   - [ ] Start timers
   - [ ] Intermediate timers
@@ -315,26 +365,26 @@
   - [ ] Code generation
 
 ## 21. Process Data Management
-- [ ] Implement data object persistence
-  - [ ] Data object lifecycle management
-  - [ ] Version control for data objects
-  - [ ] Data object relationships
+- [x] Implement data object persistence
+  - [x] Data object lifecycle management
+  - [x] Version control for data objects
+  - [x] Data object relationships
 - [ ] Add support for data stores
   - [ ] Data store configuration
   - [ ] Access control for data stores
   - [ ] Data store monitoring
-- [ ] Create data input/output specifications
-  - [ ] Data mapping definitions
-  - [ ] Validation rules
-  - [ ] Default values
-- [ ] Implement data mapping between processes
-  - [ ] Variable mapping
-  - [ ] Type conversion
-  - [ ] Complex object mapping
-- [ ] Add support for complex data types
-  - [ ] Custom type definitions
-  - [ ] Serialization/deserialization
-  - [ ] Type validation
+- [x] Create data input/output specifications
+  - [x] Data mapping definitions
+  - [x] Validation rules
+  - [x] Default values
+- [x] Implement data mapping between processes
+  - [x] Variable mapping
+  - [x] Type conversion
+  - [x] Complex object mapping
+- [x] Add support for complex data types
+  - [x] Custom type definitions
+  - [x] Serialization/deserialization
+  - [x] Type validation
 
 ## 22. Process Analytics
 - [ ] Implement process mining capabilities

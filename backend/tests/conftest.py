@@ -1,7 +1,11 @@
+import asyncio
+import os
+import subprocess
 from pathlib import Path
 from typing import AsyncGenerator
 
 import pytest
+from pytest import Config, Session
 import redis.asyncio as redis
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -18,9 +22,17 @@ from pythmata.core.config import (
     ServerSettings,
     Settings,
 )
-from pythmata.core.database import get_db, init_db
-from pythmata.core.state import StateManager
+from pythmata.models.process import Base
 
+
+def pytest_configure(config: Config) -> None:
+    """Set up test environment before test collection."""
+    # Run database setup script
+    setup_script = Path(__file__).parent.parent / "scripts" / "setup_test_db.py"
+    try:
+        subprocess.run([str(setup_script)], check=True)
+    except subprocess.CalledProcessError as e:
+        pytest.exit(f"Failed to set up test database: {e}")
 
 @pytest.fixture(scope="function")
 async def redis_connection(test_settings: Settings) -> AsyncGenerator[Redis, None]:
@@ -124,19 +136,46 @@ async def async_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture(scope="session")
 def test_settings() -> Settings:
-    """Create test settings with Redis configuration."""
+    """Create test settings with environment-aware configuration."""
+    # Database configuration
+    db_user = os.getenv("POSTGRES_USER", "pythmata")
+    db_password = os.getenv("POSTGRES_PASSWORD", "pythmata")
+    db_host = os.getenv("POSTGRES_HOST", "localhost")
+    db_port = os.getenv("POSTGRES_PORT", "5432")
+    db_name = os.getenv("POSTGRES_TEST_DB", "pythmata_test")
+    db_url = f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
+    # Redis configuration
+    redis_host = os.getenv("REDIS_HOST", "localhost")
+    redis_port = os.getenv("REDIS_PORT", "6379")
+    redis_url = f"redis://{redis_host}:{redis_port}/0"
+
+    # RabbitMQ configuration
+    rabbitmq_user = os.getenv("RABBITMQ_USER", "guest")
+    rabbitmq_password = os.getenv("RABBITMQ_PASSWORD", "guest")
+    rabbitmq_host = os.getenv("RABBITMQ_HOST", "localhost")
+    rabbitmq_port = os.getenv("RABBITMQ_PORT", "5672")
+    rabbitmq_url = f"amqp://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}:{rabbitmq_port}/"
+
     return Settings(
-        server=ServerSettings(host="localhost", port=8000, debug=True),
-        database=DatabaseSettings(
-            url="postgresql+asyncpg://pythmata:pythmata@localhost:5432/pythmata_test",
-            pool_size=5,
-            max_overflow=10,
+        server=ServerSettings(
+            host=os.getenv("SERVER_HOST", "localhost"),
+            port=int(os.getenv("SERVER_PORT", "8000")),
+            debug=os.getenv("DEBUG", "true").lower() == "true"
         ),
-        redis=RedisSettings(url="redis://localhost:6379/0", pool_size=10),
+        database=DatabaseSettings(
+            url=db_url,
+            pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
+            max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")),
+        ),
+        redis=RedisSettings(
+            url=redis_url,
+            pool_size=int(os.getenv("REDIS_POOL_SIZE", "10")),
+        ),
         rabbitmq=RabbitMQSettings(
-            url="amqp://guest:guest@localhost:5672/",
-            connection_attempts=3,
-            retry_delay=1,
+            url=rabbitmq_url,
+            connection_attempts=int(os.getenv("RABBITMQ_CONNECTION_ATTEMPTS", "3")),
+            retry_delay=int(os.getenv("RABBITMQ_RETRY_DELAY", "1")),
         ),
         security=SecuritySettings(
             secret_key="test-secret-key",
