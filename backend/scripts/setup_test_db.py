@@ -9,8 +9,6 @@ from pythmata.core.testing.config import (
 import asyncio
 import logging
 import asyncpg
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -53,40 +51,10 @@ async def create_test_database() -> None:
         raise
 
 
-def run_migrations() -> None:
-    """Run database migrations."""
-    try:
-        from alembic.config import Config
-        from alembic import command
-        import os
-
-        # Get the absolute path to alembic.ini
-        current_dir = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__)))
-        alembic_ini_path = os.path.join(current_dir, 'alembic.ini')
-
-        # Create Alembic configuration
-        alembic_cfg = Config(alembic_ini_path)
-
-        # Set the SQLAlchemy URL in Alembic config
-        test_db_url = get_db_url(for_asyncpg=True)
-        alembic_cfg.set_main_option("sqlalchemy.url", test_db_url)
-
-        # Run the migrations
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Database migrations completed successfully")
-
-    except Exception as e:
-        logger.error(f"Error running migrations: {e}")
-        raise
-
-
 async def main():
     """Main function to set up test database."""
     try:
         await create_test_database()
-        # Run migrations synchronously
-        run_migrations()
         logger.info("Test database setup completed successfully")
     except Exception as e:
         logger.error(f"Test database setup failed: {e}")
