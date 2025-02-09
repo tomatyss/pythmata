@@ -5,6 +5,7 @@ from typing import AsyncGenerator
 
 import pytest
 from pytest import Config
+from pythmata.core.state import StateManager
 import redis.asyncio as redis
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -136,25 +137,13 @@ async def async_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 @pytest.fixture(scope="session")
 def test_settings() -> Settings:
     """Create test settings with environment-aware configuration."""
-    # Database configuration
-    db_user = os.getenv("POSTGRES_USER", "pythmata")
-    db_password = os.getenv("POSTGRES_PASSWORD", "pythmata")
-    db_host = os.getenv("POSTGRES_HOST", "localhost")
-    db_port = os.getenv("POSTGRES_PORT", "5432")
-    db_name = os.getenv("POSTGRES_TEST_DB", "pythmata_test")
-    db_url = f"postgresql+asyncpg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    from pythmata.core.testing.config import (
+        get_db_url,
+        REDIS_URL,
+        RABBITMQ_URL,
+    )
 
-    # Redis configuration
-    redis_host = os.getenv("REDIS_HOST", "localhost")
-    redis_port = os.getenv("REDIS_PORT", "6379")
-    redis_url = f"redis://{redis_host}:{redis_port}/0"
-
-    # RabbitMQ configuration
-    rabbitmq_user = os.getenv("RABBITMQ_USER", "guest")
-    rabbitmq_password = os.getenv("RABBITMQ_PASSWORD", "guest")
-    rabbitmq_host = os.getenv("RABBITMQ_HOST", "localhost")
-    rabbitmq_port = os.getenv("RABBITMQ_PORT", "5672")
-    rabbitmq_url = f"amqp://{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}:{rabbitmq_port}/"
+    db_url = get_db_url(for_asyncpg=False)  # Use SQLAlchemy format
 
     return Settings(
         server=ServerSettings(
@@ -168,11 +157,11 @@ def test_settings() -> Settings:
             max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")),
         ),
         redis=RedisSettings(
-            url=redis_url,
+            url=REDIS_URL,
             pool_size=int(os.getenv("REDIS_POOL_SIZE", "10")),
         ),
         rabbitmq=RabbitMQSettings(
-            url=rabbitmq_url,
+            url=RABBITMQ_URL,
             connection_attempts=int(os.getenv("RABBITMQ_CONNECTION_ATTEMPTS", "3")),
             retry_delay=int(os.getenv("RABBITMQ_RETRY_DELAY", "1")),
         ),
