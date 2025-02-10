@@ -174,11 +174,11 @@ async def test_create_instance(
                     "type": "json",
                     "value": {
                         "id": "test-order",
-                        "amount": 99.99,
-                    },
-                },
-            },
-        },
+                        "amount": 99.99
+                    }
+                }
+            }
+        }
     )
     assert response.status_code == 200
     data = response.json()["data"]

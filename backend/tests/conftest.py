@@ -8,18 +8,24 @@ from pytest import Config
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.expressions import ExpressionEvaluator
+from pythmata.core.engine.instance import ProcessInstanceManager
 from pythmata.core.engine.saga import ParallelStepGroup, SagaOrchestrator, SagaStatus
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, EventType, Gateway, GatewayType, Task
 import redis.asyncio as redis
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.core.database import get_db, init_db
-from pythmata.api.dependencies import get_session, get_state_manager
+from pythmata.api.dependencies import (
+    get_session,
+    get_state_manager,
+    get_event_bus,
+    get_instance_manager,
+)
 from pythmata.core.config import (
     DatabaseSettings,
     ProcessSettings,
@@ -28,7 +34,9 @@ from pythmata.core.config import (
     SecuritySettings,
     ServerSettings,
     Settings,
+    get_settings,
 )
+from pythmata.core.events import EventBus
 
 
 def pytest_configure(config: Config) -> None:
@@ -74,14 +82,17 @@ async def setup_database(test_settings: Settings):
     init_db(test_settings)
     db = get_db()
 
-    # Create tables
-    await db.create_tables()
+    try:
+        # Drop existing tables first
+        await db.drop_tables()
+        # Create fresh tables
+        await db.create_tables()
 
-    yield
-
-    # Cleanup
-    await db.drop_tables()
-    await db.close()
+        yield
+    finally:
+        # Cleanup
+        await db.drop_tables()
+        await db.close()
 
 
 @pytest.fixture
@@ -129,12 +140,51 @@ def app(test_settings: Settings, state_manager) -> FastAPI:
         yield state_manager
 
     async def get_test_session():
-        db = get_db()
-        async with db.session() as session:
-            yield session
+        async with get_db().session() as session:
+            try:
+                yield session
+            except Exception:
+                await session.rollback()
+                raise
+            finally:
+                await session.close()
 
     app.dependency_overrides[get_state_manager] = get_test_state_manager
     app.dependency_overrides[get_session] = get_test_session
+    
+    # Override get_settings to use test settings
+    def get_test_settings():
+        return test_settings
+
+    # Create a test event bus
+    event_bus = EventBus(test_settings)
+    async def get_test_event_bus():
+        await event_bus.connect()
+        try:
+            yield event_bus
+        finally:
+            await event_bus.disconnect()
+
+    # Create a test instance manager dependency
+    async def get_test_instance_manager(
+        state_manager: StateManager = Depends(get_test_state_manager),
+        event_bus: EventBus = Depends(get_test_event_bus),
+        session: AsyncSession = Depends(get_test_session),
+    ):
+        # Create ProcessExecutor first
+        executor = ProcessExecutor(state_manager=state_manager)
+        
+        instance_manager = ProcessInstanceManager(
+            session=session,
+            executor=executor,
+            state_manager=state_manager,
+        )
+        yield instance_manager
+
+    # Override dependencies
+    app.dependency_overrides[get_settings] = get_test_settings
+    app.dependency_overrides[get_event_bus] = get_test_event_bus
+    app.dependency_overrides[get_instance_manager] = get_test_instance_manager
 
     return app
 
