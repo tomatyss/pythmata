@@ -4,11 +4,9 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.routes import router
-from pythmata.api.schemas import ProcessVariableValue
 from pythmata.models.process import (
     ProcessDefinition,
     ProcessInstance,

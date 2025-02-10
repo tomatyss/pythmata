@@ -5,11 +5,10 @@ This module provides safe and robust expression evaluation for gateway
 conditions, supporting various data types and operations.
 """
 
-import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 
 class ExpressionError(Exception):
@@ -43,6 +42,8 @@ class TokenType(Enum):
     DOT = "DOT"
     LPAREN = "LPAREN"
     RPAREN = "RPAREN"
+    LBRACKET = "LBRACKET"
+    RBRACKET = "RBRACKET"
     EOF = "EOF"
 
 
@@ -108,6 +109,12 @@ class ExpressionParser:
                 self.position += 1
             elif char == ")":
                 self.tokens.append(Token(TokenType.RPAREN, ")"))
+                self.position += 1
+            elif char == "[":
+                self.tokens.append(Token(TokenType.LBRACKET, "["))
+                self.position += 1
+            elif char == "]":
+                self.tokens.append(Token(TokenType.RBRACKET, "]"))
                 self.position += 1
             else:
                 # Try to match operators
@@ -236,6 +243,28 @@ class PropertyExpression(Expression):
         if not hasattr(obj, self.prop) and not isinstance(obj, dict):
             raise ExpressionEvalError(f"Cannot access property {self.prop} of {obj}")
         return obj.get(self.prop) if isinstance(obj, dict) else getattr(obj, self.prop)
+
+
+class ArrayAccessExpression(Expression):
+    """Expression node for array indexing."""
+
+    def __init__(self, array: Expression, index: Expression):
+        self.array = array
+        self.index = index
+
+    def evaluate(self, context: Dict[str, Any]) -> Any:
+        array = self.array.evaluate(context)
+        if array is None:
+            return None  # Null-safe array access
+        
+        index = self.index.evaluate(context)
+        if not isinstance(index, (int, float)):
+            raise ExpressionEvalError(f"Array index must be a number, got {type(index)}")
+        
+        try:
+            return array[int(index)]
+        except (IndexError, TypeError):
+            raise ExpressionEvalError(f"Invalid array access: {array}[{index}]")
 
 
 class BinaryExpression(Expression):
@@ -399,12 +428,20 @@ class ExpressionEvaluator:
                 return LiteralExpression(token.value), pos
             elif token.type == TokenType.IDENTIFIER:
                 expr = IdentifierExpression(token.value)
-                while pos < len(tokens) and tokens[pos].type == TokenType.DOT:
-                    pos += 1
-                    if pos >= len(tokens) or tokens[pos].type != TokenType.IDENTIFIER:
-                        raise ExpressionSyntaxError("Expected identifier after dot")
-                    expr = PropertyExpression(expr, tokens[pos].value)
-                    pos += 1
+                while pos < len(tokens) and (tokens[pos].type in (TokenType.DOT, TokenType.LBRACKET)):
+                    if tokens[pos].type == TokenType.DOT:
+                        pos += 1
+                        if pos >= len(tokens) or tokens[pos].type != TokenType.IDENTIFIER:
+                            raise ExpressionSyntaxError("Expected identifier after dot")
+                        expr = PropertyExpression(expr, tokens[pos].value)
+                        pos += 1
+                    else:  # LBRACKET
+                        pos += 1
+                        index_expr, pos = parse_or(pos)  # Allow expressions in array indices
+                        if pos >= len(tokens) or tokens[pos].type != TokenType.RBRACKET:
+                            raise ExpressionSyntaxError("Expected closing bracket")
+                        expr = ArrayAccessExpression(expr, index_expr)
+                        pos += 1
                 return expr, pos
             elif token.type == TokenType.OPERATOR and token.value == "not":
                 operand, pos = parse_primary(pos)

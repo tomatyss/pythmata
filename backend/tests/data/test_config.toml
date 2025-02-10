@@ -1,0 +1,28 @@
+[server]
+host = "localhost"
+port = 8000
+debug = true
+
+[database]
+url = "postgresql+asyncpg://pythmata:pythmata@localhost:5432/pythmata_test"
+pool_size = 5
+max_overflow = 10
+
+[redis]
+url = "redis://localhost:6379/0"
+pool_size = 10
+
+[rabbitmq]
+url = "amqp://guest:guest@localhost:5672/"
+connection_attempts = 3
+retry_delay = 1
+
+[security]
+secret_key = "test-secret-key"
+algorithm = "HS256"
+access_token_expire_minutes = 30
+
+[process]
+script_timeout = 30
+max_instances = 100
+cleanup_interval = 60

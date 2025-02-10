@@ -200,15 +200,32 @@ class StateManager:
             data: Optional token data
         """
         key = f"process:{instance_id}:tokens"
-        token = {
+        scope_id = data.get("scope_id") if data else None
+        
+        # Get existing tokens
+        tokens = await self.get_token_positions(instance_id)
+        
+        # Remove any existing token at the same node and scope
+        new_tokens = [
+            token for token in tokens
+            if token["node_id"] != node_id or token.get("scope_id") != scope_id
+        ]
+        
+        # Create new token
+        new_token = {
             "instance_id": instance_id,
             "node_id": node_id,
             "state": "ACTIVE",
             "data": data or {},
             "id": str(uuid4()),
-            "scope_id": data.get("scope_id") if data else None,
+            "scope_id": scope_id,
         }
-        await self.redis.rpush(key, json.dumps(token))
+        new_tokens.append(new_token)
+        
+        # Replace token list
+        await self.redis.delete(key)
+        if new_tokens:
+            await self.redis.rpush(key, *[json.dumps(token) for token in new_tokens])
 
     async def get_scope_tokens(
         self, instance_id: str, scope_id: str
