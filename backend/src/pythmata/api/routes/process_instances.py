@@ -157,16 +157,27 @@ async def create_instance(
             start_time=datetime.now(timezone.utc),
         )
         session.add(instance)
-        await session.commit()
-        await session.refresh(instance)
+        await session.flush()  # Get the ID without committing
+
+        # Convert variables to storage format
+        variables = {}
+        if data.variables:
+            variables = {
+                name: {
+                    "type": var.type,
+                    "value": var.value
+                }
+                for name, var in data.variables.items()
+            }
 
         # Start process execution
-        await instance_manager.start_instance(
+        instance = await instance_manager.start_instance(
             instance=instance,
             bpmn_xml=definition.bpmn_xml,
-            variables=data.variables,
+            variables=variables,
         )
 
+        # Let the test session handle the commit/rollback
         return {"data": instance}
     except HTTPException:
         raise

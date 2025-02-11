@@ -215,8 +215,8 @@ async def test_create_instance_with_engine(
         "/instances",
         json={
             "definition_id": str(process_definition.id),
-            "variables": variables,
-        },
+            "variables": variables
+        }
     )
     assert response.status_code == 200
     data = response.json()["data"]
