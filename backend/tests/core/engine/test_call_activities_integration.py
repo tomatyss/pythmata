@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
@@ -45,7 +46,9 @@ class TestCallActivitiesIntegration:
 
         # Set variable in parent scope
         await self.state_manager.set_variable(
-            instance_id=parent_instance_id, name="parent_var", value="test_value"
+            instance_id=parent_instance_id,
+            name="parent_var",
+            variable=ProcessVariableValue(type="string", value="test_value"),
         )
 
         # Create call activity
@@ -60,7 +63,7 @@ class TestCallActivitiesIntegration:
         subprocess_var = await self.state_manager.get_variable(
             instance_id=subprocess_token.instance_id, name="subprocess_var"
         )
-        assert subprocess_var == "test_value"
+        assert subprocess_var.value == "test_value"
 
         # Stop measuring call activity creation overhead
         creation_time = time.perf_counter()
@@ -78,7 +81,9 @@ class TestCallActivitiesIntegration:
         completion_start = time.perf_counter()  # Start measuring completion overhead
         output_vars = {"parent_result": "result"}
         await self.state_manager.set_variable(
-            instance_id=subprocess_token.instance_id, name="result", value="success"
+            instance_id=subprocess_token.instance_id,
+            name="result",
+            variable=ProcessVariableValue(type="string", value="success"),
         )
 
         final_token = await executor.complete_call_activity(
@@ -94,7 +99,7 @@ class TestCallActivitiesIntegration:
         parent_result = await self.state_manager.get_variable(
             instance_id=parent_instance_id, name="parent_result"
         )
-        assert parent_result == "success"
+        assert parent_result.value == "success"
 
         # Verify subprocess cleanup
         subprocess_tokens = await self.state_manager.get_token_positions(
@@ -137,7 +142,7 @@ class TestCallActivitiesIntegration:
         await self.state_manager.set_variable(
             instance_id=subprocess_token.instance_id,
             name="task_1_result",
-            value="completed",
+            variable=ProcessVariableValue(type="string", value="completed"),
         )
 
         # Move to error event

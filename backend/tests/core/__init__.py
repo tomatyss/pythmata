@@ -1,1 +1,1 @@
-# Core tests package initialization
+"""Core test package."""

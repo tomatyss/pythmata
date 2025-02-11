@@ -1,20 +1,26 @@
+"""Process instance API routes."""
+
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.params import Depends as FastAPIDepends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import and_
 
-from pythmata.api.dependencies import get_session
+from pythmata.api.dependencies import (
+    get_session,
+    get_instance_manager,
+)
 from pythmata.api.schemas import (
     ApiResponse,
     PaginatedResponse,
     ProcessInstanceCreate,
     ProcessInstanceResponse,
 )
+from pythmata.core.engine.instance import ProcessInstanceManager, ProcessInstanceError
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
@@ -127,6 +133,7 @@ async def get_instance(
 async def create_instance(
     data: ProcessInstanceCreate,
     session: AsyncSession = Depends(get_session),
+    instance_manager: ProcessInstanceManager = Depends(get_instance_manager),
 ):
     """Create a new process instance."""
     try:
@@ -136,19 +143,41 @@ async def create_instance(
                 ProcessDefinitionModel.id == data.definition_id
             )
         )
-        if not result.scalar_one_or_none():
+        definition = result.scalar_one_or_none()
+        if not definition:
             raise HTTPException(
                 status_code=404,
                 detail=f"Process definition {data.definition_id} not found",
             )
 
+        # Create instance
         instance = ProcessInstanceModel(
             definition_id=data.definition_id,
             status=ProcessStatus.RUNNING,
+            start_time=datetime.now(timezone.utc),
         )
         session.add(instance)
-        await session.commit()
-        await session.refresh(instance)
+        await session.flush()  # Get the ID without committing
+
+        # Convert variables to storage format
+        variables = {}
+        if data.variables:
+            variables = {
+                name: {
+                    "type": var.type,
+                    "value": var.value
+                }
+                for name, var in data.variables.items()
+            }
+
+        # Start process execution
+        instance = await instance_manager.start_instance(
+            instance=instance,
+            bpmn_xml=definition.bpmn_xml,
+            variables=variables,
+        )
+
+        # Let the test session handle the commit/rollback
         return {"data": instance}
     except HTTPException:
         raise
@@ -164,34 +193,16 @@ async def create_instance(
 )
 async def suspend_instance(
     instance_id: UUID,
-    session: AsyncSession = Depends(get_session),
+    instance_manager: ProcessInstanceManager = Depends(get_instance_manager),
 ):
     """Suspend a process instance."""
     try:
-        result = await session.execute(
-            select(ProcessInstanceModel).filter(ProcessInstanceModel.id == instance_id)
-        )
-        instance = result.scalar_one_or_none()
-        if not instance:
-            raise HTTPException(status_code=404, detail="Process instance not found")
-
-        # Refresh instance to get latest status
-        await session.refresh(instance)
-
-        if instance.status != ProcessStatus.RUNNING:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot suspend instance in {instance.status} status. Only RUNNING instances can be suspended.",
-            )
-
-        instance.status = ProcessStatus.SUSPENDED
-        await session.commit()
-        await session.refresh(instance)
+        instance = await instance_manager.suspend_instance(instance_id)
         return {"data": instance}
-    except HTTPException:
-        raise
+    except ProcessInstanceError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        await session.rollback()
+        logger.error(f"Error suspending instance: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -201,29 +212,14 @@ async def suspend_instance(
 )
 async def resume_instance(
     instance_id: UUID,
-    session: AsyncSession = Depends(get_session),
+    instance_manager: ProcessInstanceManager = Depends(get_instance_manager),
 ):
     """Resume a suspended process instance."""
     try:
-        result = await session.execute(
-            select(ProcessInstanceModel).filter(ProcessInstanceModel.id == instance_id)
-        )
-        instance = result.scalar_one_or_none()
-        if not instance:
-            raise HTTPException(status_code=404, detail="Process instance not found")
-
-        if instance.status != ProcessStatus.SUSPENDED:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Cannot resume instance in {instance.status} status. Only SUSPENDED instances can be resumed.",
-            )
-
-        instance.status = ProcessStatus.RUNNING
-        await session.commit()
-        await session.refresh(instance)
+        instance = await instance_manager.resume_instance(instance_id)
         return {"data": instance}
-    except HTTPException:
-        raise
+    except ProcessInstanceError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        await session.rollback()
+        logger.error(f"Error resuming instance: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

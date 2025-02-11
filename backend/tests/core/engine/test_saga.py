@@ -1,87 +1,62 @@
-import asyncio
 import time
 from typing import Dict, List, Optional
 
 import pytest
+from pythmata.core.engine.saga import SagaStatus
 
-from pythmata.core.engine.saga import ParallelStepGroup, SagaOrchestrator, SagaStatus
-from pythmata.core.engine.token import Token, TokenState
-
-
-@pytest.mark.asyncio
-async def test_basic_saga_orchestration():
-    """Test basic saga pattern with successful execution"""
-    # Setup saga structure:
-    # Saga_1
-    #   ├─ Task_1 (with compensation)
-    #   └─ Task_2 (with compensation)
-
-    saga = SagaOrchestrator("Saga_1", "test_instance")
-
-    # Define steps with their compensations
-    await saga.add_step(action_id="Task_1", compensation_id="Comp_1", data={"task": 1})
-    await saga.add_step(action_id="Task_2", compensation_id="Comp_2", data={"task": 2})
-
-    # Execute saga
-    result = await saga.execute()
-
-    assert result.status == SagaStatus.COMPLETED
-    assert len(saga.completed_steps) == 2
-    assert not saga.compensation_required
+from tests.conftest import BaseSagaTest, assert_saga_state
 
 
 @pytest.mark.asyncio
-async def test_saga_compensation_on_failure():
-    """Test saga compensation when step fails"""
-    saga = SagaOrchestrator("Saga_1", "test_instance")
+class TestSagaOrchestration(BaseSagaTest):
+    """Tests for saga orchestration patterns."""
 
-    # Add steps where second step will fail
-    await saga.add_step(action_id="Task_1", compensation_id="Comp_1", data={"task": 1})
-    await saga.add_step(
-        action_id="Task_2",
-        compensation_id="Comp_2",
-        data={"task": 2, "should_fail": True},
-    )
+    async def test_basic_saga_orchestration(self):
+        """Test basic saga pattern with successful execution."""
+        # Setup saga structure:
+        # Saga_1
+        #   ├─ Task_1 (with compensation)
+        #   └─ Task_2 (with compensation)
 
-    result = await saga.execute()
+        saga = self.create_basic_saga()
+        await self.setup_sequential_steps(saga)
 
-    # Verify failure and compensation
-    assert result.status == SagaStatus.COMPENSATED
-    assert saga.compensation_required
-    assert len(saga.completed_steps) == 1
-    assert saga.steps[0].compensated  # First step should be compensated
-    assert not saga.steps[1].completed  # Second step should have failed
-    assert result.data and "error" in result.data
+        # Execute saga
+        result = await saga.execute()
 
+        # Verify successful execution
+        await assert_saga_state(saga, SagaStatus.COMPLETED, 2)
+        assert not saga.compensation_required
 
-@pytest.mark.asyncio
-async def test_parallel_saga_steps():
-    """Test parallel execution of saga steps"""
-    saga = SagaOrchestrator("Saga_1", "test_instance")
+    async def test_saga_compensation_on_failure(self):
+        """Test saga compensation when step fails."""
+        saga = self.create_basic_saga()
+        await self.setup_sequential_steps(saga, fail_step=1)  # Make second step fail
 
-    # Create a parallel step group
-    parallel_group = await saga.create_parallel_group()
+        # Execute saga
+        result = await saga.execute()
 
-    # Add steps that simulate work with sleep
-    await parallel_group.add_step(
-        action_id="Task_1", compensation_id="Comp_1", data={"task": 1, "sleep": 0.1}
-    )
-    await parallel_group.add_step(
-        action_id="Task_2", compensation_id="Comp_2", data={"task": 2, "sleep": 0.1}
-    )
+        # Verify failure and compensation
+        await assert_saga_state(saga, SagaStatus.COMPENSATED, 1, compensation_required=True)
+        assert saga.steps[0].compensated  # First step should be compensated
+        assert not saga.steps[1].completed  # Second step should have failed
+        assert result.data and "error" in result.data
 
-    # Record start time
-    start_time = time.time()
+    async def test_parallel_saga_steps(self):
+        """Test parallel execution of saga steps."""
+        saga = self.create_basic_saga()
+        sleep_time = 0.1
 
-    # Execute saga with parallel steps
-    result = await saga.execute()
+        # Create parallel steps
+        await self.setup_parallel_steps(saga, sleep_time=sleep_time)
 
-    # Calculate total execution time
-    execution_time = time.time() - start_time
+        # Record start time and execute
+        start_time = time.time()
+        result = await saga.execute()
+        execution_time = time.time() - start_time
 
-    # Verify parallel execution
-    assert result.status == SagaStatus.COMPLETED
-    assert len(saga.completed_steps) == 2
-    assert not saga.compensation_required
-    # If steps were executed in parallel, total time should be less than sum of individual sleep times
-    assert execution_time < 0.2  # Less than sum of sleep times (0.1 + 0.1)
+        # Verify parallel execution
+        await assert_saga_state(saga, SagaStatus.COMPLETED, 2)
+        assert not saga.compensation_required
+        # If steps were executed in parallel, total time should be less than sum of individual sleep times
+        assert execution_time < (sleep_time * 2)  # Less than sum of sleep times

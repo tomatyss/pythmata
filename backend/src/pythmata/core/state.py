@@ -6,6 +6,7 @@ from uuid import uuid4
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.config import Settings
 from pythmata.core.types import TokenState
 
@@ -27,21 +28,43 @@ class StateManager:
             raise RuntimeError("Not connected to Redis")
         return self._redis
 
-    async def connect(self) -> None:
-        """Establish connection to Redis."""
-        try:
-            self._redis = redis.from_url(
-                str(self.settings.redis.url),
-                encoding="utf-8",
-                decode_responses=True,
-                max_connections=self.settings.redis.pool_size,
-            )
-            # Test connection
-            await self._redis.ping()
-            logger.info("Successfully connected to Redis")
-        except Exception as e:
-            logger.error(f"Failed to connect to Redis: {e}")
-            raise
+    async def connect(self, max_retries: int = 3, retry_delay: float = 1.0) -> None:
+        """Establish connection to Redis with retries.
+
+        Args:
+            max_retries: Maximum number of connection attempts
+            retry_delay: Delay between retries in seconds
+
+        Raises:
+            RuntimeError: If connection fails after all retries
+        """
+        import asyncio
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                self._redis = redis.from_url(
+                    str(self.settings.redis.url),
+                    encoding="utf-8",
+                    decode_responses=True,
+                    max_connections=self.settings.redis.pool_size,
+                )
+                # Test connection
+                await self._redis.ping()
+                logger.info("Successfully connected to Redis")
+                return
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:  # Don't sleep on last attempt
+                    logger.warning(
+                        f"Failed to connect to Redis (attempt {attempt + 1}/{max_retries}): {e}"
+                    )
+                    await asyncio.sleep(retry_delay)
+                else:
+                    logger.error(f"Failed to connect to Redis after {max_retries} attempts: {e}")
+
+        # If we get here, all retries failed
+        raise RuntimeError(f"Failed to connect to Redis after {max_retries} attempts") from last_error
 
     async def disconnect(self) -> None:
         """Close Redis connection."""
@@ -81,7 +104,7 @@ class StateManager:
         name: str,
         scope_id: Optional[str] = None,
         check_parent: bool = True,
-    ) -> Any:
+    ) -> Optional[ProcessVariableValue]:
         """Get a process variable.
 
         Args:
@@ -100,7 +123,8 @@ class StateManager:
             scope_key = f"{scope_id}:{name}"
             value = await self.redis.hget(key, scope_key)
             if value:
-                return json.loads(value)
+                data = json.loads(value)
+                return ProcessVariableValue.from_storage_format(data)
 
             # If not found and check_parent is True, traverse up the scope hierarchy
             if check_parent:
@@ -115,31 +139,42 @@ class StateManager:
                     parent_key = f"{parent_scope}:{name}" if parent_scope else name
                     value = await self.redis.hget(key, parent_key)
                     if value:
-                        return json.loads(value)
+                        data = json.loads(value)
+                        return ProcessVariableValue.from_storage_format(data)
 
                 # If still not found, try root scope
                 value = await self.redis.hget(key, name)
-                return json.loads(value) if value else None
+                if value:
+                    data = json.loads(value)
+                    return ProcessVariableValue.from_storage_format(data)
             return None
         else:
             # Direct access to root scope
             value = await self.redis.hget(key, name)
-            return json.loads(value) if value else None
+            if value:
+                data = json.loads(value)
+                return ProcessVariableValue.from_storage_format(data)
+            return None
 
     async def set_variable(
-        self, instance_id: str, name: str, value: Any, scope_id: Optional[str] = None
+        self,
+        instance_id: str,
+        name: str,
+        variable: ProcessVariableValue,
+        scope_id: Optional[str] = None,
     ) -> None:
         """Set a process variable.
 
         Args:
             instance_id: The process instance ID
             name: Variable name
-            value: Variable value
+            variable: Variable value and type
             scope_id: Optional scope ID (e.g., subprocess ID)
         """
         key = f"process:{instance_id}:vars"
         scope_key = f"{scope_id}:{name}" if scope_id else name
-        await self.redis.hset(key, scope_key, json.dumps(value))
+        storage_format = variable.to_storage_format()
+        await self.redis.hset(key, scope_key, json.dumps(storage_format))
 
     async def get_token_positions(self, instance_id: str) -> List[Dict[str, Any]]:
         """Get current token positions for a process instance.
@@ -165,15 +200,32 @@ class StateManager:
             data: Optional token data
         """
         key = f"process:{instance_id}:tokens"
-        token = {
+        scope_id = data.get("scope_id") if data else None
+        
+        # Get existing tokens
+        tokens = await self.get_token_positions(instance_id)
+        
+        # Remove any existing token at the same node and scope
+        new_tokens = [
+            token for token in tokens
+            if token["node_id"] != node_id or token.get("scope_id") != scope_id
+        ]
+        
+        # Create new token
+        new_token = {
             "instance_id": instance_id,
             "node_id": node_id,
             "state": "ACTIVE",
             "data": data or {},
             "id": str(uuid4()),
-            "scope_id": data.get("scope_id") if data else None,
+            "scope_id": scope_id,
         }
-        await self.redis.rpush(key, json.dumps(token))
+        new_tokens.append(new_token)
+        
+        # Replace token list
+        await self.redis.delete(key)
+        if new_tokens:
+            await self.redis.rpush(key, *[json.dumps(token) for token in new_tokens])
 
     async def get_scope_tokens(
         self, instance_id: str, scope_id: str

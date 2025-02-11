@@ -4,6 +4,7 @@ from typing import Dict, List
 
 import pytest
 
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
@@ -253,7 +254,10 @@ class TestAdvancedMultiInstance:
         # Simulate concurrent modifications
         async def modify_instance(token: Token, value: str):
             await self.state_manager.set_variable(
-                instance_id, "test_var", value, scope_id=token.scope_id
+                instance_id=instance_id,
+                name="test_var",
+                variable=ProcessVariableValue(type="string", value=value),
+                scope_id=token.scope_id,
             )
 
         # Create concurrent tasks
@@ -271,7 +275,7 @@ class TestAdvancedMultiInstance:
             value = await self.state_manager.get_variable(
                 instance_id, "test_var", scope_id=token.scope_id
             )
-            assert value == f"value{i+1}"
+            assert value.value == f"value{i+1}"
 
     async def test_instance_failure_recovery(self):
         """Test recovery from failed instances."""
@@ -349,12 +353,19 @@ class TestAdvancedMultiInstance:
         outer_tokens = await executor.create_parallel_instances(outer_token)
 
         # Set variables at different scopes
-        await self.state_manager.set_variable(instance_id, "root_var", "root")
+        await self.state_manager.set_variable(
+            instance_id=instance_id,
+            name="root_var",
+            variable=ProcessVariableValue(type="string", value="root"),
+        )
 
         for i, outer_token in enumerate(outer_tokens):
             # Set outer scope variables
             await self.state_manager.set_variable(
-                instance_id, "outer_var", f"outer_{i}", scope_id=outer_token.scope_id
+                instance_id=instance_id,
+                name="outer_var",
+                variable=ProcessVariableValue(type="string", value=f"outer_{i}"),
+                scope_id=outer_token.scope_id,
             )
 
             # Create inner instances
@@ -366,9 +377,11 @@ class TestAdvancedMultiInstance:
             # Set inner scope variables
             for j, inner_token in enumerate(inner_tokens):
                 await self.state_manager.set_variable(
-                    instance_id,
-                    "inner_var",
-                    f"inner_{i}_{j}",
+                    instance_id=instance_id,
+                    name="inner_var",
+                    variable=ProcessVariableValue(
+                        type="string", value=f"inner_{i}_{j}"
+                    ),
                     scope_id=inner_token.scope_id,
                 )
 
@@ -383,9 +396,9 @@ class TestAdvancedMultiInstance:
                     instance_id, "inner_var", scope_id=inner_token.scope_id
                 )
 
-                assert root_val == "root"
-                assert outer_val == f"outer_{i}"
-                assert inner_val == f"inner_{i}_{j}"
+                assert root_val.value == "root"
+                assert outer_val.value == f"outer_{i}"
+                assert inner_val.value == f"inner_{i}_{j}"
 
     async def test_collection_variable_updates(self):
         """Test updating collection variables during execution."""
@@ -413,7 +426,10 @@ class TestAdvancedMultiInstance:
             # Store updated item in instance scope
             collection[i]["status"] = "completed"
             await self.state_manager.set_variable(
-                instance_id, "item", collection[i], scope_id=instance_token.scope_id
+                instance_id=instance_id,
+                name="item",
+                variable=ProcessVariableValue(type="json", value=collection[i]),
+                scope_id=instance_token.scope_id,
             )
 
         # Verify updates in each instance scope
@@ -421,5 +437,5 @@ class TestAdvancedMultiInstance:
             item = await self.state_manager.get_variable(
                 instance_id, "item", scope_id=instance_token.scope_id
             )
-            assert item["status"] == "completed"
-            assert item["id"] == i + 1
+            assert item.value["status"] == "completed"
+            assert item.value["id"] == i + 1

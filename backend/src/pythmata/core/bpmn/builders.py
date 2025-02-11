@@ -1,12 +1,10 @@
 """BPMN element builder implementations."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from xml.etree import ElementTree as ET
 
 from pythmata.core.types import (
-    Event,
     EventType,
     FlowNode,
     Gateway,

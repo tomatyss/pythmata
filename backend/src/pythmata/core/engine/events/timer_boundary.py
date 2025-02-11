@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from pythmata.core.engine.events.timer import TimerCancelled, TimerEvent
@@ -82,19 +82,19 @@ class TimerBoundaryEvent(TimerEvent):
         state = {
             "timer_type": self.timer_type,
             "timer_definition": self.timer_definition,
-            "start_time": datetime.now().isoformat(),
+            "start_time": datetime.now(timezone.utc).isoformat(),
             "token_data": token.data,
             "activity_id": self.activity_id,
             "interrupting": self.interrupting,
         }
 
         if self.timer_type == "duration":
-            state["end_time"] = (datetime.now() + self.duration).isoformat()
+            state["end_time"] = (datetime.now(timezone.utc) + self.duration).isoformat()
         elif self.timer_type == "date":
             state["end_time"] = self.target_date.isoformat()
         elif self.timer_type == "cycle":
             state["end_time"] = (
-                datetime.now() + self.interval * self.repetitions
+                datetime.now(timezone.utc) + self.interval * self.repetitions
             ).isoformat()
 
         await self.state_manager.save_timer_state(token.instance_id, self.id, state)

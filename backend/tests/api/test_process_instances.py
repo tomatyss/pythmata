@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.routes import router
@@ -170,8 +169,16 @@ async def test_create_instance(
         "/instances",
         json={
             "definition_id": str(process_definition.id),
-            "variables": {"key": "value"},
-        },
+            "variables": {
+                "order_data": {
+                    "type": "json",
+                    "value": {
+                        "id": "test-order",
+                        "amount": 99.99
+                    }
+                }
+            }
+        }
     )
     assert response.status_code == 200
     data = response.json()["data"]
@@ -184,6 +191,49 @@ async def test_create_instance(
         json={"definition_id": str(uuid.uuid4())},
     )
     assert response.status_code == 404
+
+
+async def test_create_instance_with_engine(
+    async_client: AsyncClient,
+    process_definition: ProcessDefinition,
+    state_manager,
+):
+    """Test instance creation with process engine integration."""
+    # Test data
+    variables = {
+        "order_data": {
+            "type": "json",
+            "value": {
+                "id": "test-order",
+                "amount": 99.99,
+            },
+        },
+    }
+
+    # Create instance with variables
+    response = await async_client.post(
+        "/instances",
+        json={
+            "definition_id": str(process_definition.id),
+            "variables": variables
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    instance_id = data["id"]
+
+    # Verify instance was created
+    assert data["status"] == ProcessStatus.RUNNING
+    assert data["definition_id"] == str(process_definition.id)
+
+    # Verify variables were stored
+    stored_var = await state_manager.get_variable(instance_id, "order_data")
+    assert stored_var.value == variables["order_data"]["value"]
+
+    # Verify process execution started (token at start event)
+    tokens = await state_manager.get_token_positions(instance_id)
+    assert len(tokens) == 1
+    assert tokens[0]["node_id"] == "Start_1"
 
 
 async def test_instance_state_management(

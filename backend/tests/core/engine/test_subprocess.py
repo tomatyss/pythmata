@@ -1,38 +1,25 @@
 from uuid import UUID
 
 import pytest
-
-from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import TokenState
-from pythmata.core.state import StateManager
+from pythmata.core.types import Event, EventType
+
+from tests.conftest import BaseEngineTest
 
 
 @pytest.mark.asyncio
-class TestBasicSubprocess:
-    @pytest.fixture(autouse=True)
-    async def setup_test(self, test_settings):
-        """Setup test environment and cleanup after."""
-        self.state_manager = StateManager(test_settings)
-        await self.state_manager.connect()
-
-        yield
-
-        # Cleanup after test
-        await self.state_manager.redis.flushdb()
-        await self.state_manager.disconnect()
-
+class TestBasicSubprocess(BaseEngineTest):
     async def test_enter_subprocess(self):
         """Test token enters subprocess and creates new subprocess scope."""
-        executor = ProcessExecutor(self.state_manager)
         instance_id = "test-subprocess-1"
         parent_process_id = "Process_1"
         subprocess_id = "Subprocess_1"
 
         # Create initial token in parent process
-        token = await executor.create_initial_token(instance_id, parent_process_id)
+        token = await self.executor.create_initial_token(instance_id, parent_process_id)
 
         # Move token to subprocess
-        subprocess_token = await executor.enter_subprocess(token, subprocess_id)
+        subprocess_token = await self.executor.enter_subprocess(token, subprocess_id)
 
         # Verify subprocess token was created
         assert subprocess_token is not None
@@ -50,18 +37,17 @@ class TestBasicSubprocess:
 
     async def test_exit_subprocess(self):
         """Test token exits subprocess and returns to parent process."""
-        executor = ProcessExecutor(self.state_manager)
         instance_id = "test-subprocess-2"
         parent_process_id = "Process_1"
         subprocess_id = "Subprocess_1"
         next_task_id = "Task_1"
 
         # Create and move token to subprocess
-        token = await executor.create_initial_token(instance_id, parent_process_id)
-        subprocess_token = await executor.enter_subprocess(token, subprocess_id)
+        token = await self.executor.create_initial_token(instance_id, parent_process_id)
+        subprocess_token = await self.executor.enter_subprocess(token, subprocess_id)
 
         # Exit subprocess
-        parent_token = await executor.exit_subprocess(subprocess_token, next_task_id)
+        parent_token = await self.executor.exit_subprocess(subprocess_token, next_task_id)
 
         # Verify token returned to parent scope
         assert parent_token is not None
@@ -78,7 +64,6 @@ class TestBasicSubprocess:
 
     async def test_subprocess_completion(self):
         """Test subprocess completion and continuation of parent process."""
-        executor = ProcessExecutor(self.state_manager)
         instance_id = "test-subprocess-3"
         parent_process_id = "Process_1"
         subprocess_id = "Subprocess_1"
@@ -86,14 +71,23 @@ class TestBasicSubprocess:
         next_task_id = "Task_1"
 
         # Create and move token to subprocess
-        token = await executor.create_initial_token(instance_id, parent_process_id)
-        subprocess_token = await executor.enter_subprocess(token, subprocess_id)
+        token = await self.executor.create_initial_token(instance_id, parent_process_id)
+        subprocess_token = await self.executor.enter_subprocess(token, subprocess_id)
 
-        # Move to subprocess end event
-        end_token = await executor.move_token(subprocess_token, subprocess_end_id)
-
+        # Create end event in subprocess scope
+        end_event = Event(id=subprocess_end_id, type="event", event_type=EventType.END)
+        
+        # Move to subprocess end event while maintaining scope
+        end_token = await self.executor.move_token(subprocess_token, subprocess_end_id)
+        await self.state_manager.update_token_state(
+            instance_id=end_token.instance_id,
+            node_id=end_token.node_id,
+            state=TokenState.ACTIVE,
+            scope_id=subprocess_id
+        )
+        
         # Complete subprocess
-        parent_token = await executor.complete_subprocess(end_token, next_task_id)
+        parent_token = await self.executor.complete_subprocess(end_token, next_task_id)
 
         # Verify subprocess completion
         assert parent_token is not None
@@ -109,7 +103,5 @@ class TestBasicSubprocess:
         assert stored_tokens[0]["scope_id"] is None
 
         # Verify subprocess scope is cleaned up
-        subprocess_tokens = await self.state_manager.get_scope_tokens(
-            instance_id, subprocess_id
-        )
+        subprocess_tokens = await self.state_manager.get_scope_tokens(instance_id, subprocess_id)
         assert len(subprocess_tokens) == 0

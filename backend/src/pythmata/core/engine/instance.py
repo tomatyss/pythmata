@@ -1,12 +1,13 @@
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.core.engine.transaction import Transaction, TransactionStatus
+from pythmata.core.engine.transaction import Transaction
 from pythmata.core.state import StateManager
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.models.process import (
     ProcessDefinition,
     ProcessInstance,
@@ -140,20 +141,43 @@ class ProcessInstanceManager:
                     f"Invalid variable format for {name}. Expected {{'type': str, 'value': any}}"
                 )
 
-            if data["type"] not in self.VALID_VARIABLE_TYPES:
+            var_type = data["type"]
+            var_value = data["value"]
+
+            if var_type not in self.VALID_VARIABLE_TYPES:
                 raise InvalidVariableError(
-                    f"Invalid variable type {data['type']} for {name}. "
+                    f"Invalid variable type {var_type} for {name}. "
                     f"Valid types: {', '.join(self.VALID_VARIABLE_TYPES)}"
                 )
 
+            # Validate value type matches declared type
+            if var_type == "string" and not isinstance(var_value, str):
+                raise InvalidVariableError(f"Value for {name} must be a string")
+            elif var_type == "integer" and not isinstance(var_value, int):
+                raise InvalidVariableError(f"Value for {name} must be an integer")
+            elif var_type == "boolean" and not isinstance(var_value, bool):
+                raise InvalidVariableError(f"Value for {name} must be a boolean")
+            elif var_type == "float" and not isinstance(var_value, (int, float)):
+                raise InvalidVariableError(f"Value for {name} must be a number")
+            elif var_type == "json" and not isinstance(var_value, (dict, list)):
+                raise InvalidVariableError(f"Value for {name} must be a JSON object or array")
+
+            # Store in database
             variable = Variable(
                 instance_id=instance.id,
                 name=name,
-                value_type=data["type"],
-                value_data={"value": data["value"]},
+                value_type=var_type,
+                value_data={"value": var_value},
                 version=1,
             )
             self.session.add(variable)
+
+            # Store in Redis state manager
+            await self.state_manager.set_variable(
+                instance_id=str(instance.id),
+                name=name,
+                variable=ProcessVariableValue(type=var_type, value=var_value)
+            )
 
     async def suspend_instance(self, instance_id: UUID) -> ProcessInstance:
         """
@@ -337,3 +361,39 @@ class ProcessInstanceManager:
         variables = result.scalars().all()
 
         return {var.name: var.value_data["value"] for var in variables}
+
+    async def start_instance(
+        self,
+        instance: ProcessInstance,
+        bpmn_xml: str,
+        variables: Optional[Dict] = None,
+        start_event_id: str = "Start_1",
+    ) -> ProcessInstance:
+        """
+        Start a process instance by initializing its execution state.
+
+        Args:
+            instance: The process instance to start
+            bpmn_xml: BPMN XML definition for the process
+            variables: Optional initial variables
+            start_event_id: ID of the start event (defaults to "Start_1")
+
+        Returns:
+            The started ProcessInstance
+
+        Raises:
+            InvalidProcessDefinitionError: If process definition is invalid
+            InvalidVariableError: If variable data is invalid
+        """
+        # Set up variables if provided
+        if variables:
+            await self._setup_variables(instance, variables)
+
+        # Initialize process state with start event
+        await self.executor.create_initial_token(str(instance.id), start_event_id)
+
+        # Update instance status
+        instance.status = ProcessStatus.RUNNING
+        instance.start_time = datetime.now(UTC)
+
+        return instance

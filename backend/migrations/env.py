@@ -1,4 +1,3 @@
-import asyncio
 from logging.config import fileConfig
 
 from alembic import context
@@ -21,46 +20,16 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
-# Load test settings
-def get_test_settings() -> Settings:
-    """Create test settings with environment-aware configuration."""
-    import os
-    
-    # Database configuration
-    db_user = os.getenv("POSTGRES_USER", "pythmata")
-    db_password = os.getenv("POSTGRES_PASSWORD", "pythmata")
-    db_host = os.getenv("POSTGRES_HOST", "localhost")
-    db_port = os.getenv("POSTGRES_PORT", "5432")
-    db_name = os.getenv("POSTGRES_TEST_DB", "pythmata_test")
-    
-    # Convert asyncpg URL to psycopg2 URL for synchronous operations
-    db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+# Load settings from config file
+settings = Settings()
 
-    return Settings(
-        server={"host": "localhost", "port": 8000, "debug": True},
-        database={"url": db_url, "pool_size": 5, "max_overflow": 10},
-        redis={"url": "redis://localhost:6379/0", "pool_size": 10},
-        rabbitmq={
-            "url": "amqp://guest:guest@localhost:5672/",
-            "connection_attempts": 3,
-            "retry_delay": 1,
-        },
-        security={
-            "secret_key": "test-secret-key",
-            "algorithm": "HS256",
-            "access_token_expire_minutes": 30,
-        },
-        process={
-            "script_timeout": 30,
-            "max_instances": 100,
-            "cleanup_interval": 60,
-        },
-    )
+# Override sqlalchemy.url from alembic.ini with config
+# Convert async URL to sync URL for Alembic
+db_url = str(settings.database.url)
+if db_url.startswith("postgresql+asyncpg://"):
+    db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
 
-settings = get_test_settings()
-
-# Override sqlalchemy.url from alembic.ini with test config
-config.set_main_option("sqlalchemy.url", str(settings.database.url))
+config.set_main_option("sqlalchemy.url", db_url)
 
 
 def run_migrations_offline() -> None:
