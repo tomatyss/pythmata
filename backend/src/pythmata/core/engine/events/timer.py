@@ -1,7 +1,7 @@
 import asyncio
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from pythmata.core.engine.events.base import Event
@@ -115,7 +115,7 @@ class TimerEvent(Event):
     async def _execute_date(self, token: Token) -> None:
         """Execute date timer."""
         await self.start(token)
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if self.target_date > now:
             try:
                 await asyncio.sleep((self.target_date - now).total_seconds())
@@ -164,17 +164,17 @@ class TimerEvent(Event):
         state = {
             "timer_type": self.timer_type,
             "timer_definition": self.timer_definition,
-            "start_time": datetime.now().isoformat(),
+            "start_time": datetime.now(timezone.utc).isoformat(),
             "token_data": token.data,
         }
 
         if self.timer_type == "duration":
-            state["end_time"] = (datetime.now() + self.duration).isoformat()
+            state["end_time"] = (datetime.now(timezone.utc) + self.duration).isoformat()
         elif self.timer_type == "date":
             state["end_time"] = self.target_date.isoformat()
         elif self.timer_type == "cycle":
             state["end_time"] = (
-                datetime.now() + self.interval * self.repetitions
+                datetime.now(timezone.utc) + self.interval * self.repetitions
             ).isoformat()
 
         await self.state_manager.save_timer_state(token.instance_id, self.id, state)
@@ -204,7 +204,7 @@ class TimerEvent(Event):
             return None
 
         end_time = datetime.fromisoformat(self._state["end_time"])
-        return end_time - datetime.now()
+        return end_time - datetime.now(timezone.utc)
 
     @classmethod
     async def restore(
@@ -300,19 +300,19 @@ class TimerBoundaryEvent(TimerEvent):
         state = {
             "timer_type": self.timer_type,
             "timer_definition": self.timer_definition,
-            "start_time": datetime.now().isoformat(),
+            "start_time": datetime.now(timezone.utc).isoformat(),
             "token_data": token.data,
             "activity_id": self.activity_id,
             "interrupting": self.interrupting,
         }
 
         if self.timer_type == "duration":
-            state["end_time"] = (datetime.now() + self.duration).isoformat()
+            state["end_time"] = (datetime.now(timezone.utc) + self.duration).isoformat()
         elif self.timer_type == "date":
             state["end_time"] = self.target_date.isoformat()
         elif self.timer_type == "cycle":
             state["end_time"] = (
-                datetime.now() + self.interval * self.repetitions
+                datetime.now(timezone.utc) + self.interval * self.repetitions
             ).isoformat()
 
         await self.state_manager.save_timer_state(token.instance_id, self.id, state)
