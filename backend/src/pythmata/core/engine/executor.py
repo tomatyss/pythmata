@@ -1,13 +1,13 @@
+import asyncio
 import logging
 from datetime import UTC, datetime
-import asyncio
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
 from pythmata.api.schemas import ProcessVariableValue
-from pythmata.core.types import Event, EventType, Gateway, GatewayType, Task
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
+from pythmata.core.types import Event, EventType, Gateway, GatewayType, Task
 from pythmata.models.process import ProcessInstance, ProcessStatus
 
 logger = logging.getLogger(__name__)
@@ -55,9 +55,7 @@ class ProcessExecutor:
         )
         # Set initial token state to active
         await self.state_manager.update_token_state(
-            instance_id=instance_id,
-            node_id=start_event_id,
-            state=TokenState.ACTIVE
+            instance_id=instance_id, node_id=start_event_id, state=TokenState.ACTIVE
         )
         return token
 
@@ -130,7 +128,7 @@ class ProcessExecutor:
             instance_id=new_token.instance_id,
             node_id=new_token.node_id,
             state=TokenState.ACTIVE,
-            scope_id=new_token.scope_id
+            scope_id=new_token.scope_id,
         )
 
         # Handle end events
@@ -191,7 +189,7 @@ class ProcessExecutor:
             await self.state_manager.update_token_state(
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
-                state=TokenState.ACTIVE
+                state=TokenState.ACTIVE,
             )
             new_tokens.append(new_token)
 
@@ -286,8 +284,7 @@ class ProcessExecutor:
                 await self.state_manager.set_variable(
                     instance_id=new_instance_id,
                     name=subprocess_var,
-                    variable=ProcessVariableValue(
-                        type=value.type, value=value.value),
+                    variable=ProcessVariableValue(type=value.type, value=value.value),
                 )
 
         # Create new token in called process
@@ -343,7 +340,7 @@ class ProcessExecutor:
         await self.state_manager.remove_token(
             instance_id=token.instance_id,
             node_id=token.node_id,
-            scope_id=token.scope_id
+            scope_id=token.scope_id,
         )
         await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
 
@@ -354,8 +351,7 @@ class ProcessExecutor:
         )
 
         # Create new token in parent process
-        new_token = Token(instance_id=token.parent_instance_id,
-                          node_id=next_task_id)
+        new_token = Token(instance_id=token.parent_instance_id, node_id=next_task_id)
         await self.state_manager.add_token(
             instance_id=new_token.instance_id,
             node_id=new_token.node_id,
@@ -460,8 +456,7 @@ class ProcessExecutor:
         Returns:
             List of tokens for parallel instances
         """
-        logger.debug(
-            f"\nCreating parallel instances for token at {token.node_id}")
+        logger.debug(f"\nCreating parallel instances for token at {token.node_id}")
         logger.debug(f"Parent scope: {token.scope_id}")
 
         collection = token.data.get("collection", [])
@@ -483,8 +478,7 @@ class ProcessExecutor:
 
         for i, item in enumerate(collection):
             # Create hierarchical scope ID
-            instance_scope = f"{parent_scope}/{token.node_id}_instance_{i}".lstrip(
-                "/")
+            instance_scope = f"{parent_scope}/{token.node_id}_instance_{i}".lstrip("/")
             logger.debug(f"Creating instance {i} with scope: {instance_scope}")
 
             # Preserve original token data and update with instance-specific data
@@ -599,8 +593,7 @@ class ProcessExecutor:
             )
 
         # Get all tokens for this activity by node_id
-        activity_tokens = [
-            t for t in stored_tokens if t["node_id"] == token.node_id]
+        activity_tokens = [t for t in stored_tokens if t["node_id"] == token.node_id]
 
         # Count completed tokens from fresh state
         completed_tokens = [
@@ -675,8 +668,7 @@ class ProcessExecutor:
                     return None
 
                 # All inner activities are done, remove outer tokens and create final token
-                outer_tokens = [
-                    t for t in all_tokens if t["node_id"] == token.node_id]
+                outer_tokens = [t for t in all_tokens if t["node_id"] == token.node_id]
                 for t in outer_tokens:
                     await self.state_manager.remove_token(
                         instance_id=token.instance_id,
@@ -685,8 +677,7 @@ class ProcessExecutor:
                     )
 
                 # Clear any remaining Task_1 tokens
-                task_tokens = [
-                    t for t in all_tokens if t["node_id"] == next_task_id]
+                task_tokens = [t for t in all_tokens if t["node_id"] == next_task_id]
                 for t in task_tokens:
                     await self.state_manager.remove_token(
                         instance_id=token.instance_id,
@@ -784,12 +775,12 @@ class ProcessExecutor:
 
                 # Check if all tokens are at end events or in final state
                 active_tokens = [
-                    t for t in tokens
-                    if t["state"] == TokenState.ACTIVE.value
+                    t for t in tokens if t["state"] == TokenState.ACTIVE.value
                 ]
                 if not active_tokens:
                     logger.info(
-                        f"No active tokens remaining for instance {instance_id}")
+                        f"No active tokens remaining for instance {instance_id}"
+                    )
                     break
 
                 # Execute each active token
@@ -799,8 +790,7 @@ class ProcessExecutor:
                     if node:
                         await self.execute_node(token, node, process_graph)
                     else:
-                        logger.error(
-                            f"Node {token.node_id} not found in process graph")
+                        logger.error(f"Node {token.node_id} not found in process graph")
 
                 # Small delay to prevent tight loop
                 await asyncio.sleep(0.1)
@@ -810,17 +800,13 @@ class ProcessExecutor:
                 await self.instance_manager.complete_instance(instance_id)
 
         except Exception as e:
-            logger.error(
-                f"Error executing process instance {instance_id}: {str(e)}")
+            logger.error(f"Error executing process instance {instance_id}: {str(e)}")
             if self.instance_manager:
                 await self.instance_manager.handle_error(instance_id, e)
             raise
 
     async def execute_node(
-        self,
-        token: Token,
-        node: Union[Task, Gateway, Event],
-        process_graph: Dict
+        self, token: Token, node: Union[Task, Gateway, Event], process_graph: Dict
     ) -> None:
         """Execute a process node.
 
@@ -858,8 +844,7 @@ class ProcessExecutor:
             if task.script:
                 # Get process variables for script context
                 variables = await self.state_manager.get_variables(
-                    instance_id=token.instance_id,
-                    scope_id=token.scope_id
+                    instance_id=token.instance_id, scope_id=token.scope_id
                 )
 
                 # Create safe execution context
@@ -871,10 +856,9 @@ class ProcessExecutor:
                         instance_id=token.instance_id,
                         name=name,
                         variable=ProcessVariableValue(
-                            type=type(value).__name__,
-                            value=value
+                            type=type(value).__name__, value=value
                         ),
-                        scope_id=token.scope_id
+                        scope_id=token.scope_id,
                     ),
                     # Safe built-ins
                     "len": len,
@@ -894,7 +878,7 @@ class ProcessExecutor:
                     exec(
                         task.script,
                         {"__builtins__": {}},  # No built-ins
-                        context  # Our safe context
+                        context,  # Our safe context
                     )
 
                     # Store script result if any
@@ -904,18 +888,17 @@ class ProcessExecutor:
                             name=f"{task.id}_result",
                             variable=ProcessVariableValue(
                                 type=type(context["result"]).__name__,
-                                value=context["result"]
+                                value=context["result"],
                             ),
-                            scope_id=token.scope_id
+                            scope_id=token.scope_id,
                         )
                 except Exception as script_error:
                     logger.error(
-                        f"Script execution error in task {task.id}: {str(script_error)}")
+                        f"Script execution error in task {task.id}: {str(script_error)}"
+                    )
                     if self.instance_manager:
                         await self.instance_manager.handle_error(
-                            token.instance_id,
-                            script_error,
-                            task.id
+                            token.instance_id, script_error, task.id
                         )
                     raise
 
@@ -931,10 +914,7 @@ class ProcessExecutor:
             raise
 
     async def handle_gateway(
-        self,
-        token: Token,
-        gateway: Gateway,
-        process_graph: Dict
+        self, token: Token, gateway: Gateway, process_graph: Dict
     ) -> None:
         """Handle gateway logic.
 
@@ -951,10 +931,7 @@ class ProcessExecutor:
             await self._handle_inclusive_gateway(token, gateway, process_graph)
 
     async def _handle_exclusive_gateway(
-        self,
-        token: Token,
-        gateway: Gateway,
-        process_graph: Dict
+        self, token: Token, gateway: Gateway, process_graph: Dict
     ) -> None:
         """Handle exclusive (XOR) gateway.
 
@@ -965,8 +942,7 @@ class ProcessExecutor:
         """
         # Get process variables for condition evaluation
         variables = await self.state_manager.get_variables(
-            instance_id=token.instance_id,
-            scope_id=token.scope_id
+            instance_id=token.instance_id, scope_id=token.scope_id
         )
 
         # Create evaluation context
@@ -1001,7 +977,7 @@ class ProcessExecutor:
                     condition_result = eval(
                         flow.condition_expression,
                         {"__builtins__": {}},  # No built-ins
-                        context  # Our safe context
+                        context,  # Our safe context
                     )
 
                     if condition_result:
@@ -1014,9 +990,7 @@ class ProcessExecutor:
                     )
                     if self.instance_manager:
                         await self.instance_manager.handle_error(
-                            token.instance_id,
-                            e,
-                            gateway.id
+                            token.instance_id, e, gateway.id
                         )
                     raise
 
@@ -1038,15 +1012,14 @@ class ProcessExecutor:
             # Join: Wait for all incoming tokens
             tokens = await self.state_manager.get_token_positions(token.instance_id)
             active_tokens = [
-                t for t in tokens
+                t
+                for t in tokens
                 if t["node_id"] == gateway.id and t["state"] == TokenState.ACTIVE.value
             ]
             if len(active_tokens) == len(gateway.incoming):
                 # All tokens arrived, continue with one token
                 for t in active_tokens[1:]:
-                    await self.state_manager.remove_token(
-                        token.instance_id, gateway.id
-                    )
+                    await self.state_manager.remove_token(token.instance_id, gateway.id)
                 if gateway.outgoing:
                     await self.move_token(token, gateway.outgoing[0])
         else:
@@ -1054,10 +1027,7 @@ class ProcessExecutor:
             await self.split_token(token, gateway.outgoing)
 
     async def _handle_inclusive_gateway(
-        self,
-        token: Token,
-        gateway: Gateway,
-        process_graph: Dict
+        self, token: Token, gateway: Gateway, process_graph: Dict
     ) -> None:
         """Handle inclusive (OR) gateway.
 
@@ -1070,7 +1040,8 @@ class ProcessExecutor:
             # Join: Wait for all incoming tokens from active paths
             tokens = await self.state_manager.get_token_positions(token.instance_id)
             active_tokens = [
-                t for t in tokens
+                t
+                for t in tokens
                 if t["node_id"] == gateway.id and t["state"] == TokenState.ACTIVE.value
             ]
 
@@ -1084,9 +1055,7 @@ class ProcessExecutor:
             if len(active_tokens) == len(active_flows):
                 # Remove extra tokens
                 for t in active_tokens[1:]:
-                    await self.state_manager.remove_token(
-                        token.instance_id, gateway.id
-                    )
+                    await self.state_manager.remove_token(token.instance_id, gateway.id)
                 # Continue with one token
                 if gateway.outgoing:
                     await self.move_token(token, gateway.outgoing[0])
@@ -1094,8 +1063,7 @@ class ProcessExecutor:
             # Split: Evaluate conditions and create tokens for true paths
             # Get process variables for condition evaluation
             variables = await self.state_manager.get_variables(
-                instance_id=token.instance_id,
-                scope_id=token.scope_id
+                instance_id=token.instance_id, scope_id=token.scope_id
             )
 
             # Create evaluation context
@@ -1130,7 +1098,7 @@ class ProcessExecutor:
                         condition_result = eval(
                             flow.condition_expression,
                             {"__builtins__": {}},  # No built-ins
-                            context  # Our safe context
+                            context,  # Our safe context
                         )
 
                         if condition_result:
@@ -1142,9 +1110,7 @@ class ProcessExecutor:
                         )
                         if self.instance_manager:
                             await self.instance_manager.handle_error(
-                                token.instance_id,
-                                e,
-                                gateway.id
+                                token.instance_id, e, gateway.id
                             )
                         raise
 
@@ -1174,7 +1140,7 @@ class ProcessExecutor:
             await self.state_manager.update_token_state(
                 instance_id=token.instance_id,
                 node_id=token.node_id,
-                state=TokenState.COMPLETED
+                state=TokenState.COMPLETED,
             )
             await self.consume_token(token)
         else:
@@ -1184,20 +1150,18 @@ class ProcessExecutor:
                 await self.state_manager.update_token_state(
                     instance_id=token.instance_id,
                     node_id=token.node_id,
-                    state=TokenState.COMPLETED
+                    state=TokenState.COMPLETED,
                 )
                 # Move to next node with active state
                 new_token = await self.move_token(token, event.outgoing[0])
                 await self.state_manager.update_token_state(
                     instance_id=new_token.instance_id,
                     node_id=new_token.node_id,
-                    state=TokenState.ACTIVE
+                    state=TokenState.ACTIVE,
                 )
 
     def _find_node(
-        self,
-        process_graph: Dict,
-        node_id: str
+        self, process_graph: Dict, node_id: str
     ) -> Optional[Union[Task, Gateway, Event]]:
         """Find node in process graph by ID.
 
@@ -1209,8 +1173,7 @@ class ProcessExecutor:
             Found node or None
         """
         return next(
-            (node for node in process_graph["nodes"] if node.id == node_id),
-            None
+            (node for node in process_graph["nodes"] if node.id == node_id), None
         )
 
     async def complete_subprocess(
@@ -1255,14 +1218,14 @@ class ProcessExecutor:
             instance_id=token.instance_id,
             node_id=token.node_id,
             state=TokenState.COMPLETED,
-            scope_id=token.scope_id
+            scope_id=token.scope_id,
         )
 
         # Remove token from subprocess end event with scope
         await self.state_manager.remove_token(
             instance_id=token.instance_id,
             node_id=token.node_id,
-            scope_id=token.scope_id
+            scope_id=token.scope_id,
         )
         await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
 

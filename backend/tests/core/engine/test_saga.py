@@ -2,8 +2,8 @@ import time
 from typing import Dict, List, Optional
 
 import pytest
-from pythmata.core.engine.saga import SagaStatus
 
+from pythmata.core.engine.saga import SagaStatus
 from tests.conftest import BaseSagaTest, assert_saga_state
 
 
@@ -37,7 +37,9 @@ class TestSagaOrchestration(BaseSagaTest):
         result = await saga.execute()
 
         # Verify failure and compensation
-        await assert_saga_state(saga, SagaStatus.COMPENSATED, 1, compensation_required=True)
+        await assert_saga_state(
+            saga, SagaStatus.COMPENSATED, 1, compensation_required=True
+        )
         assert saga.steps[0].compensated  # First step should be compensated
         assert not saga.steps[1].completed  # Second step should have failed
         assert result.data and "error" in result.data

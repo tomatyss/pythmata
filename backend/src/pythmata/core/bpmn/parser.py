@@ -5,13 +5,7 @@ from xml.etree import ElementTree as ET
 
 from pythmata.core.bpmn.builders import BuilderFactory
 from pythmata.core.bpmn.validator import BPMNValidator
-from pythmata.core.types import (
-    DataObject,
-    Event,
-    EventType,
-    FlowNode,
-    SequenceFlow,
-)
+from pythmata.core.types import DataObject, Event, EventType, FlowNode, SequenceFlow
 
 
 class BPMNParser:

@@ -1,8 +1,8 @@
 from uuid import UUID
 
 import pytest
-from pythmata.core.engine.token import TokenState
 
+from pythmata.core.engine.token import TokenState
 from tests.conftest import BaseEngineTest, assert_token_state
 
 
@@ -16,7 +16,9 @@ class TestMultiInstance(BaseEngineTest):
 
         # Create process graph and initial token
         process_graph = self.create_multi_instance_flow(activity_id)
-        token = await self.setup_multi_instance_token(instance_id, activity_id, collection_data, is_parallel=True)
+        token = await self.setup_multi_instance_token(
+            instance_id, activity_id, collection_data, is_parallel=True
+        )
 
         # Create parallel instances
         instance_tokens = await self.executor.create_parallel_instances(token)
@@ -32,7 +34,12 @@ class TestMultiInstance(BaseEngineTest):
             assert instance_token.data["index"] == i
 
         # Verify tokens in storage
-        await assert_token_state(self.state_manager, instance_id, len(collection_data), [activity_id] * len(collection_data))
+        await assert_token_state(
+            self.state_manager,
+            instance_id,
+            len(collection_data),
+            [activity_id] * len(collection_data),
+        )
 
     async def test_sequential_instance_creation(self):
         """Test creation of sequential multi-instance activity."""
@@ -42,7 +49,9 @@ class TestMultiInstance(BaseEngineTest):
 
         # Create process graph and initial token
         process_graph = self.create_multi_instance_flow(activity_id)
-        token = await self.setup_multi_instance_token(instance_id, activity_id, collection_data, is_parallel=False)
+        token = await self.setup_multi_instance_token(
+            instance_id, activity_id, collection_data, is_parallel=False
+        )
 
         # Create first sequential instance
         instance_token = await self.executor.create_sequential_instance(token, 0)
@@ -67,7 +76,9 @@ class TestMultiInstance(BaseEngineTest):
 
         # Create process graph and initial token
         process_graph = self.create_multi_instance_flow(activity_id, next_task_id)
-        token = await self.setup_multi_instance_token(instance_id, activity_id, collection_data, is_parallel=False)
+        token = await self.setup_multi_instance_token(
+            instance_id, activity_id, collection_data, is_parallel=False
+        )
 
         # Create and complete first instance
         first_instance = await self.executor.create_sequential_instance(token, 0)
@@ -107,7 +118,9 @@ class TestMultiInstance(BaseEngineTest):
 
         # Create process graph and initial token
         process_graph = self.create_multi_instance_flow(activity_id, next_task_id)
-        token = await self.setup_multi_instance_token(instance_id, activity_id, collection_data, is_parallel=True)
+        token = await self.setup_multi_instance_token(
+            instance_id, activity_id, collection_data, is_parallel=True
+        )
 
         # Create parallel instances
         instance_tokens = await self.executor.create_parallel_instances(token)
@@ -119,7 +132,9 @@ class TestMultiInstance(BaseEngineTest):
 
         # Verify first instance completed but activity not complete
         stored_tokens = await self.state_manager.get_token_positions(instance_id)
-        completed = [t for t in stored_tokens if t["state"] == TokenState.COMPLETED.value]
+        completed = [
+            t for t in stored_tokens if t["state"] == TokenState.COMPLETED.value
+        ]
         active = [t for t in stored_tokens if t["state"] == TokenState.ACTIVE.value]
         assert len(completed) == 1
         assert len(active) == 1
@@ -147,7 +162,9 @@ class TestMultiInstance(BaseEngineTest):
 
         # Create process graph and initial token
         process_graph = self.create_multi_instance_flow(activity_id, next_task_id)
-        token = await self.setup_multi_instance_token(instance_id, activity_id, collection_data, is_parallel=True)
+        token = await self.setup_multi_instance_token(
+            instance_id, activity_id, collection_data, is_parallel=True
+        )
 
         # Attempt to create instances with empty collection
         token = await self.executor.handle_empty_collection(token, next_task_id)

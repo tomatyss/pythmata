@@ -256,11 +256,13 @@ class ArrayAccessExpression(Expression):
         array = self.array.evaluate(context)
         if array is None:
             return None  # Null-safe array access
-        
+
         index = self.index.evaluate(context)
         if not isinstance(index, (int, float)):
-            raise ExpressionEvalError(f"Array index must be a number, got {type(index)}")
-        
+            raise ExpressionEvalError(
+                f"Array index must be a number, got {type(index)}"
+            )
+
         try:
             return array[int(index)]
         except (IndexError, TypeError):
@@ -428,16 +430,23 @@ class ExpressionEvaluator:
                 return LiteralExpression(token.value), pos
             elif token.type == TokenType.IDENTIFIER:
                 expr = IdentifierExpression(token.value)
-                while pos < len(tokens) and (tokens[pos].type in (TokenType.DOT, TokenType.LBRACKET)):
+                while pos < len(tokens) and (
+                    tokens[pos].type in (TokenType.DOT, TokenType.LBRACKET)
+                ):
                     if tokens[pos].type == TokenType.DOT:
                         pos += 1
-                        if pos >= len(tokens) or tokens[pos].type != TokenType.IDENTIFIER:
+                        if (
+                            pos >= len(tokens)
+                            or tokens[pos].type != TokenType.IDENTIFIER
+                        ):
                             raise ExpressionSyntaxError("Expected identifier after dot")
                         expr = PropertyExpression(expr, tokens[pos].value)
                         pos += 1
                     else:  # LBRACKET
                         pos += 1
-                        index_expr, pos = parse_or(pos)  # Allow expressions in array indices
+                        index_expr, pos = parse_or(
+                            pos
+                        )  # Allow expressions in array indices
                         if pos >= len(tokens) or tokens[pos].type != TokenType.RBRACKET:
                             raise ExpressionSyntaxError("Expected closing bracket")
                         expr = ArrayAccessExpression(expr, index_expr)

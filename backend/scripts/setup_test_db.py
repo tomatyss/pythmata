@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """Script to set up the test database."""
 
-from pythmata.core.testing.config import (
-    POSTGRES_MAIN_DB,
-    POSTGRES_TEST_DB,
-    get_db_url,
-)
 import asyncio
 import logging
+
 import asyncpg
+
+from pythmata.core.testing.config import POSTGRES_MAIN_DB, POSTGRES_TEST_DB, get_db_url
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,10 +16,11 @@ logger = logging.getLogger(__name__)
 async def check_db_exists(db_name: str) -> bool:
     """Check if database exists."""
     try:
-        conn = await asyncpg.connect(get_db_url(database=POSTGRES_MAIN_DB, for_asyncpg=True))
+        conn = await asyncpg.connect(
+            get_db_url(database=POSTGRES_MAIN_DB, for_asyncpg=True)
+        )
         result = await conn.fetchrow(
-            "SELECT 1 FROM pg_database WHERE datname = $1",
-            db_name
+            "SELECT 1 FROM pg_database WHERE datname = $1", db_name
         )
         await conn.close()
         return bool(result)
@@ -41,7 +40,9 @@ async def create_test_database() -> None:
             return
 
         # Connect to default database to create test database
-        conn = await asyncpg.connect(get_db_url(database=POSTGRES_MAIN_DB, for_asyncpg=True))
+        conn = await asyncpg.connect(
+            get_db_url(database=POSTGRES_MAIN_DB, for_asyncpg=True)
+        )
         await conn.execute(f'CREATE DATABASE "{db_name}"')
         await conn.close()
         logger.info(f"Created database '{db_name}'")
@@ -59,6 +60,7 @@ async def main():
     except Exception as e:
         logger.error(f"Test database setup failed: {e}")
         raise
+
 
 if __name__ == "__main__":
     asyncio.run(main())

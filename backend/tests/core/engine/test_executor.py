@@ -1,8 +1,8 @@
 from uuid import UUID
 
 import pytest
-from pythmata.core.engine.token import TokenState
 
+from pythmata.core.engine.token import TokenState
 from tests.conftest import BaseEngineTest, assert_token_state
 
 

@@ -5,10 +5,7 @@ from typing import Any, Dict
 
 import pytest
 
-from pythmata.core.engine.expressions import (
-    ExpressionEvalError,
-    ExpressionSyntaxError,
-)
+from pythmata.core.engine.expressions import ExpressionEvalError, ExpressionSyntaxError
 
 
 def create_test_context(**kwargs) -> Dict[str, Any]:
@@ -17,15 +14,10 @@ def create_test_context(**kwargs) -> Dict[str, Any]:
         "amount": 1500,
         "status": "approved",
         "active": True,
-        "user": {
-            "role": "admin",
-            "settings": {"theme": "dark"}
-        },
+        "user": {"role": "admin", "settings": {"theme": "dark"}},
         "created_at": datetime.fromisoformat("2024-02-01T10:00:00"),
         "due_date": datetime.fromisoformat("2024-03-01"),
-        "order": {
-            "items": [{"price": 100}]
-        }
+        "order": {"items": [{"price": 100}]},
     }
     return {**base_context, **kwargs}
 
@@ -65,17 +57,30 @@ class TestExpressionEvaluator:
         """Test date comparisons."""
         context = create_test_context()
 
-        assert expression_evaluator.evaluate("${created_at < '2024-02-02'}", context) is True
-        assert expression_evaluator.evaluate("${due_date > '2024-02-01'}", context) is True
-        assert expression_evaluator.evaluate("${created_at != due_date}", context) is True
+        assert (
+            expression_evaluator.evaluate("${created_at < '2024-02-02'}", context)
+            is True
+        )
+        assert (
+            expression_evaluator.evaluate("${due_date > '2024-02-01'}", context) is True
+        )
+        assert (
+            expression_evaluator.evaluate("${created_at != due_date}", context) is True
+        )
 
     def test_nested_object_access(self, expression_evaluator):
         """Test nested object property access."""
         context = create_test_context()
 
         assert expression_evaluator.evaluate("${user.role == 'admin'}", context) is True
-        assert expression_evaluator.evaluate("${user.settings.theme == 'dark'}", context) is True
-        assert expression_evaluator.evaluate("${order.items[0].price == 100}", context) is True
+        assert (
+            expression_evaluator.evaluate("${user.settings.theme == 'dark'}", context)
+            is True
+        )
+        assert (
+            expression_evaluator.evaluate("${order.items[0].price == 100}", context)
+            is True
+        )
 
     def test_null_handling(self, expression_evaluator):
         """Test null value handling."""
@@ -97,14 +102,20 @@ class TestExpressionEvaluator:
         """Test complex expressions with multiple operators."""
         context = create_test_context(priority="high")
 
-        assert expression_evaluator.evaluate(
-            "${amount > 1000 && (status == 'approved' || priority == 'high')}",
-            context
-        ) is True
-        assert expression_evaluator.evaluate(
-            "${user.role == 'admin' && amount >= 1000 && status == 'approved'}",
-            context
-        ) is True
+        assert (
+            expression_evaluator.evaluate(
+                "${amount > 1000 && (status == 'approved' || priority == 'high')}",
+                context,
+            )
+            is True
+        )
+        assert (
+            expression_evaluator.evaluate(
+                "${user.role == 'admin' && amount >= 1000 && status == 'approved'}",
+                context,
+            )
+            is True
+        )
 
     def test_error_handling(self, expression_evaluator):
         """Test error handling for invalid expressions."""

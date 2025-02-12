@@ -5,9 +5,9 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.transaction import Transaction
 from pythmata.core.state import StateManager
-from pythmata.api.schemas import ProcessVariableValue
 from pythmata.models.process import (
     ProcessDefinition,
     ProcessInstance,
@@ -160,7 +160,9 @@ class ProcessInstanceManager:
             elif var_type == "float" and not isinstance(var_value, (int, float)):
                 raise InvalidVariableError(f"Value for {name} must be a number")
             elif var_type == "json" and not isinstance(var_value, (dict, list)):
-                raise InvalidVariableError(f"Value for {name} must be a JSON object or array")
+                raise InvalidVariableError(
+                    f"Value for {name} must be a JSON object or array"
+                )
 
             # Store in database
             variable = Variable(
@@ -176,7 +178,7 @@ class ProcessInstanceManager:
             await self.state_manager.set_variable(
                 instance_id=str(instance.id),
                 name=name,
-                variable=ProcessVariableValue(type=var_type, value=var_value)
+                variable=ProcessVariableValue(type=var_type, value=var_value),
             )
 
     async def suspend_instance(self, instance_id: UUID) -> ProcessInstance:

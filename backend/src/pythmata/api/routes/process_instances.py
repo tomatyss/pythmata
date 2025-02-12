@@ -10,17 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import and_
 
-from pythmata.api.dependencies import (
-    get_session,
-    get_instance_manager,
-)
+from pythmata.api.dependencies import get_instance_manager, get_session
 from pythmata.api.schemas import (
     ApiResponse,
     PaginatedResponse,
     ProcessInstanceCreate,
     ProcessInstanceResponse,
 )
-from pythmata.core.engine.instance import ProcessInstanceManager, ProcessInstanceError
+from pythmata.core.engine.instance import ProcessInstanceError, ProcessInstanceManager
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
@@ -163,10 +160,7 @@ async def create_instance(
         variables = {}
         if data.variables:
             variables = {
-                name: {
-                    "type": var.type,
-                    "value": var.value
-                }
+                name: {"type": var.type, "value": var.value}
                 for name, var in data.variables.items()
             }
 

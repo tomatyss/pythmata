@@ -62,7 +62,17 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         # If all required settings are provided, skip TOML loading
-        if all(key in kwargs for key in ["server", "database", "redis", "rabbitmq", "security", "process"]):
+        if all(
+            key in kwargs
+            for key in [
+                "server",
+                "database",
+                "redis",
+                "rabbitmq",
+                "security",
+                "process",
+            ]
+        ):
             super().__init__(**kwargs)
             return
 

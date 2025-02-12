@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.core.config import get_settings
 from pythmata.core.database import get_db
-from pythmata.core.events import EventBus
-from pythmata.core.state import StateManager
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.instance import ProcessInstanceManager
+from pythmata.core.events import EventBus
+from pythmata.core.state import StateManager
 
 _event_bus: Optional[EventBus] = None
 _instance_manager: Optional[ProcessInstanceManager] = None
@@ -59,7 +59,7 @@ async def get_instance_manager(
     if not _instance_manager:
         # Create ProcessExecutor first
         executor = ProcessExecutor(state_manager=state_manager)
-        
+
         _instance_manager = ProcessInstanceManager(
             session=session,
             executor=executor,

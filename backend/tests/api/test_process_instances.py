@@ -172,13 +172,10 @@ async def test_create_instance(
             "variables": {
                 "order_data": {
                     "type": "json",
-                    "value": {
-                        "id": "test-order",
-                        "amount": 99.99
-                    }
+                    "value": {"id": "test-order", "amount": 99.99},
                 }
-            }
-        }
+            },
+        },
     )
     assert response.status_code == 200
     data = response.json()["data"]
@@ -213,10 +210,7 @@ async def test_create_instance_with_engine(
     # Create instance with variables
     response = await async_client.post(
         "/instances",
-        json={
-            "definition_id": str(process_definition.id),
-            "variables": variables
-        }
+        json={"definition_id": str(process_definition.id), "variables": variables},
     )
     assert response.status_code == 200
     data = response.json()["data"]

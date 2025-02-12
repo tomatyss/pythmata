@@ -1,9 +1,9 @@
 from uuid import UUID
 
 import pytest
+
 from pythmata.core.engine.token import TokenState
 from pythmata.core.types import Event, EventType
-
 from tests.conftest import BaseEngineTest
 
 
@@ -47,7 +47,9 @@ class TestBasicSubprocess(BaseEngineTest):
         subprocess_token = await self.executor.enter_subprocess(token, subprocess_id)
 
         # Exit subprocess
-        parent_token = await self.executor.exit_subprocess(subprocess_token, next_task_id)
+        parent_token = await self.executor.exit_subprocess(
+            subprocess_token, next_task_id
+        )
 
         # Verify token returned to parent scope
         assert parent_token is not None
@@ -76,16 +78,16 @@ class TestBasicSubprocess(BaseEngineTest):
 
         # Create end event in subprocess scope
         end_event = Event(id=subprocess_end_id, type="event", event_type=EventType.END)
-        
+
         # Move to subprocess end event while maintaining scope
         end_token = await self.executor.move_token(subprocess_token, subprocess_end_id)
         await self.state_manager.update_token_state(
             instance_id=end_token.instance_id,
             node_id=end_token.node_id,
             state=TokenState.ACTIVE,
-            scope_id=subprocess_id
+            scope_id=subprocess_id,
         )
-        
+
         # Complete subprocess
         parent_token = await self.executor.complete_subprocess(end_token, next_task_id)
 
@@ -103,5 +105,7 @@ class TestBasicSubprocess(BaseEngineTest):
         assert stored_tokens[0]["scope_id"] is None
 
         # Verify subprocess scope is cleaned up
-        subprocess_tokens = await self.state_manager.get_scope_tokens(instance_id, subprocess_id)
+        subprocess_tokens = await self.state_manager.get_scope_tokens(
+            instance_id, subprocess_id
+        )
         assert len(subprocess_tokens) == 0

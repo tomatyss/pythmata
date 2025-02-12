@@ -39,6 +39,7 @@ class StateManager:
             RuntimeError: If connection fails after all retries
         """
         import asyncio
+
         last_error = None
 
         for attempt in range(max_retries):
@@ -61,10 +62,14 @@ class StateManager:
                     )
                     await asyncio.sleep(retry_delay)
                 else:
-                    logger.error(f"Failed to connect to Redis after {max_retries} attempts: {e}")
+                    logger.error(
+                        f"Failed to connect to Redis after {max_retries} attempts: {e}"
+                    )
 
         # If we get here, all retries failed
-        raise RuntimeError(f"Failed to connect to Redis after {max_retries} attempts") from last_error
+        raise RuntimeError(
+            f"Failed to connect to Redis after {max_retries} attempts"
+        ) from last_error
 
     async def disconnect(self) -> None:
         """Close Redis connection."""
@@ -201,16 +206,17 @@ class StateManager:
         """
         key = f"process:{instance_id}:tokens"
         scope_id = data.get("scope_id") if data else None
-        
+
         # Get existing tokens
         tokens = await self.get_token_positions(instance_id)
-        
+
         # Remove any existing token at the same node and scope
         new_tokens = [
-            token for token in tokens
+            token
+            for token in tokens
             if token["node_id"] != node_id or token.get("scope_id") != scope_id
         ]
-        
+
         # Create new token
         new_token = {
             "instance_id": instance_id,
@@ -221,7 +227,7 @@ class StateManager:
             "scope_id": scope_id,
         }
         new_tokens.append(new_token)
-        
+
         # Replace token list
         await self.redis.delete(key)
         if new_tokens:
