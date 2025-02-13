@@ -39,7 +39,7 @@
   - [ ] Add validation rules and defaults
 
 
-## 4a. Schema Improvements
+## 4. Schema Improvements
 - [ ] Enhance schema validation
   - [ ] Add BPMN XML structure validation
   - [ ] Add field constraints (string lengths, version numbers)
@@ -65,7 +65,7 @@
   - [ ] Define validation error messages
   - [ ] Document schema relationships
 
-## 7. Version Control System
+## 5. Version Control System
 - [ ] Create dedicated versioning service
   - [ ] Implement version management logic
   - [ ] Add version conflict resolution
@@ -75,7 +75,7 @@
   - [ ] Track version dependencies
   - [ ] Add version validation rules
 
-## 8. Type Safety Improvements
+## 6. Type Safety Improvements
 - [ ] Ensure type consistency
   - [ ] Generate TypeScript types from backend schemas
   - [ ] Add runtime type validation
@@ -87,7 +87,7 @@
   - [ ] Enable strict TypeScript checks
   - [ ] Add Python type hints
 
-## 9. Authentication System
+## 7. Authentication System
 - [ ] Implement authentication
   - [ ] Add JWT authentication
   - [ ] Implement refresh token logic
@@ -101,23 +101,6 @@
   - [ ] Implement request validation
   - [ ] Add security headers
 
-## 10. Testing Infrastructure
-- [x] Add unit tests
-  - [x] Backend route tests
-  - [x] Service layer tests
-  - [x] Frontend component tests
-- [x] Add integration tests
-  - [x] API integration tests
-  - [x] Database integration tests
-  - [x] Frontend integration tests
-- [ ] Add end-to-end tests
-  - [ ] Critical path tests
-  - [ ] Performance tests
-  - [ ] Load tests
-- [x] Setup CI/CD pipeline
-  - [x] Add automated testing
-  - [ ] Add code coverage reporting
-  - [ ] Implement deployment automation
 
 ## 11. BPMN Engine Core
 - [x] Implement BPMN parser and validator

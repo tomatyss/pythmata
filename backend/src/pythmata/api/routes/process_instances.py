@@ -10,7 +10,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import and_
 
-from pythmata.api.dependencies import get_instance_manager, get_session
+from pythmata.api.dependencies import get_event_bus, get_instance_manager, get_session
+from pythmata.core.events import EventBus
 from pythmata.api.schemas import (
     ApiResponse,
     PaginatedResponse,
@@ -131,6 +132,7 @@ async def create_instance(
     data: ProcessInstanceCreate,
     session: AsyncSession = Depends(get_session),
     instance_manager: ProcessInstanceManager = Depends(get_instance_manager),
+    event_bus: EventBus = Depends(get_event_bus),
 ):
     """Create a new process instance."""
     try:
@@ -191,13 +193,29 @@ async def create_instance(
                 variables=variables,
             )
             logger.info("Process execution started successfully")
+
+            # Commit the transaction to save the instance
+            await session.commit()
+            logger.info("Process instance committed to database")
+
+            # Publish process.started event
+            await event_bus.publish(
+                "process.started",
+                {
+                    "instance_id": str(instance.id),
+                    "definition_id": str(instance.definition_id),
+                    "bpmn_xml": definition.bpmn_xml,
+                },
+            )
+            logger.info("Published process.started event")
+
         except Exception as e:
+            await session.rollback()
             logger.error(f"Failed to start process execution: {str(e)}")
             raise HTTPException(
                 status_code=500, detail=f"Failed to start process: {str(e)}"
             )
 
-        # Let the test session handle the commit/rollback
         return {"data": instance}
     except HTTPException:
         raise
