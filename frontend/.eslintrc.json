@@ -17,7 +17,13 @@
     "dist",
     ".eslintrc.json",
     "coverage",
-    "node_modules"
+    "node_modules",
+    "*.config.js",
+    "*.config.mjs",
+    "vite.config.ts",
+    "jest.config.js",
+    "tailwind.config.js",
+    "eslint.config.mjs"
   ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
@@ -26,7 +32,8 @@
     "project": ["./tsconfig.json", "./tsconfig.node.json"],
     "ecmaFeatures": {
       "jsx": true
-    }
+    },
+    "createDefaultProgram": true
   },
   "plugins": [
     "react-refresh",
@@ -59,5 +66,14 @@
     "react": {
       "version": "detect"
     }
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "@typescript-eslint/no-require-imports": "off",
+        "no-console": "off"
+      }
+    }
+  ]
 }

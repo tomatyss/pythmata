@@ -18,34 +18,28 @@ jest.mock('./components/Layout', () => ({
 
 // Mock page components
 jest.mock('./pages/Dashboard');
-jest.mock('./pages/ProcessList', () => {
-  const React = require('react');
-  return function ProcessList() {
-    return React.createElement('div', null, 'Process List Mock');
-  };
-});
-jest.mock('./pages/ProcessDesigner', () => {
-  const React = require('react');
-  return function ProcessDesigner() {
-    return React.createElement('div', null, 'Process Designer Mock');
-  };
-});
-jest.mock('./pages/ProcessInstance', () => {
-  const React = require('react');
-  return function ProcessInstance() {
-    return React.createElement('div', null, 'Process Instance Mock');
-  };
-});
-jest.mock('./pages/NotFound', () => {
-  const React = require('react');
-  return function NotFound() {
-    return React.createElement('div', null, 'Not Found Mock');
-  };
-});
+jest.mock('./pages/ProcessList', () => ({
+  __esModule: true,
+  default: () => <div>Process List Mock</div>,
+}));
+
+jest.mock('./pages/ProcessDesigner', () => ({
+  __esModule: true,
+  default: () => <div>Process Designer Mock</div>,
+}));
+
+jest.mock('./pages/ProcessInstance', () => ({
+  __esModule: true,
+  default: () => <div>Process Instance Mock</div>,
+}));
+
+jest.mock('./pages/NotFound', () => ({
+  __esModule: true,
+  default: () => <div>Not Found Mock</div>,
+}));
 
 // Mock MUI components
 jest.mock('@mui/material', () => {
-  const React = require('react');
   const actual = jest.requireActual('@mui/material');
   return {
     ...actual,

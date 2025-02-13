@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { ApiError } from '@/lib/errors';
 import {
   ApiResponse,
   PaginatedResponse,
@@ -27,12 +28,16 @@ class ApiService {
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
-        // Handle specific error cases
-        if (error.response?.status === 401) {
-          // Handle unauthorized
-          console.error('Unauthorized access');
+        if (error.response) {
+          const message =
+            error.response.data.detail || error.message || 'An error occurred';
+          throw new ApiError(
+            message,
+            error.response.status,
+            error.response.data
+          );
         }
-        return Promise.reject(error);
+        throw new ApiError('Network error', 500);
       }
     );
   }

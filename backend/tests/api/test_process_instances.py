@@ -7,6 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.routes import router
+from pythmata.api.schemas import ProcessVariableDefinition
 from pythmata.models.process import (
     ProcessDefinition,
     ProcessInstance,
@@ -26,6 +27,15 @@ async def process_definition(session: AsyncSession) -> ProcessDefinition:
         name="Test Process",
         bpmn_xml="<xml></xml>",
         version=1,
+        variable_definitions=[
+            ProcessVariableDefinition(
+                name="order_data",
+                type="json",
+                label="Order Data",
+                required=True,
+                description="Order information",
+            ).model_dump()
+        ],
     )
     session.add(definition)
     await session.commit()

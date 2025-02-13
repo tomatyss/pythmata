@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import JSON, DateTime
 from sqlalchemy import Enum as SQLAEnum
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -25,6 +25,25 @@ class ProcessStatus(str, Enum):
     ERROR = "ERROR"
 
 
+class ProcessVariableDefinition(TypeDecorator):
+    """Custom type for process variable definitions."""
+
+    impl = JSON
+    cache_ok = True
+
+    def process_bind_param(self, value: Optional[List[Dict[str, Any]]], dialect):
+        """Convert Python object to JSON string."""
+        if value is None:
+            return []
+        return value
+
+    def process_result_value(self, value: Any, dialect) -> List[Dict[str, Any]]:
+        """Convert JSON string to Python object."""
+        if value is None:
+            return []
+        return value
+
+
 class ProcessDefinition(Base):
     """BPMN process definition."""
 
@@ -32,6 +51,9 @@ class ProcessDefinition(Base):
 
     id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    variable_definitions: Mapped[List[Dict[str, Any]]] = mapped_column(
+        ProcessVariableDefinition, nullable=False, default=list
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     version: Mapped[int] = mapped_column(nullable=False)
