@@ -82,7 +82,7 @@ const ProcessList = () => {
         };
 
         const response = await apiService.startProcessInstance(payload);
-        navigate(`/instances/${response.data.id}`);
+        navigate(`/processes/${process.id}/instances/${response.data.id}`);
       } catch (error) {
         console.error('Failed to start process:', error);
         if (error instanceof Error) {
@@ -107,7 +107,9 @@ const ProcessList = () => {
         definition_id: selectedProcess.id,
         variables,
       });
-      navigate(`/instances/${response.data.id}`);
+      navigate(
+        `/processes/${selectedProcess.id}/instances/${response.data.id}`
+      );
     } catch (error) {
       if (error instanceof Error) {
         alert(error.message);

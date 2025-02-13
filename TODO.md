@@ -1,18 +1,6 @@
 # Architecture Improvements TODO
 
-## 1. API Endpoint Alignment
-- [ ] Implement missing `/instances` endpoints in backend
-  - [ ] GET `/instances` with pagination and filtering
-  - [ ] GET `/instances/{id}`
-  - [ ] POST `/instances` for process instance creation
-  - [ ] POST `/instances/{id}/suspend` and `/instances/{id}/resume`
-- [ ] Implement `/stats` endpoint for process statistics
-- [ ] Add script management endpoints
-  - [ ] GET `/processes/{processDefId}/scripts`
-  - [ ] GET `/processes/{processDefId}/scripts/{nodeId}`
-  - [ ] PUT `/processes/{processDefId}/scripts/{nodeId}`
-
-## 2. Error Handling & Logging
+## 1. Error Handling & Logging
 - [ ] Standardize error handling across backend
   - [ ] Apply `log_error` decorator consistently to all route handlers
   - [ ] Create error response schema with consistent structure
@@ -26,7 +14,7 @@
   - [ ] Add request/response logging middleware
   - [ ] Implement audit logging for critical operations
 
-## 3. Database Connection Management
+## 2. Database Connection Management
 - [ ] Implement connection pooling
   - [ ] Configure optimal pool size based on load
   - [ ] Add connection timeout settings
@@ -38,7 +26,7 @@
   - [ ] Create connection pool metrics
   - [ ] Add query performance tracking
 
-## 4. Configuration Management
+## 3. Configuration Management
 - [ ] Create environment-specific configurations
   - [ ] Add .env files for different environments
   - [ ] Move hardcoded values to configuration
@@ -50,25 +38,8 @@
   - [ ] Document all configuration options
   - [ ] Add validation rules and defaults
 
-## 5. API Response Standardization
-- [ ] Fix nested response structure issue
-  - [ ] Remove redundant data wrapping (`{data: {data: ...}}`)
-  - [ ] Standardize success response format to `{data: T, message?: string}`
-  - [ ] Standardize error response format to `{error: string, message: string}`
-- [ ] Update backend response handling
-  - [ ] Modify FastAPI response_model usage
-  - [ ] Update route handlers to return correct structure
-  - [ ] Implement consistent error response handling
-- [ ] Update frontend response handling
-  - [ ] Update ApiResponse type definition
-  - [ ] Modify axios interceptor for proper response handling
-  - [ ] Update service methods to handle new structure
-- [ ] Add response documentation
-  - [ ] Document response formats with examples
-  - [ ] Add error code documentation
-  - [ ] Document pagination structure
 
-## 6a. Schema Improvements
+## 4a. Schema Improvements
 - [ ] Enhance schema validation
   - [ ] Add BPMN XML structure validation
   - [ ] Add field constraints (string lengths, version numbers)

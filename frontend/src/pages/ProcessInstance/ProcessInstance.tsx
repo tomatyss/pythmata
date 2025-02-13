@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import apiService from '@/services/api';
 import {
   Box,
   Card,
@@ -49,50 +50,24 @@ const ProcessInstance = () => {
   const [instance, setInstance] = useState<ProcessInstanceDetails | null>(null);
 
   useEffect(() => {
-    const fetchInstance = async () => {
+    const fetchInstanceData = async () => {
+      if (!instanceId) return;
+
       try {
-        // TODO: Fetch actual instance data from API
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setLoading(true);
+        const response = await apiService.getProcessInstance(instanceId);
+        const instanceData = response.data;
+
         setInstance({
-          id: instanceId || '',
-          definitionId: 'def-1',
-          definitionName: 'Order Processing',
-          status: 'RUNNING',
-          startTime: '2025-01-31T10:00:00Z',
-          variables: [
-            {
-              name: 'orderId',
-              value: '12345',
-              type: 'string',
-              scope: 'global',
-              updatedAt: '2025-01-31T10:00:00Z',
-            },
-            {
-              name: 'amount',
-              value: 99.99,
-              type: 'number',
-              scope: 'global',
-              updatedAt: '2025-01-31T10:00:00Z',
-            },
-          ],
-          activities: [
-            {
-              id: 'act-1',
-              type: 'startEvent',
-              nodeId: 'StartEvent_1',
-              status: 'completed',
-              timestamp: '2025-01-31T10:00:00Z',
-            },
-            {
-              id: 'act-2',
-              type: 'serviceTask',
-              nodeId: 'Task_1',
-              status: 'running',
-              timestamp: '2025-01-31T10:01:00Z',
-              details: 'Processing order validation',
-            },
-          ],
+          id: instanceData.id,
+          definitionId: instanceData.definitionId,
+          definitionName: instanceData.definitionName,
+          status: instanceData.status,
+          startTime: instanceData.startTime,
+          endTime: instanceData.endTime,
+          // For now, show empty arrays until API endpoints are available
+          variables: [],
+          activities: [],
         });
       } catch (error) {
         console.error('Failed to fetch instance:', error);
@@ -101,7 +76,7 @@ const ProcessInstance = () => {
       }
     };
 
-    fetchInstance();
+    fetchInstanceData();
   }, [instanceId]);
 
   if (loading || !instance) {
