@@ -131,7 +131,9 @@ describe('ProcessList', () => {
     });
 
     // Verify navigation
-    expect(mockNavigate).toHaveBeenCalledWith('/instances/instance-1');
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/processes/1/instances/instance-1'
+    );
   });
 
   it('handles process start error', async () => {

@@ -32,18 +32,23 @@ describe('ProcessDesigner', () => {
     updated_at: '2024-02-06T00:00:00Z',
   };
 
+  // Mock window.alert before all tests
+  const mockAlert = jest.fn();
+  const originalAlert = window.alert;
+
   beforeEach(() => {
     // Clear all mocks before each test
     jest.clearAllMocks();
-    // Reset useNavigate mock
-    (useNavigate as jest.Mock).mockReset();
+    // Reset useNavigate mock and provide default implementation
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    // Set up window.alert mock
+    window.alert = mockAlert;
   });
 
   afterEach(() => {
-    // Restore window.alert if it was mocked
-    if (global.alert !== window.alert) {
-      global.alert = window.alert;
-    }
+    // Restore window.alert after each test
+    window.alert = originalAlert;
   });
 
   it('loads existing process when editing', async () => {
@@ -97,7 +102,7 @@ describe('ProcessDesigner', () => {
   });
 
   it('initializes with empty diagram for new process', async () => {
-    const BpmnModeler = require('bpmn-js/lib/Modeler');
+    const { default: BpmnModeler } = await import('bpmn-js/lib/Modeler');
 
     render(
       <MemoryRouter initialEntries={['/processes/new']}>
@@ -161,7 +166,7 @@ describe('ProcessDesigner', () => {
   });
 
   it('cleans up modeler on unmount', async () => {
-    const BpmnModeler = require('bpmn-js/lib/Modeler');
+    const { default: BpmnModeler } = await import('bpmn-js/lib/Modeler');
     const destroyMock = jest.fn();
 
     // Setup modeler mock with destroy function
@@ -275,10 +280,6 @@ describe('ProcessDesigner', () => {
   it('shows error when save fails', async () => {
     const user = userEvent.setup();
     const mockError = new Error('Save failed');
-    const alertMock = jest.fn();
-
-    // Mock window.alert before rendering
-    global.alert = alertMock;
 
     // Mock the API calls
     (apiService.getProcessDefinition as jest.Mock).mockResolvedValueOnce({
@@ -307,11 +308,9 @@ describe('ProcessDesigner', () => {
 
     // Wait for and verify error alert
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith(
+      expect(mockAlert).toHaveBeenCalledWith(
         expect.stringContaining('Failed to save process')
       );
     });
-
-    // Alert cleanup is handled in afterEach
   });
 });
