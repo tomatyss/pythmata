@@ -136,13 +136,19 @@ class ProcessInstanceManager:
             InvalidVariableError: If variable data is invalid
         """
         for name, data in variables.items():
-            if not isinstance(data, dict) or "type" not in data or "value" not in data:
+            # Handle ProcessVariableValue format from API
+            if isinstance(data, dict) and "value_type" in data and "value_data" in data:
+                # Data is already in storage format
+                var_type = data["value_type"]
+                var_value = data["value_data"]
+            elif isinstance(data, dict) and "type" in data and "value" in data:
+                # Data is in API format
+                var_type = data["type"]
+                var_value = data["value"]
+            else:
                 raise InvalidVariableError(
-                    f"Invalid variable format for {name}. Expected {{'type': str, 'value': any}}"
+                    f"Invalid variable format for {name}. Expected ProcessVariableValue format."
                 )
-
-            var_type = data["type"]
-            var_value = data["value"]
 
             if var_type not in self.VALID_VARIABLE_TYPES:
                 raise InvalidVariableError(
@@ -164,12 +170,12 @@ class ProcessInstanceManager:
                     f"Value for {name} must be a JSON object or array"
                 )
 
-            # Store in database
+            # Store in database - store raw value without wrapping
             variable = Variable(
                 instance_id=instance.id,
                 name=name,
                 value_type=var_type,
-                value_data={"value": var_value},
+                value_data=var_value,
                 version=1,
             )
             self.session.add(variable)
@@ -362,7 +368,7 @@ class ProcessInstanceManager:
         result = await self.session.execute(query)
         variables = result.scalars().all()
 
-        return {var.name: var.value_data["value"] for var in variables}
+        return {var.name: var.value_data for var in variables}
 
     async def start_instance(
         self,

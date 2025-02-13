@@ -30,6 +30,17 @@ describe('ProcessList', () => {
           bpmn_xml: '<xml></xml>',
           createdAt: '2025-02-06T12:00:00Z',
           updatedAt: '2025-02-06T12:00:00Z',
+          variable_definitions: [
+            {
+              name: 'amount',
+              type: 'number' as const,
+              required: true,
+              label: 'Amount',
+              validation: {
+                min: 0,
+              },
+            },
+          ],
         },
       ],
       total: 1,
@@ -109,10 +120,12 @@ describe('ProcessList', () => {
     // Verify API call
     await waitFor(() => {
       expect(mockedApiService.startProcessInstance).toHaveBeenCalledWith({
-        definitionId: '1',
+        definition_id: '1',
         variables: {
-          order_id: expect.any(String),
-          amount: 99.99,
+          amount: {
+            type: 'number',
+            value: 99.99,
+          },
         },
       });
     });
@@ -151,9 +164,7 @@ describe('ProcessList', () => {
 
     // Verify error handling
     await waitFor(() => {
-      expect(mockAlert).toHaveBeenCalledWith(
-        'Failed to start process. Please try again.'
-      );
+      expect(mockAlert).toHaveBeenCalledWith('Failed to start process');
     });
   });
 });

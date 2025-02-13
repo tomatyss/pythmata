@@ -4,6 +4,18 @@ import ProcessVariablesDialog from './ProcessVariablesDialog';
 describe('ProcessVariablesDialog', () => {
   const mockOnClose = jest.fn();
   const mockOnSubmit = jest.fn();
+  const mockProcessId = 'test-process';
+  const mockVariableDefinitions = [
+    {
+      name: 'amount',
+      type: 'number' as const,
+      required: true,
+      label: 'Amount',
+      validation: {
+        min: 0,
+      },
+    },
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -13,6 +25,8 @@ describe('ProcessVariablesDialog', () => {
     render(
       <ProcessVariablesDialog
         open={true}
+        processId={mockProcessId}
+        variableDefinitions={mockVariableDefinitions}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
       />
@@ -26,6 +40,8 @@ describe('ProcessVariablesDialog', () => {
     render(
       <ProcessVariablesDialog
         open={true}
+        processId={mockProcessId}
+        variableDefinitions={mockVariableDefinitions}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
       />
@@ -37,9 +53,7 @@ describe('ProcessVariablesDialog', () => {
     });
     fireEvent.click(screen.getByText('Start'));
 
-    expect(
-      screen.getByText('Please enter a valid amount greater than 0')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Value must be at least 0')).toBeInTheDocument();
     expect(mockOnSubmit).not.toHaveBeenCalled();
   });
 
@@ -47,6 +61,8 @@ describe('ProcessVariablesDialog', () => {
     render(
       <ProcessVariablesDialog
         open={true}
+        processId={mockProcessId}
+        variableDefinitions={mockVariableDefinitions}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
       />
@@ -59,8 +75,10 @@ describe('ProcessVariablesDialog', () => {
     fireEvent.click(screen.getByText('Start'));
 
     expect(mockOnSubmit).toHaveBeenCalledWith({
-      order_id: expect.any(String),
-      amount: 99.99,
+      amount: {
+        type: 'number',
+        value: 99.99,
+      },
     });
   });
 
@@ -68,6 +86,8 @@ describe('ProcessVariablesDialog', () => {
     render(
       <ProcessVariablesDialog
         open={true}
+        processId={mockProcessId}
+        variableDefinitions={mockVariableDefinitions}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
       />
@@ -81,6 +101,8 @@ describe('ProcessVariablesDialog', () => {
     const { rerender } = render(
       <ProcessVariablesDialog
         open={true}
+        processId={mockProcessId}
+        variableDefinitions={mockVariableDefinitions}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
       />
@@ -95,6 +117,8 @@ describe('ProcessVariablesDialog', () => {
     rerender(
       <ProcessVariablesDialog
         open={false}
+        processId={mockProcessId}
+        variableDefinitions={mockVariableDefinitions}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
       />
@@ -104,6 +128,8 @@ describe('ProcessVariablesDialog', () => {
     rerender(
       <ProcessVariablesDialog
         open={true}
+        processId={mockProcessId}
+        variableDefinitions={mockVariableDefinitions}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
       />

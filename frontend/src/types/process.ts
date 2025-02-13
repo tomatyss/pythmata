@@ -1,9 +1,28 @@
+// Variable Definition Types
+export interface ProcessVariableValidation {
+  min?: number;
+  max?: number;
+  pattern?: string;
+  options?: (string | number)[];
+}
+
+export interface ProcessVariableDefinition {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'date';
+  required: boolean;
+  defaultValue?: string | number | boolean | Date;
+  validation?: ProcessVariableValidation;
+  label: string;
+  description?: string;
+}
+
 // Process Definition Types
 export interface ProcessDefinition {
   id: string;
   name: string;
   version: number;
   bpmn_xml: string;
+  variable_definitions: ProcessVariableDefinition[];
   createdAt: string;
   updatedAt: string;
 }
@@ -102,17 +121,24 @@ export interface CreateProcessDefinitionRequest {
   name: string;
   bpmn_xml: string;
   version?: number; // Optional, defaults to 1
+  variable_definitions?: ProcessVariableDefinition[];
 }
 
 export interface UpdateProcessDefinitionRequest {
   name?: string;
   bpmn_xml?: string;
   version?: number; // Optional, auto-increments if not provided
+  variable_definitions?: ProcessVariableDefinition[];
+}
+
+export interface ProcessVariableValue {
+  type: 'string' | 'number' | 'boolean' | 'date';
+  value: string | number | boolean | Date | null;
 }
 
 export interface StartProcessInstanceRequest {
-  definitionId: string;
-  variables?: Record<string, string | number | boolean | null>;
+  definition_id: string; // Match backend's snake_case
+  variables?: Record<string, ProcessVariableValue>;
 }
 
 export interface UpdateScriptRequest {

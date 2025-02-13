@@ -10,8 +10,15 @@ import {
   TextField,
   CircularProgress,
   Typography,
+  Drawer,
+  IconButton,
 } from '@mui/material';
-import { Save as SaveIcon } from '@mui/icons-material';
+import {
+  Save as SaveIcon,
+  Settings as SettingsIcon,
+} from '@mui/icons-material';
+import VariableDefinitionsPanel from '@/components/shared/VariableDefinitionsPanel/VariableDefinitionsPanel';
+import { ProcessVariableDefinition } from '@/types/process';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
@@ -45,14 +52,20 @@ const ProcessDesigner = () => {
   const [bpmnXml, setBpmnXml] = useState(emptyBpmn);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [variableDefinitions, setVariableDefinitions] = useState<
+    ProcessVariableDefinition[]
+  >([]);
 
   useEffect(() => {
     const loadProcess = async () => {
       if (id) {
         try {
           const response = await apiService.getProcessDefinition(id);
-          setProcessName(response.data.name);
-          setBpmnXml(response.data.bpmn_xml);
+          const { name, bpmn_xml, variable_definitions } = response.data;
+          setProcessName(name);
+          setBpmnXml(bpmn_xml);
+          setVariableDefinitions(variable_definitions || []);
         } catch (error) {
           console.error('Failed to load process:', error);
           setError('Failed to load process. Please try again.');
@@ -113,6 +126,7 @@ const ProcessDesigner = () => {
         await apiService.updateProcessDefinition(id, {
           name: processName,
           bpmn_xml: xml,
+          variable_definitions: variableDefinitions,
         });
       } else {
         // Create new process
@@ -120,6 +134,7 @@ const ProcessDesigner = () => {
           name: processName,
           bpmn_xml: xml,
           version: 1,
+          variable_definitions: variableDefinitions,
         });
       }
 
@@ -171,6 +186,13 @@ const ProcessDesigner = () => {
             placeholder="Process Name"
             sx={{ flexGrow: 1 }}
           />
+          <IconButton
+            color="primary"
+            onClick={() => setDrawerOpen(true)}
+            title="Process Settings"
+          >
+            <SettingsIcon />
+          </IconButton>
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
@@ -199,6 +221,23 @@ const ProcessDesigner = () => {
           }}
         />
       </Paper>
+
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: '400px',
+            p: 3,
+          },
+        }}
+      >
+        <VariableDefinitionsPanel
+          variables={variableDefinitions}
+          onChange={setVariableDefinitions}
+        />
+      </Drawer>
     </Box>
   );
 };

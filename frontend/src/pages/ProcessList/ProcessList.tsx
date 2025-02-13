@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '@/services/api';
+import { ProcessVariableDefinition } from '@/components/shared/ProcessVariablesDialog/ProcessVariablesDialog';
 import {
   Box,
   Button,
@@ -33,15 +34,14 @@ interface Process {
   activeInstances: number;
   totalInstances: number;
   lastModified: string;
+  variableDefinitions: ProcessVariableDefinition[];
 }
 
 const ProcessList = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [processes, setProcesses] = useState<Process[]>([]);
-  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(
-    null
-  );
+  const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -56,6 +56,7 @@ const ProcessList = () => {
             activeInstances: 0,
             totalInstances: 0,
             lastModified: process.updatedAt,
+            variableDefinitions: process.variable_definitions || [],
           }))
         );
       } catch {
@@ -68,22 +69,51 @@ const ProcessList = () => {
     fetchProcesses();
   }, []);
 
-  const handleStartProcess = (processId: string) => {
-    setSelectedProcessId(processId);
+  const handleStartProcess = async (process: Process) => {
+    if (
+      !process.variableDefinitions ||
+      process.variableDefinitions.length === 0
+    ) {
+      // If no variables defined, start process directly
+      try {
+        const payload = {
+          definition_id: process.id,
+          variables: {},
+        };
+
+        const response = await apiService.startProcessInstance(payload);
+        navigate(`/instances/${response.data.id}`);
+      } catch (error) {
+        console.error('Failed to start process:', error);
+        if (error instanceof Error) {
+          alert(error.message);
+        } else {
+          alert('An unexpected error occurred');
+        }
+      }
+      return;
+    }
+
+    // If process has variables, show dialog
+    setSelectedProcess(process);
     setDialogOpen(true);
   };
 
   const handleStartProcessSubmit = async (variables: ProcessVariables) => {
-    if (!selectedProcessId) return;
+    if (!selectedProcess) return;
 
     try {
       const response = await apiService.startProcessInstance({
-        definitionId: selectedProcessId,
+        definition_id: selectedProcess.id,
         variables,
       });
       navigate(`/instances/${response.data.id}`);
-    } catch {
-      alert('Failed to start process. Please try again.');
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('An unexpected error occurred');
+      }
     }
   };
 
@@ -163,7 +193,7 @@ const ProcessList = () => {
                   <TableCell align="right">
                     <IconButton
                       color="primary"
-                      onClick={() => handleStartProcess(process.id)}
+                      onClick={() => handleStartProcess(process)}
                       title="Start Process"
                     >
                       <PlayArrowIcon />
@@ -201,7 +231,12 @@ const ProcessList = () => {
 
       <ProcessVariablesDialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        processId={selectedProcess?.id || ''}
+        variableDefinitions={selectedProcess?.variableDefinitions || []}
+        onClose={() => {
+          setDialogOpen(false);
+          setSelectedProcess(null);
+        }}
         onSubmit={handleStartProcessSubmit}
       />
     </Box>
