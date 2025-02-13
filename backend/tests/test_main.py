@@ -1,6 +1,7 @@
 """Tests for main application functionality."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID
 
 import pytest
 from fastapi import FastAPI
@@ -17,7 +18,9 @@ from pythmata.core.config import (
 from pythmata.core.database import Database
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
-from pythmata.main import lifespan
+from pythmata.main import handle_process_started, lifespan
+from sqlalchemy.ext.asyncio import AsyncSession
+from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 
 
 @pytest.fixture
@@ -150,3 +153,53 @@ async def test_lifespan_handles_disconnection_errors(
     mock_db.disconnect.assert_called_once()
     mock_event_bus.disconnect.assert_called_once()
     mock_state_manager.disconnect.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_process_started(
+    session: AsyncSession, state_manager: StateManager, test_settings: Settings
+):
+    """Test process.started event handler."""
+    # Create a test process definition
+    definition = ProcessDefinitionModel(
+        name="Test Process",
+        bpmn_xml="""<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_1" isExecutable="true">
+    <bpmn:startEvent id="Start_1">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_1">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End_1">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Task_1" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="End_1" />
+  </bpmn:process>
+</bpmn:definitions>""",
+        version=1,
+    )
+    session.add(definition)
+    await session.commit()
+    await session.refresh(definition)
+
+    # Test data
+    instance_id = str(UUID("12345678-1234-5678-1234-567812345678"))
+    definition_id = str(definition.id)
+
+    # Call handler with test settings
+    with patch("pythmata.main.Settings", return_value=test_settings):
+        await handle_process_started(
+            {
+                "instance_id": instance_id,
+                "definition_id": definition_id,
+            }
+        )
+
+    # Verify token was created
+    tokens = await state_manager.get_token_positions(instance_id)
+    assert len(tokens) == 1
+    assert tokens[0]["node_id"] == "Start_1"

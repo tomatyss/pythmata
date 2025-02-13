@@ -1,10 +1,12 @@
 import logging
 from typing import Dict, Optional
+
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
-from pythmata.api.schemas import ProcessVariableValue
 
 logger = logging.getLogger(__name__)
+
 
 class SubprocessManager:
     """
@@ -137,7 +139,5 @@ class SubprocessManager:
                 await self.state_manager.set_variable(
                     instance_id=token.instance_id,
                     name=parent_var,
-                    variable=ProcessVariableValue(
-                        type=value.type, value=value.value
-                    ),
+                    variable=ProcessVariableValue(type=value.type, value=value.value),
                 )

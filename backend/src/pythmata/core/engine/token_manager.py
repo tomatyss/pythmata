@@ -1,12 +1,14 @@
 import logging
-from typing import List, Optional
-from pythmata.core.engine.token import Token, TokenState
-from pythmata.core.state import StateManager
 from datetime import UTC, datetime
-from pythmata.models.process import ProcessInstance, ProcessStatus
+from typing import List, Optional
 from uuid import UUID
 
+from pythmata.core.engine.token import Token, TokenState
+from pythmata.core.state import StateManager
+from pythmata.models.process import ProcessInstance, ProcessStatus
+
 logger = logging.getLogger(__name__)
+
 
 class TokenManager:
     """
@@ -40,10 +42,10 @@ class TokenManager:
         return token
 
     async def move_token(
-        self, 
-        token: Token, 
+        self,
+        token: Token,
         target_node_id: str,
-        instance_manager=None  # Optional instance manager for handling process completion
+        instance_manager=None,  # Optional instance manager for handling process completion
     ) -> Token:
         """
         Move a token to a new node.
@@ -100,13 +102,13 @@ class TokenManager:
         """Handle moving token to transaction end."""
         # Complete the transaction
         await instance_manager.complete_transaction(UUID(token.instance_id))
-        
+
         # Remove current token
         await self.state_manager.remove_token(
             instance_id=token.instance_id, node_id=token.node_id
         )
         await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
-        
+
         # Create new token at End_1
         new_token = token.copy(node_id="End_1")
         await self.state_manager.add_token(
@@ -114,10 +116,10 @@ class TokenManager:
             node_id=new_token.node_id,
             data=new_token.to_dict(),
         )
-        
+
         # Mark process as completed
         await self._handle_process_completion(token, instance_manager)
-        
+
         return new_token
 
     async def _handle_process_completion(self, token: Token, instance_manager) -> None:
@@ -181,10 +183,7 @@ class TokenManager:
         return new_tokens
 
     async def update_token_state(
-        self,
-        token: Token,
-        state: TokenState,
-        scope_id: Optional[str] = None
+        self, token: Token, state: TokenState, scope_id: Optional[str] = None
     ) -> None:
         """
         Update a token's state.
@@ -198,5 +197,5 @@ class TokenManager:
             instance_id=token.instance_id,
             node_id=token.node_id,
             state=state,
-            scope_id=scope_id or token.scope_id
+            scope_id=scope_id or token.scope_id,
         )

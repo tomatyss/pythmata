@@ -1,9 +1,11 @@
 import logging
 from typing import Dict, List, Optional
+
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 
 logger = logging.getLogger(__name__)
+
 
 class MultiInstanceManager:
     """
@@ -298,12 +300,8 @@ class MultiInstanceManager:
             )
         else:  # This is an outer activity
             # Check if all inner activities are complete
-            all_tokens = await self.state_manager.get_token_positions(
-                token.instance_id
-            )
-            inner_tokens = [
-                t for t in all_tokens if t["node_id"] == "InnerActivity"
-            ]
+            all_tokens = await self.state_manager.get_token_positions(token.instance_id)
+            inner_tokens = [t for t in all_tokens if t["node_id"] == "InnerActivity"]
             if inner_tokens:
                 # Still have inner activities, just mark this one complete
                 return None

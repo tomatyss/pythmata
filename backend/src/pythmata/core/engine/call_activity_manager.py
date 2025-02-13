@@ -1,11 +1,13 @@
 import logging
 from typing import Dict, Optional
 from uuid import uuid4
+
+from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
-from pythmata.api.schemas import ProcessVariableValue
 
 logger = logging.getLogger(__name__)
+
 
 class CallActivityManager:
     """
@@ -149,7 +151,10 @@ class CallActivityManager:
         return new_token
 
     async def _map_input_variables(
-        self, parent_instance_id: str, child_instance_id: str, input_vars: Dict[str, str]
+        self,
+        parent_instance_id: str,
+        child_instance_id: str,
+        input_vars: Dict[str, str],
     ) -> None:
         """Map variables from parent to child process."""
         for subprocess_var, parent_var in input_vars.items():

@@ -3,19 +3,20 @@ import logging
 from typing import Dict, List, Optional, Union
 from uuid import UUID
 
+from pythmata.api.schemas import ProcessVariableValue
+from pythmata.core.engine.call_activity_manager import CallActivityManager
+from pythmata.core.engine.event_handler import EventHandler
+from pythmata.core.engine.gateway_handler import GatewayHandler
+from pythmata.core.engine.multi_instance_manager import MultiInstanceManager
+from pythmata.core.engine.subprocess_manager import SubprocessManager
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.engine.token_manager import TokenManager
-from pythmata.core.engine.subprocess_manager import SubprocessManager
-from pythmata.core.engine.call_activity_manager import CallActivityManager
-from pythmata.core.engine.multi_instance_manager import MultiInstanceManager
-from pythmata.core.engine.gateway_handler import GatewayHandler
-from pythmata.core.engine.event_handler import EventHandler
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, Gateway, Task
 from pythmata.models.process import ProcessStatus
-from pythmata.api.schemas import ProcessVariableValue
 
 logger = logging.getLogger(__name__)
+
 
 class ProcessExecutor:
     """
@@ -52,11 +53,15 @@ class ProcessExecutor:
         self, instance_id: str, start_event_id: str
     ) -> Token:
         """Create a new token at a start event."""
-        return await self.token_manager.create_initial_token(instance_id, start_event_id)
+        return await self.token_manager.create_initial_token(
+            instance_id, start_event_id
+        )
 
     async def move_token(self, token: Token, target_node_id: str) -> Token:
         """Move a token to a new node."""
-        return await self.token_manager.move_token(token, target_node_id, self.instance_manager)
+        return await self.token_manager.move_token(
+            token, target_node_id, self.instance_manager
+        )
 
     async def consume_token(self, token: Token) -> None:
         """Consume a token."""
@@ -83,7 +88,9 @@ class ProcessExecutor:
         output_vars: Optional[Dict[str, str]] = None,
     ) -> Token:
         """Complete a subprocess."""
-        return await self.subprocess_manager.complete_subprocess(token, next_task_id, output_vars)
+        return await self.subprocess_manager.complete_subprocess(
+            token, next_task_id, output_vars
+        )
 
     async def create_call_activity(self, token: Token) -> Token:
         """Create a new process instance for a call activity."""
@@ -96,13 +103,17 @@ class ProcessExecutor:
         output_vars: Optional[Dict[str, str]] = None,
     ) -> Token:
         """Complete a call activity."""
-        return await self.call_activity_manager.complete_call_activity(token, next_task_id, output_vars)
+        return await self.call_activity_manager.complete_call_activity(
+            token, next_task_id, output_vars
+        )
 
     async def propagate_call_activity_error(
         self, token: Token, error_boundary_id: str
     ) -> Token:
         """Propagate an error from called process."""
-        return await self.call_activity_manager.propagate_call_activity_error(token, error_boundary_id)
+        return await self.call_activity_manager.propagate_call_activity_error(
+            token, error_boundary_id
+        )
 
     async def create_parallel_instances(self, token: Token) -> List[Token]:
         """Create parallel instances for a multi-instance activity."""
@@ -110,29 +121,39 @@ class ProcessExecutor:
 
     async def create_sequential_instance(self, token: Token, index: int) -> Token:
         """Create a sequential instance for a multi-instance activity."""
-        return await self.multi_instance_manager.create_sequential_instance(token, index)
+        return await self.multi_instance_manager.create_sequential_instance(
+            token, index
+        )
 
     async def complete_parallel_instance(
         self, token: Token, total_instances: int
     ) -> Optional[Token]:
         """Complete a parallel instance."""
-        return await self.multi_instance_manager.complete_parallel_instance(token, total_instances)
+        return await self.multi_instance_manager.complete_parallel_instance(
+            token, total_instances
+        )
 
     async def complete_sequential_instance(
         self, token: Token, total_instances: int
     ) -> Token:
         """Complete a sequential instance."""
-        return await self.multi_instance_manager.complete_sequential_instance(token, total_instances)
+        return await self.multi_instance_manager.complete_sequential_instance(
+            token, total_instances
+        )
 
     async def handle_empty_collection(self, token: Token, next_task_id: str) -> Token:
         """Handle empty collection in multi-instance activity."""
-        return await self.multi_instance_manager.handle_empty_collection(token, next_task_id)
+        return await self.multi_instance_manager.handle_empty_collection(
+            token, next_task_id
+        )
 
     async def trigger_event_subprocess(
         self, token: Token, event_subprocess_id: str, event_data: Dict
     ) -> Token:
         """Trigger an event subprocess."""
-        return await self.event_handler.trigger_event_subprocess(token, event_subprocess_id, event_data)
+        return await self.event_handler.trigger_event_subprocess(
+            token, event_subprocess_id, event_data
+        )
 
     # Core execution methods
     async def execute_process(self, instance_id: str, process_graph: Dict) -> None:
@@ -231,9 +252,7 @@ class ProcessExecutor:
             "set_variable": lambda name, value: self.state_manager.set_variable(
                 instance_id=token.instance_id,
                 name=name,
-                variable=ProcessVariableValue(
-                    type=type(value).__name__, value=value
-                ),
+                variable=ProcessVariableValue(type=type(value).__name__, value=value),
                 scope_id=token.scope_id,
             ),
             # Safe built-ins

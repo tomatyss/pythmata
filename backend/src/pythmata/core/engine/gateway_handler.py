@@ -1,10 +1,12 @@
 import logging
 from typing import Dict, List, Optional
+
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 from pythmata.core.types import Gateway, GatewayType
 
 logger = logging.getLogger(__name__)
+
 
 class GatewayHandler:
     """

@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import and_
 
 from pythmata.api.dependencies import get_event_bus, get_instance_manager, get_session
-from pythmata.core.events import EventBus
 from pythmata.api.schemas import (
     ApiResponse,
     PaginatedResponse,
@@ -19,6 +18,7 @@ from pythmata.api.schemas import (
     ProcessInstanceResponse,
 )
 from pythmata.core.engine.instance import ProcessInstanceError, ProcessInstanceManager
+from pythmata.core.events import EventBus
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
@@ -198,13 +198,12 @@ async def create_instance(
             await session.commit()
             logger.info("Process instance committed to database")
 
-            # Publish process.started event
+            # Publish process.started event with just IDs
             await event_bus.publish(
                 "process.started",
                 {
                     "instance_id": str(instance.id),
                     "definition_id": str(instance.definition_id),
-                    "bpmn_xml": definition.bpmn_xml,
                 },
             )
             logger.info("Published process.started event")

@@ -1,16 +1,18 @@
-from pythmata.core.bpmn.parser import BPMNParser
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
 
 from pythmata.api.routes import router as process_router
+from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.config import Settings
 from pythmata.core.database import get_db, init_db
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
+from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 
 logger = logging.getLogger(__name__)
 
@@ -19,27 +21,45 @@ async def handle_process_started(data: dict) -> None:
     """Handle process.started event."""
     try:
         instance_id = data["instance_id"]
-        bpmn_xml = data["bpmn_xml"]
+        definition_id = data["definition_id"]
         logger.info(
             f"Handling process.started event for instance {instance_id}")
 
         # Get required services
         settings = Settings()
         state_manager = StateManager(settings)
-        await state_manager.connect()
+        db = get_db()
 
         try:
+            # Connect to services
+            await state_manager.connect()
+            await db.connect()
+
+            # Get process definition from database
+            async with db.session() as session:
+                result = await session.execute(
+                    select(ProcessDefinitionModel).filter(
+                        ProcessDefinitionModel.id == definition_id
+                    )
+                )
+                definition = result.scalar_one_or_none()
+            if not definition:
+                raise ValueError(
+                    f"Process definition {definition_id} not found")
+
             # Parse BPMN XML to process graph
             parser = BPMNParser()
-            process_graph = parser.parse(bpmn_xml)
+            process_graph = parser.parse(definition.bpmn_xml)
             logger.info("BPMN XML parsed successfully")
 
             # Create executor and execute process
             executor = ProcessExecutor(state_manager=state_manager)
             await executor.execute_process(instance_id, process_graph)
             logger.info(f"Process {instance_id} execution completed")
+
         finally:
             await state_manager.disconnect()
+            await db.disconnect()
 
     except Exception as e:
         logger.error(

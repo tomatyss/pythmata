@@ -1,10 +1,12 @@
 import logging
 from typing import Dict, Optional
+
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, EventType
 
 logger = logging.getLogger(__name__)
+
 
 class EventHandler:
     """
@@ -70,7 +72,7 @@ class EventHandler:
             node_id=token.node_id,
             state=TokenState.COMPLETED,
         )
-        
+
         # Remove token and clear cache
         await self.state_manager.remove_token(
             instance_id=token.instance_id, node_id=token.node_id
@@ -86,7 +88,7 @@ class EventHandler:
                 node_id=token.node_id,
                 state=TokenState.COMPLETED,
             )
-            
+
             # Move to next node with active state
             new_token = await self._move_token(token, event.outgoing[0])
             await self.state_manager.update_token_state(
@@ -102,7 +104,7 @@ class EventHandler:
             node_id=token.node_id,
             state=TokenState.CANCELLED,
         )
-        
+
         # Remove the cancelled token
         await self.state_manager.remove_token(
             instance_id=token.instance_id, node_id=token.node_id
