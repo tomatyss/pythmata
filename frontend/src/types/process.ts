@@ -28,10 +28,11 @@ export interface ProcessDefinition {
 }
 
 export interface ProcessStats {
-  total: number;
-  running: number;
-  completed: number;
-  error: number;
+  total_instances: number;
+  status_counts: Record<ProcessStatus, number>;
+  average_completion_time: number | null;
+  error_rate: number;
+  active_instances: number;
 }
 
 // Process Instance Types

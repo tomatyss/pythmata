@@ -8,46 +8,46 @@ import {
   Typography,
   Button,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
   PlayArrow as PlayArrowIcon,
   Error as ErrorIcon,
   CheckCircle as CheckCircleIcon,
+  AccessTime as AccessTimeIcon,
+  Assessment as AssessmentIcon,
 } from '@mui/icons-material';
-
-interface ProcessStats {
-  total: number;
-  running: number;
-  completed: number;
-  error: number;
-}
+import { ProcessStats, ProcessStatus } from '@/types/process';
+import apiService from '@/services/api';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<ProcessStats>({
-    total: 0,
-    running: 0,
-    completed: 0,
-    error: 0,
+    total_instances: 0,
+    status_counts: {
+      [ProcessStatus.RUNNING]: 0,
+      [ProcessStatus.COMPLETED]: 0,
+      [ProcessStatus.SUSPENDED]: 0,
+      [ProcessStatus.ERROR]: 0,
+    },
+    average_completion_time: null,
+    error_rate: 0,
+    active_instances: 0,
   });
 
   useEffect(() => {
-    // TODO: Fetch actual stats from API
-    // Simulated API call
     const fetchStats = async () => {
       try {
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setStats({
-          total: 10,
-          running: 3,
-          completed: 6,
-          error: 1,
-        });
+        setLoading(true);
+        setError(null);
+        const response = await apiService.getProcessStats();
+        setStats(response.data);
       } catch (error) {
         console.error('Failed to fetch stats:', error);
+        setError('Failed to load process statistics');
       } finally {
         setLoading(false);
       }
@@ -56,29 +56,55 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
+  const formatDuration = (seconds: number | null): string => {
+    if (seconds === null) return 'N/A';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
   const StatCard = ({
     title,
     value,
     icon: Icon,
     color,
+    tooltip,
   }: {
     title: string;
-    value: number;
+    value: string | number;
     icon: React.ElementType;
     color: string;
+    tooltip?: string;
   }) => (
-    <Card>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Icon sx={{ color, mr: 1 }} />
-          <Typography color="textSecondary" variant="h6">
-            {title}
-          </Typography>
-        </Box>
-        <Typography variant="h4">{value}</Typography>
-      </CardContent>
-    </Card>
+    <Tooltip title={tooltip || ''} arrow>
+      <Card>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Icon sx={{ color, mr: 1 }} />
+            <Typography color="textSecondary" variant="h6">
+              {title}
+            </Typography>
+          </Box>
+          <Typography variant="h4">{value}</Typography>
+        </CardContent>
+      </Card>
+    </Tooltip>
   );
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">{error}</Typography>
+        <Button
+          variant="contained"
+          onClick={() => window.location.reload()}
+          sx={{ mt: 2 }}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   if (loading) {
     return (
@@ -119,33 +145,55 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Processes"
-            value={stats.total}
+            value={stats.total_instances}
             icon={AddIcon}
             color="#1976d2"
+            tooltip="Total number of process instances"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Running"
-            value={stats.running}
+            title="Active"
+            value={stats.active_instances}
             icon={PlayArrowIcon}
             color="#2e7d32"
+            tooltip="Currently running process instances"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Completed"
-            value={stats.completed}
+            value={stats.status_counts[ProcessStatus.COMPLETED] || 0}
             icon={CheckCircleIcon}
             color="#1976d2"
+            tooltip="Successfully completed process instances"
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Errors"
-            value={stats.error}
+            value={stats.status_counts[ProcessStatus.ERROR] || 0}
             icon={ErrorIcon}
             color="#d32f2f"
+            tooltip="Process instances that encountered errors"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Avg. Completion Time"
+            value={formatDuration(stats.average_completion_time)}
+            icon={AccessTimeIcon}
+            color="#f57c00"
+            tooltip="Average time to complete a process"
+          />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Error Rate"
+            value={`${stats.error_rate.toFixed(1)}%`}
+            icon={AssessmentIcon}
+            color="#7b1fa2"
+            tooltip="Percentage of processes that resulted in errors"
           />
         </Grid>
       </Grid>
