@@ -13,33 +13,7 @@ from pythmata.core.engine.instance import (
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessDefinition, ProcessStatus
-
-# Test Data
-SIMPLE_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
-  <bpmn:process id="Process_1">
-    <bpmn:startEvent id="Start_1" />
-    <bpmn:task id="Task_1" />
-    <bpmn:endEvent id="End_1" />
-    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Task_1" />
-    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="End_1" />
-  </bpmn:process>
-</bpmn:definitions>
-"""
-
-MULTI_START_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
-  <bpmn:process id="Process_1">
-    <bpmn:startEvent id="Start_1" />
-    <bpmn:startEvent id="Start_2" />
-    <bpmn:task id="Task_1" />
-    <bpmn:endEvent id="End_1" />
-    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Task_1" />
-    <bpmn:sequenceFlow id="Flow_2" sourceRef="Start_2" targetRef="Task_1" />
-    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_1" targetRef="End_1" />
-  </bpmn:process>
-</bpmn:definitions>
-"""
+from tests.data.process_samples import MULTI_START_PROCESS_XML, SIMPLE_PROCESS_XML
 
 
 @pytest.fixture
@@ -122,7 +96,7 @@ class TestProcessInstanceCreation:
         # Verify token creation
         tokens = await state_manager.get_token_positions(str(instance.id))
         assert len(tokens) == 1
-        assert tokens[0]["node_id"] == "Start_1"
+        assert tokens[0]["node_id"] == "StartEvent_1"
 
     async def test_create_instance_with_variables(
         self,
@@ -173,7 +147,7 @@ class TestProcessInstanceCreation:
         2. Initialize token at correct start event
         3. Handle valid start event selection
         """
-        start_event_id = "Start_2"
+        start_event_id = "StartEvent_2"
 
         # Create instance with specific start event
         instance = await instance_manager.create_instance(
@@ -257,7 +231,7 @@ class TestProcessInstanceState:
         # Verify tokens are preserved
         tokens = await state_manager.get_token_positions(str(instance.id))
         assert len(tokens) == 1
-        assert tokens[0]["node_id"] == "Start_1"
+        assert tokens[0]["node_id"] == "StartEvent_1"
 
     async def test_resume_instance(
         self,
@@ -288,7 +262,7 @@ class TestProcessInstanceState:
         # Verify tokens are preserved and can move
         tokens = await state_manager.get_token_positions(str(instance.id))
         assert len(tokens) == 1
-        assert tokens[0]["node_id"] == "Start_1"
+        assert tokens[0]["node_id"] == "StartEvent_1"
 
         # Test token can move
         token = Token.from_dict(tokens[0])
@@ -351,7 +325,7 @@ class TestProcessInstanceState:
         # Verify tokens are preserved
         tokens = await state_manager.get_token_positions(str(instance.id))
         assert len(tokens) == 1
-        assert tokens[0]["node_id"] == "Start_1"
+        assert tokens[0]["node_id"] == "StartEvent_1"
 
         # Test recovery by resuming to RUNNING state
         instance = await instance_manager.resume_instance(instance.id)

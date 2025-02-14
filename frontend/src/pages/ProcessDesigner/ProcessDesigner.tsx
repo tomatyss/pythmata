@@ -16,6 +16,7 @@ import {
 import {
   Save as SaveIcon,
   Settings as SettingsIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import VariableDefinitionsPanel from '@/components/shared/VariableDefinitionsPanel/VariableDefinitionsPanel';
 import { ProcessVariableDefinition } from '@/types/process';
@@ -114,6 +115,19 @@ const ProcessDesigner = () => {
     };
   }, [loading, bpmnXml]); // Add bpmnXml as dependency to reinitialize when it changes
 
+  const handleCopyXml = async () => {
+    if (!modelerRef.current) return;
+
+    try {
+      const { xml } = await modelerRef.current.saveXML({ format: true });
+      await navigator.clipboard.writeText(xml);
+      alert('XML copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy XML:', error);
+      alert('Failed to copy XML. Please try again.');
+    }
+  };
+
   const handleSave = async () => {
     if (!modelerRef.current || !processName) return;
 
@@ -193,6 +207,15 @@ const ProcessDesigner = () => {
           >
             <SettingsIcon />
           </IconButton>
+          <Button
+            variant="outlined"
+            startIcon={<ContentCopyIcon />}
+            onClick={handleCopyXml}
+            disabled={loading || saving}
+            sx={{ mr: 1 }}
+          >
+            Copy XML
+          </Button>
           <Button
             variant="contained"
             startIcon={<SaveIcon />}

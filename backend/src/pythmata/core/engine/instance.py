@@ -6,8 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.schemas import ProcessVariableValue
+from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.engine.transaction import Transaction
 from pythmata.core.state import StateManager
+from pythmata.core.types import Event, EventType
 from pythmata.models.process import (
     ProcessDefinition,
     ProcessInstance,
@@ -70,6 +72,37 @@ class ProcessInstanceManager:
             {}
         )  # instance_id -> Transaction
 
+    def _find_start_event(self, bpmn_xml: str) -> str:
+        """
+        Find the start event ID from BPMN XML.
+
+        Args:
+            bpmn_xml: BPMN XML string
+
+        Returns:
+            ID of the start event
+
+        Raises:
+            InvalidProcessDefinitionError: If no start event found
+        """
+        parser = BPMNParser()
+        process_graph = parser.parse(bpmn_xml)
+
+        # Find start event node
+        start_event = next(
+            (
+                node
+                for node in process_graph["nodes"]
+                if isinstance(node, Event) and node.event_type == EventType.START
+            ),
+            None,
+        )
+
+        if not start_event:
+            raise InvalidProcessDefinitionError("No start event found in BPMN XML")
+
+        return start_event.id
+
     async def create_instance(
         self,
         process_definition_id: UUID,
@@ -114,9 +147,16 @@ class ProcessInstanceManager:
             # Refresh instance to load variables
             await self.session.refresh(instance)
 
-        # Initialize with start event
+        # Get process definition
+        definition = await self.session.get(ProcessDefinition, process_definition_id)
+        if not definition:
+            raise InvalidProcessDefinitionError(
+                f"Process definition {process_definition_id} not found"
+            )
+
+        # Find start event if not provided
         if not start_event_id:
-            start_event_id = "Start_1"  # Default start event
+            start_event_id = self._find_start_event(definition.bpmn_xml)
 
         await self.executor.create_initial_token(str(instance.id), start_event_id)
 
@@ -375,7 +415,7 @@ class ProcessInstanceManager:
         instance: ProcessInstance,
         bpmn_xml: str,
         variables: Optional[Dict] = None,
-        start_event_id: str = "Start_1",
+        start_event_id: Optional[str] = None,
     ) -> ProcessInstance:
         """
         Start a process instance by initializing its execution state.
@@ -396,6 +436,10 @@ class ProcessInstanceManager:
         # Set up variables if provided
         if variables:
             await self._setup_variables(instance, variables)
+
+        # Find start event if not provided
+        if not start_event_id:
+            start_event_id = self._find_start_event(bpmn_xml)
 
         # Initialize process state with start event
         await self.executor.create_initial_token(str(instance.id), start_event_id)

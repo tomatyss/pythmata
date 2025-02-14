@@ -3,7 +3,9 @@ from uuid import UUID
 import pytest
 
 from pythmata.core.engine.token import TokenState
-from tests.conftest import BaseEngineTest, assert_token_state
+from tests.core.engine.base import BaseEngineTest
+from tests.core.testing import assert_token_state
+from tests.data.process_samples import create_test_bpmn_xml
 
 
 @pytest.mark.asyncio
@@ -11,7 +13,7 @@ class TestProcessExecutor(BaseEngineTest):
     async def test_create_initial_token(self):
         """Test creation of initial token at process start."""
         instance_id = "test-create-1"
-        start_event_id = "Start_1"
+        start_event_id = "StartEvent_1"
 
         # Create initial token
         token = await self.executor.create_initial_token(instance_id, start_event_id)
@@ -29,7 +31,7 @@ class TestProcessExecutor(BaseEngineTest):
     async def test_move_token(self):
         """Test moving a token from one node to another."""
         instance_id = "test-move-1"
-        start_event_id = "Start_1"
+        start_event_id = "StartEvent_1"
         task_id = "Task_1"
 
         # Create and move token

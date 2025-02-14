@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '@/services/api';
+import { formatDate } from '@/utils/date';
 import {
   Box,
   Card,
@@ -135,16 +136,12 @@ const ProcessInstance = () => {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Typography color="textSecondary">Start Time</Typography>
-                  <Typography>
-                    {new Date(instance.startTime).toLocaleString()}
-                  </Typography>
+                  <Typography>{formatDate(instance.startTime)}</Typography>
                 </Grid>
                 {instance.endTime && (
                   <Grid item xs={12} sm={6}>
                     <Typography color="textSecondary">End Time</Typography>
-                    <Typography>
-                      {new Date(instance.endTime).toLocaleString()}
-                    </Typography>
+                    <Typography>{formatDate(instance.endTime)}</Typography>
                   </Grid>
                 )}
               </Grid>
@@ -234,7 +231,7 @@ const ProcessInstance = () => {
                           variant="body2"
                           color="textSecondary"
                         >
-                          {new Date(activity.timestamp).toLocaleString()}
+                          {formatDate(activity.timestamp)}
                         </Typography>
                       </>
                     }

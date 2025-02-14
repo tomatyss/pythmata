@@ -4,7 +4,7 @@ import pytest
 
 from pythmata.core.engine.token import TokenState
 from pythmata.core.types import Event, EventType
-from tests.conftest import BaseEngineTest
+from tests.core.engine.base import BaseEngineTest
 
 
 @pytest.mark.asyncio

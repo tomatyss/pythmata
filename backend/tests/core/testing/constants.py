@@ -1,0 +1,29 @@
+"""Constants for test configuration."""
+
+# Database settings
+DEFAULT_DB_POOL_SIZE = 5
+DEFAULT_DB_MAX_OVERFLOW = 10
+
+# Redis settings
+DEFAULT_REDIS_POOL_SIZE = 10
+DEFAULT_REDIS_URL = "redis://localhost:6379/0"
+
+# RabbitMQ settings
+DEFAULT_RABBITMQ_URL = "amqp://guest:guest@localhost:5672/"
+DEFAULT_RABBITMQ_CONNECTION_ATTEMPTS = 3
+DEFAULT_RABBITMQ_RETRY_DELAY = 1
+
+# Server settings
+DEFAULT_SERVER_HOST = "localhost"
+DEFAULT_SERVER_PORT = 8000
+DEFAULT_DEBUG = True
+
+# Security settings
+DEFAULT_SECRET_KEY = "test-secret-key"
+DEFAULT_ALGORITHM = "HS256"
+DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Process settings
+DEFAULT_SCRIPT_TIMEOUT = 30
+DEFAULT_MAX_INSTANCES = 100
+DEFAULT_CLEANUP_INTERVAL = 60

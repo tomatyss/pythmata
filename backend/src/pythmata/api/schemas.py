@@ -34,7 +34,8 @@ class ProcessDefinitionBase(BaseModel):
     name: str
     bpmn_xml: str
     version: int
-    variable_definitions: List[ProcessVariableDefinition] = Field(default_factory=list)
+    variable_definitions: List[ProcessVariableDefinition] = Field(
+        default_factory=list)
 
 
 class ProcessDefinitionCreate(BaseModel):
@@ -63,8 +64,10 @@ class ProcessDefinitionResponse(ProcessDefinitionBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    active_instances: int = 0
+    total_instances: int = 0
 
-    model_config = {"from_attributes": True}  # Allow ORM model conversion
+    model_config = {"from_attributes": True, "populate_by_name": True}  # Allow ORM model conversion and populate by field name
 
 
 T = TypeVar("T")
@@ -161,7 +164,8 @@ class ProcessInstanceCreate(BaseModel):
             self.variables = {}
 
         # Convert dictionary definitions to ProcessVariableDefinition objects
-        var_defs = [ProcessVariableDefinition(**v) for v in variable_definitions]
+        var_defs = [ProcessVariableDefinition(
+            **v) for v in variable_definitions]
 
         # Check required variables
         for var_def in var_defs:
@@ -172,7 +176,8 @@ class ProcessInstanceCreate(BaseModel):
                         type=var_def.type, value=var_def.default_value
                     )
                 else:
-                    raise ValueError(f"Required variable '{var_def.name}' is missing")
+                    raise ValueError(
+                        f"Required variable '{var_def.name}' is missing")
 
         # Create map for validation
         var_def_map = {v.name: v for v in var_defs}
@@ -212,9 +217,11 @@ class ProcessInstanceCreate(BaseModel):
                         )
                     # Additional type validation
                     if var_def.type == "integer" and not isinstance(val, int):
-                        raise ValueError(f"Value for {var_name} must be an integer")
+                        raise ValueError(
+                            f"Value for {var_name} must be an integer")
                     elif var_def.type == "float" and not isinstance(val, (int, float)):
-                        raise ValueError(f"Value for {var_name} must be a float")
+                        raise ValueError(
+                            f"Value for {var_name} must be a float")
                 elif var_def.type == "string" and var_def.validation.pattern:
                     import re
 

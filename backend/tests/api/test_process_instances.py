@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -14,6 +15,7 @@ from pythmata.models.process import (
     ProcessStatus,
     Script,
 )
+from tests.data.process_samples import SIMPLE_PROCESS_XML
 
 # Setup test application
 app = FastAPI()
@@ -25,7 +27,7 @@ async def process_definition(session: AsyncSession) -> ProcessDefinition:
     """Create a test process definition."""
     definition = ProcessDefinition(
         name="Test Process",
-        bpmn_xml="<xml></xml>",
+        bpmn_xml=SIMPLE_PROCESS_XML,
         version=1,
         variable_definitions=[
             ProcessVariableDefinition(
@@ -237,7 +239,7 @@ async def test_create_instance_with_engine(
     # Verify process execution started (token at start event)
     tokens = await state_manager.get_token_positions(instance_id)
     assert len(tokens) == 1
-    assert tokens[0]["node_id"] == "Start_1"
+    assert tokens[0]["node_id"] == "StartEvent_1"
 
 
 async def test_instance_state_management(

@@ -3,7 +3,8 @@ from uuid import UUID
 import pytest
 
 from pythmata.core.engine.token import TokenState
-from tests.conftest import BaseEngineTest, assert_token_state
+from tests.core.engine.base import BaseEngineTest
+from tests.core.testing import assert_token_state
 
 
 @pytest.mark.asyncio

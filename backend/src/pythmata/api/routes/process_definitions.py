@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
-from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.dependencies import get_session
@@ -13,7 +12,11 @@ from pythmata.api.schemas import (
     ProcessDefinitionResponse,
     ProcessDefinitionUpdate,
 )
-from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
+from pythmata.models.process import (
+    ProcessDefinition as ProcessDefinitionModel,
+    ProcessInstance as ProcessInstanceModel,
+    ProcessStatus,
+)
 from pythmata.utils.logger import get_logger, log_error
 
 router = APIRouter(prefix="/processes", tags=["processes"])
@@ -26,15 +29,32 @@ logger = get_logger(__name__)
 )
 async def get_processes(session: AsyncSession = Depends(get_session)):
     """Get all process definitions."""
-    result = await session.execute(
-        select(ProcessDefinitionModel).order_by(
-            ProcessDefinitionModel.created_at.desc()
-        )
+    # Query process definitions with instance counts
+    query = select(
+        ProcessDefinitionModel,
+        func.count(case((ProcessInstanceModel.status == ProcessStatus.RUNNING, 1))).label('active_instances'),
+        func.count(ProcessInstanceModel.id).label('total_instances')
+    ).outerjoin(
+        ProcessInstanceModel,
+        ProcessDefinitionModel.id == ProcessInstanceModel.definition_id
+    ).group_by(
+        ProcessDefinitionModel.id
+    ).order_by(
+        ProcessDefinitionModel.created_at.desc()
     )
-    processes = result.scalars().all()
+    
+    result = await session.execute(query)
+    processes = result.all()
     return {
         "data": {
-            "items": processes,
+            "items": [
+                ProcessDefinitionResponse(
+                    **process[0].__dict__,
+                    active_instances=process[1],
+                    total_instances=process[2]
+                )
+                for process in processes
+            ],
             "total": len(processes),
             "page": 1,
             "pageSize": len(processes),
