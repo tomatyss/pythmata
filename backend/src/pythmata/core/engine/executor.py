@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from typing import Dict, List, Optional, Union
 
 from pythmata.api.schemas import ProcessVariableValue
@@ -13,8 +12,9 @@ from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.engine.token_manager import TokenManager
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, Gateway, SequenceFlow, Task
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ProcessExecutor:

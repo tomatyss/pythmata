@@ -2,15 +2,12 @@
 """Script to set up the test database."""
 
 import asyncio
-import logging
-
 import asyncpg
 
 from pythmata.core.testing.config import POSTGRES_MAIN_DB, POSTGRES_TEST_DB, get_db_url
+from pythmata.utils.logger import get_logger
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def check_db_exists(db_name: str) -> bool:
