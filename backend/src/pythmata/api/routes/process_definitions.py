@@ -50,10 +50,11 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
     return {
         "data": {
             "items": [
-                ProcessDefinitionResponse(
-                    **process[0].__dict__,
-                    active_instances=process[1],
-                    total_instances=process[2]
+                ProcessDefinitionResponse.model_validate(
+                    {k: v for k, v in process[0].__dict__.items() if k != '_sa_instance_state'} | {
+                        'active_instances': process[1],
+                        'total_instances': process[2]
+                    }
                 )
                 for process in processes
             ],
