@@ -18,7 +18,7 @@ async def test_lifespan_connects_services(app: FastAPI, test_settings):
         # Verify services are stored in app state
         assert hasattr(app.state, "event_bus")
         assert hasattr(app.state, "state_manager")
-        
+
         # Verify services are connected
         assert await app.state.event_bus.is_connected()
         assert await app.state.state_manager.is_connected()
@@ -44,10 +44,10 @@ async def test_lifespan_handles_connection_errors(app: FastAPI, test_settings: S
         security=test_settings.security,
         process=test_settings.process
     )
-    
+
     # Override get_settings to return invalid settings
     app.dependency_overrides[get_settings] = lambda: invalid_settings
-    
+
     with pytest.raises(RuntimeError) as exc_info:
         async with lifespan(app):
             pass
@@ -59,11 +59,11 @@ async def test_lifespan_handles_disconnection_errors(app: FastAPI, test_settings
     """Test that lifespan properly handles disconnection errors."""
     # Ensure test_settings is used
     app.dependency_overrides[get_settings] = lambda: test_settings
-    
+
     async with lifespan(app):
         # Simulate disconnection error by corrupting the connection
         app.state.event_bus._connection = None
-        
+
     # Test should complete without raising an exception
     # as disconnect errors should be handled gracefully
 
@@ -75,7 +75,7 @@ async def test_handle_process_started(
     """Test process.started event handler."""
     # Ensure test_settings is used
     app.dependency_overrides[get_settings] = lambda: test_settings
-    
+
     # Create a test process definition
     definition = ProcessDefinitionModel(
         name="Test Process",
@@ -101,4 +101,5 @@ async def test_handle_process_started(
     # Verify token was created using the existing state_manager
     tokens = await state_manager.get_token_positions(instance_id)
     assert len(tokens) == 1
+    # This matches the ID in SIMPLE_PROCESS_XML
     assert tokens[0]["node_id"] == "StartEvent_1"

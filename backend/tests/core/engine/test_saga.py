@@ -4,7 +4,8 @@ from typing import Dict, List, Optional
 import pytest
 
 from pythmata.core.engine.saga import SagaStatus
-from tests.conftest import BaseSagaTest, assert_saga_state
+from tests.core.saga.base import BaseSagaTest
+from tests.core.testing import assert_saga_state
 
 
 @pytest.mark.asyncio
