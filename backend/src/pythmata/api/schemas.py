@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, Generic, List, Literal, Optional, TypeVar, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from pythmata.models.process import ProcessStatus
 
@@ -14,6 +14,8 @@ class ProcessVariableValidation(BaseModel):
     max: Optional[float] = None
     pattern: Optional[str] = None
     options: Optional[List[Any]] = None
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class ProcessVariableDefinition(BaseModel):
@@ -27,6 +29,8 @@ class ProcessVariableDefinition(BaseModel):
     label: str
     description: Optional[str] = None
 
+    model_config = ConfigDict(extra='forbid')
+
 
 class ProcessDefinitionBase(BaseModel):
     """Base schema for process definition."""
@@ -36,6 +40,8 @@ class ProcessDefinitionBase(BaseModel):
     version: int
     variable_definitions: List[ProcessVariableDefinition] = Field(
         default_factory=list)
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class ProcessDefinitionCreate(BaseModel):
@@ -48,6 +54,8 @@ class ProcessDefinitionCreate(BaseModel):
         default_factory=list
     )
 
+    model_config = ConfigDict(extra='forbid')
+
 
 class ProcessDefinitionUpdate(BaseModel):
     """Schema for updating a process definition."""
@@ -56,6 +64,8 @@ class ProcessDefinitionUpdate(BaseModel):
     bpmn_xml: Optional[str] = None
     version: Optional[int] = None  # Allow updating version
     variable_definitions: Optional[List[ProcessVariableDefinition]] = None
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class ProcessDefinitionResponse(ProcessDefinitionBase):
@@ -67,7 +77,7 @@ class ProcessDefinitionResponse(ProcessDefinitionBase):
     active_instances: int = 0
     total_instances: int = 0
 
-    model_config = {"from_attributes": True, "populate_by_name": True}  # Allow ORM model conversion and populate by field name
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 T = TypeVar("T")
@@ -82,11 +92,15 @@ class PaginatedResponse(BaseModel, Generic[T]):
     pageSize: int
     totalPages: int
 
+    model_config = ConfigDict(extra='forbid')
+
 
 class ApiResponse(BaseModel, Generic[T]):
     """Schema for API response."""
 
     data: T
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class ProcessVariableValue(BaseModel):
@@ -95,9 +109,7 @@ class ProcessVariableValue(BaseModel):
     type: Literal["string", "integer", "float", "boolean", "date", "json"]
     value: Union[str, int, float, bool, datetime, Dict[str, Any], List[Any]]
 
-    model_config = {
-        "strict": True,  # Ensure strict type checking
-    }
+    model_config = ConfigDict(strict=True, extra='forbid')
 
     def model_dump_json(self, **kwargs):
         """Custom JSON serialization."""
@@ -154,6 +166,8 @@ class ProcessInstanceCreate(BaseModel):
         default_factory=dict,
         description="Dictionary of process variables. Each variable must match the process definition's variable definitions.",
     )
+
+    model_config = ConfigDict(extra='forbid')
 
     def validate_variables(self, variable_definitions: List[Dict[str, Any]]) -> None:
         """Validate variables against process definition.
@@ -250,7 +264,7 @@ class ProcessInstanceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProcessInstanceFilter(BaseModel):
@@ -260,6 +274,8 @@ class ProcessInstanceFilter(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     definition_id: Optional[UUID] = None
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class ProcessStats(BaseModel):
@@ -271,12 +287,16 @@ class ProcessStats(BaseModel):
     error_rate: float  # percentage
     active_instances: int
 
+    model_config = ConfigDict(extra='forbid')
+
 
 class ScriptContent(BaseModel):
     """Schema for script content."""
 
     content: str
     version: int = 1
+
+    model_config = ConfigDict(extra='forbid')
 
 
 class ScriptResponse(BaseModel):
@@ -290,4 +310,4 @@ class ScriptResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

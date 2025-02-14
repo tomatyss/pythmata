@@ -104,8 +104,12 @@ async def redis_connection(test_settings: Settings) -> AsyncGenerator[Redis, Non
         await connection.ping()
         yield connection
     finally:
-        await connection.flushdb()  # Clean up test data
-        await connection.aclose()  # Close connection
+        try:
+            await connection.flushdb()  # Clean up test data
+            await connection.aclose()  # Close connection
+        except Exception:
+            # Ignore cleanup errors since the event loop might be closed
+            pass
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -123,8 +127,12 @@ async def setup_database(test_settings: Settings):
         await db.create_tables()
         yield
     finally:
-        await db.drop_tables()
-        await db.close()
+        try:
+            await db.drop_tables()
+            await db.close()
+        except Exception:
+            # Ignore cleanup errors since the event loop might be closed
+            pass
 
 
 @pytest.fixture
@@ -174,18 +182,47 @@ async def state_manager(test_settings: Settings) -> AsyncGenerator:
         StateManager: Configured state manager instance
     """
     manager = StateManager(test_settings)
-    await manager.connect()
-    yield manager
-    await manager.disconnect()
+    try:
+        await manager.connect()
+        yield manager
+    finally:
+        try:
+            await manager.disconnect()
+        except Exception:
+            # Ignore cleanup errors since the event loop might be closed
+            pass
 
 
 @pytest.fixture
-def app(test_settings: Settings, state_manager) -> FastAPI:
+async def event_bus(test_settings: Settings) -> AsyncGenerator[EventBus, None]:
+    """Create an EventBus instance for testing.
+
+    Args:
+        test_settings: Test configuration settings
+
+    Yields:
+        EventBus: Configured event bus instance
+    """
+    bus = EventBus(test_settings)
+    try:
+        await bus.connect()
+        yield bus
+    finally:
+        try:
+            await bus.disconnect()
+        except Exception:
+            # Ignore cleanup errors since the event loop might be closed
+            pass
+
+
+@pytest.fixture
+def app(test_settings: Settings, state_manager, event_bus) -> FastAPI:
     """Create a FastAPI test application.
 
     Args:
         test_settings: Test configuration settings
         state_manager: State manager instance
+        event_bus: Event bus instance
 
     Returns:
         FastAPI: Configured test application
@@ -207,24 +244,14 @@ def app(test_settings: Settings, state_manager) -> FastAPI:
                 await session.rollback()
                 raise
             finally:
-                await session.close()
-
-    app.dependency_overrides[get_state_manager] = get_test_state_manager
-    app.dependency_overrides[get_session] = get_test_session
-
-    # Override get_settings to use test settings
-    def get_test_settings():
-        return test_settings
-
-    # Create a test event bus
-    event_bus = EventBus(test_settings)
+                try:
+                    await session.close()
+                except Exception:
+                    # Ignore cleanup errors since the event loop might be closed
+                    pass
 
     async def get_test_event_bus():
-        await event_bus.connect()
-        try:
-            yield event_bus
-        finally:
-            await event_bus.disconnect()
+        yield event_bus
 
     # Create a test instance manager dependency
     async def get_test_instance_manager(
@@ -244,7 +271,9 @@ def app(test_settings: Settings, state_manager) -> FastAPI:
         yield instance_manager
 
     # Override dependencies
-    app.dependency_overrides[get_settings] = get_test_settings
+    app.dependency_overrides[get_settings] = lambda: test_settings
+    app.dependency_overrides[get_state_manager] = get_test_state_manager
+    app.dependency_overrides[get_session] = get_test_session
     app.dependency_overrides[get_event_bus] = get_test_event_bus
     app.dependency_overrides[get_instance_manager] = get_test_instance_manager
 
@@ -265,9 +294,6 @@ async def async_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         yield client
-
-
-# Import test assertion helpers from testing module
 
 
 @pytest.fixture(scope="session")
