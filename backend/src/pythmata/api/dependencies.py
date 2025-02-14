@@ -2,6 +2,10 @@
 
 from typing import AsyncGenerator, Optional
 
+from pythmata.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +23,17 @@ _instance_manager: Optional[ProcessInstanceManager] = None
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get a database session."""
     db = get_db()
+    
+    # Ensure database is connected, attempt reconnect if needed
+    if not db.is_connected:
+        logger.info("Database not connected, attempting to reconnect...")
+        try:
+            await db.connect()
+            logger.info("Database reconnected successfully")
+        except Exception as e:
+            logger.error(f"Failed to reconnect to database: {e}")
+            raise RuntimeError("Could not establish database connection") from e
+    
     async with db.session() as session:
         yield session
 

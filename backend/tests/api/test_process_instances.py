@@ -15,6 +15,7 @@ from pythmata.models.process import (
     ProcessStatus,
     Script,
 )
+from tests.data.process_samples import SIMPLE_PROCESS_XML
 
 # Setup test application
 app = FastAPI()
@@ -26,23 +27,7 @@ async def process_definition(session: AsyncSession) -> ProcessDefinition:
     """Create a test process definition."""
     definition = ProcessDefinition(
         name="Test Process",
-        bpmn_xml="""<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="Process_1" isExecutable="true">
-    <bpmn:startEvent id="Start_1">
-      <bpmn:outgoing>Flow_1</bpmn:outgoing>
-    </bpmn:startEvent>
-    <bpmn:task id="Task_1">
-      <bpmn:incoming>Flow_1</bpmn:incoming>
-      <bpmn:outgoing>Flow_2</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:endEvent id="End_1">
-      <bpmn:incoming>Flow_2</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Task_1" />
-    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="End_1" />
-  </bpmn:process>
-</bpmn:definitions>""",
+        bpmn_xml=SIMPLE_PROCESS_XML,
         version=1,
         variable_definitions=[
             ProcessVariableDefinition(
@@ -254,7 +239,7 @@ async def test_create_instance_with_engine(
     # Verify process execution started (token at start event)
     tokens = await state_manager.get_token_positions(instance_id)
     assert len(tokens) == 1
-    assert tokens[0]["node_id"] == "Start_1"
+    assert tokens[0]["node_id"] == "StartEvent_1"
 
 
 async def test_instance_state_management(

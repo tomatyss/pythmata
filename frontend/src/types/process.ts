@@ -23,8 +23,10 @@ export interface ProcessDefinition {
   version: number;
   bpmn_xml: string;
   variable_definitions: ProcessVariableDefinition[];
-  createdAt: string;
-  updatedAt: string;
+  active_instances: number;
+  total_instances: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProcessStats {

@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
@@ -15,6 +15,7 @@ class GatewayHandler:
 
     def __init__(self, state_manager: StateManager):
         self.state_manager = state_manager
+        self.process_graph = None  # Will be set during handle_gateway
 
     async def handle_gateway(
         self, token: Token, gateway: Gateway, process_graph: Dict
@@ -27,6 +28,7 @@ class GatewayHandler:
             gateway: Gateway to handle
             process_graph: Process graph for flow evaluation
         """
+        self.process_graph = process_graph  # Store for use in helper methods
         if gateway.gateway_type == GatewayType.EXCLUSIVE:
             await self._handle_exclusive_gateway(token, gateway, process_graph)
         elif gateway.gateway_type == GatewayType.PARALLEL:
@@ -225,21 +227,29 @@ class GatewayHandler:
             "max": max,
         }
 
-    async def _move_token(self, token: Token, target_node_id: str) -> None:
-        """Move token to target node."""
-        # Remove token from current node
-        await self.state_manager.remove_token(
-            instance_id=token.instance_id, node_id=token.node_id
+    async def _move_token(self, token: Token, flow_id: str) -> None:
+        """Move token using sequence flow."""
+        # Find flow in process graph
+        flow = next(
+            (flow for flow in self.process_graph["flows"] if flow.id == flow_id), None
         )
-        await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
+        if not flow:
+            logger.error(f"Flow {flow_id} not found in process graph")
+            return
 
         # Create new token at target node
-        new_token = token.copy(node_id=target_node_id)
+        new_token = token.copy(node_id=flow.target_ref)
         await self.state_manager.add_token(
             instance_id=new_token.instance_id,
             node_id=new_token.node_id,
             data=new_token.to_dict(),
         )
+
+        # Remove old token
+        await self.state_manager.remove_token(
+            instance_id=token.instance_id, node_id=token.node_id
+        )
+        await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
 
     async def _split_token(self, token: Token, target_node_ids: List[str]) -> None:
         """Split token into multiple tokens."""

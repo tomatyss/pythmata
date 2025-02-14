@@ -1,19 +1,18 @@
 import asyncio
 import logging
 from typing import Dict, List, Optional, Union
-from uuid import UUID
 
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.call_activity_manager import CallActivityManager
 from pythmata.core.engine.event_handler import EventHandler
 from pythmata.core.engine.gateway_handler import GatewayHandler
+from pythmata.core.engine.instance import ProcessInstanceManager
 from pythmata.core.engine.multi_instance_manager import MultiInstanceManager
 from pythmata.core.engine.subprocess_manager import SubprocessManager
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.engine.token_manager import TokenManager
 from pythmata.core.state import StateManager
-from pythmata.core.types import Event, Gateway, Task
-from pythmata.models.process import ProcessStatus
+from pythmata.core.types import Event, Gateway, SequenceFlow, Task
 
 logger = logging.getLogger(__name__)
 
@@ -179,11 +178,14 @@ class ProcessExecutor:
                 # Execute each active token
                 for token_data in active_tokens:
                     token = Token.from_dict(token_data)
-                    node = self._find_node(process_graph, token.node_id)
-                    if node:
-                        await self.execute_node(token, node, process_graph)
-                    else:
+                    # Get current node and its outgoing flows
+                    current_node = self._find_node(process_graph, token.node_id)
+                    if not current_node:
                         logger.error(f"Node {token.node_id} not found in process graph")
+                        continue
+
+                    # Execute the current node
+                    await self.execute_node(token, current_node, process_graph)
 
                 # Small delay to prevent tight loop
                 await asyncio.sleep(0.1)
@@ -203,12 +205,22 @@ class ProcessExecutor:
     ) -> None:
         """Execute a process node."""
         try:
+            # Execute node based on type
             if isinstance(node, Task):
-                await self.execute_task(token, node)
+                await self.execute_task(token, node, process_graph)
+                # After task execution, move to next node using sequence flow
+                if node.outgoing:
+                    next_flow = self._find_flow(process_graph, node.outgoing[0])
+                    if next_flow:
+                        await self.token_manager.move_token(token, next_flow.target_ref)
+                    else:
+                        logger.error(
+                            f"Flow {node.outgoing[0]} not found in process graph"
+                        )
             elif isinstance(node, Gateway):
                 await self.gateway_handler.handle_gateway(token, node, process_graph)
             elif isinstance(node, Event):
-                await self.event_handler.handle_event(token, node)
+                await self.event_handler.handle_event(token, node, process_graph)
             else:
                 logger.warning(f"Unknown node type: {type(node)}")
 
@@ -220,19 +232,13 @@ class ProcessExecutor:
                 await self.instance_manager.handle_error(token.instance_id, e, node.id)
             raise
 
-    async def execute_task(self, token: Token, task: Task) -> None:
+    async def execute_task(self, token: Token, task: Task, process_graph: Dict) -> None:
         """Execute a task."""
         try:
             if task.script:
                 await self._execute_script_task(token, task)
 
-            # Move token to next node
-            outgoing = task.outgoing[0] if task.outgoing else None
-            if outgoing:
-                await self.token_manager.move_token(token, outgoing)
-            else:
-                logger.warning(f"Task {task.id} has no outgoing flows")
-
+            # Task execution is complete, token movement is handled by execute_node
         except Exception as e:
             logger.error(f"Error executing task {task.id}: {str(e)}")
             raise
@@ -303,4 +309,10 @@ class ProcessExecutor:
         """Find node in process graph by ID."""
         return next(
             (node for node in process_graph["nodes"] if node.id == node_id), None
+        )
+
+    def _find_flow(self, process_graph: Dict, flow_id: str) -> Optional[SequenceFlow]:
+        """Find sequence flow in process graph by ID."""
+        return next(
+            (flow for flow in process_graph["flows"] if flow.id == flow_id), None
         )

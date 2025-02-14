@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,8 +12,9 @@ from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def handle_process_started(data: dict) -> None:
@@ -30,11 +30,9 @@ async def handle_process_started(data: dict) -> None:
         state_manager = StateManager(settings)
         db = get_db()
 
+        # Connect to state manager only since database is managed by FastAPI lifespan
+        await state_manager.connect()
         try:
-            # Connect to services
-            await state_manager.connect()
-            await db.connect()
-
             # Get process definition from database
             async with db.session() as session:
                 result = await session.execute(
@@ -52,14 +50,30 @@ async def handle_process_started(data: dict) -> None:
             process_graph = parser.parse(definition.bpmn_xml)
             logger.info("BPMN XML parsed successfully")
 
-            # Create executor and execute process
+            # Find start event
+            start_event = next(
+                (
+                    node
+                    for node in process_graph["nodes"]
+                    if hasattr(node, "event_type") and node.event_type == "start"
+                ),
+                None,
+            )
+            if not start_event:
+                raise ValueError("No start event found in process definition")
+            logger.info(f"Found start event: {start_event.id}")
+
+            # Create executor and initialize process
             executor = ProcessExecutor(state_manager=state_manager)
+            await executor.create_initial_token(instance_id, start_event.id)
+            logger.info(f"Created initial token at {start_event.id}")
+
+            # Execute process
             await executor.execute_process(instance_id, process_graph)
             logger.info(f"Process {instance_id} execution completed")
 
         finally:
             await state_manager.disconnect()
-            await db.disconnect()
 
     except Exception as e:
         logger.error(
@@ -75,12 +89,20 @@ async def lifespan(app: FastAPI):
     app.state.state_manager = StateManager(settings)
 
     # Initialize and connect services
+    logger.info("Initializing database...")
     init_db(settings)
     db = get_db()
+    logger.info("Connecting to database...")
     await db.connect()  # Establish database connection
+    logger.info("Database connected successfully")
 
+    logger.info("Connecting to event bus...")
     await app.state.event_bus.connect()
+    logger.info("Event bus connected successfully")
+
+    logger.info("Connecting to state manager...")
     await app.state.state_manager.connect()
+    logger.info("State manager connected successfully")
 
     # Subscribe to process.started events
     await app.state.event_bus.subscribe(
@@ -95,9 +117,13 @@ async def lifespan(app: FastAPI):
     # Shutdown - ensure all services attempt to disconnect even if some fail
     errors = []
 
+    logger.info("Shutting down services...")
     try:
+        logger.info("Disconnecting database...")
         await db.disconnect()
+        logger.info("Database disconnected successfully")
     except Exception as e:
+        logger.error(f"Error disconnecting database: {e}")
         errors.append(e)
 
     try:

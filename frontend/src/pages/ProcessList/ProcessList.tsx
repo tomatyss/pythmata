@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '@/services/api';
-import { ProcessVariableDefinition } from '@/components/shared/ProcessVariablesDialog/ProcessVariablesDialog';
+import { formatDate } from '@/utils/date';
+import { ProcessDefinition } from '@/types/process';
 import {
   Box,
   Button,
@@ -27,38 +28,24 @@ import ProcessVariablesDialog, {
   ProcessVariables,
 } from '@/components/shared/ProcessVariablesDialog/ProcessVariablesDialog';
 
-interface Process {
-  id: string;
-  name: string;
-  version: number;
-  activeInstances: number;
-  totalInstances: number;
-  lastModified: string;
-  variableDefinitions: ProcessVariableDefinition[];
-}
-
 const ProcessList = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [processes, setProcesses] = useState<Process[]>([]);
-  const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
+  const [processes, setProcesses] = useState<
+    (ProcessDefinition & {
+      active_instances: number;
+      total_instances: number;
+    })[]
+  >([]);
+  const [selectedProcess, setSelectedProcess] =
+    useState<ProcessDefinition | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchProcesses = async () => {
       try {
         const response = await apiService.getProcessDefinitions();
-        setProcesses(
-          response.data.items.map((process) => ({
-            id: process.id,
-            name: process.name,
-            version: process.version,
-            activeInstances: 0,
-            totalInstances: 0,
-            lastModified: process.updatedAt,
-            variableDefinitions: process.variable_definitions || [],
-          }))
-        );
+        setProcesses(response.data.items);
       } catch {
         alert('Failed to load processes. Please try again.');
       } finally {
@@ -69,10 +56,10 @@ const ProcessList = () => {
     fetchProcesses();
   }, []);
 
-  const handleStartProcess = async (process: Process) => {
+  const handleStartProcess = async (process: ProcessDefinition) => {
     if (
-      !process.variableDefinitions ||
-      process.variableDefinitions.length === 0
+      !process.variable_definitions ||
+      process.variable_definitions.length === 0
     ) {
       // If no variables defined, start process directly
       try {
@@ -187,11 +174,9 @@ const ProcessList = () => {
                       variant="outlined"
                     />
                   </TableCell>
-                  <TableCell>{process.activeInstances}</TableCell>
-                  <TableCell>{process.totalInstances}</TableCell>
-                  <TableCell>
-                    {new Date(process.lastModified).toLocaleString()}
-                  </TableCell>
+                  <TableCell>{process.active_instances}</TableCell>
+                  <TableCell>{process.total_instances}</TableCell>
+                  <TableCell>{formatDate(process.updated_at)}</TableCell>
                   <TableCell align="right">
                     <IconButton
                       color="primary"
@@ -234,7 +219,7 @@ const ProcessList = () => {
       <ProcessVariablesDialog
         open={dialogOpen}
         processId={selectedProcess?.id || ''}
-        variableDefinitions={selectedProcess?.variableDefinitions || []}
+        variableDefinitions={selectedProcess?.variable_definitions || []}
         onClose={() => {
           setDialogOpen(false);
           setSelectedProcess(null);
