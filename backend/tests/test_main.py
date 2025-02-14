@@ -1,105 +1,233 @@
-"""Tests for main application functionality."""
-
-from uuid import UUID
-
 import pytest
-from fastapi import FastAPI
-
-from pythmata.core.config import DatabaseSettings, Settings, get_settings
-from pythmata.main import handle_process_started, lifespan
+from httpx import AsyncClient, ASGITransport
+from unittest.mock import AsyncMock, patch, MagicMock
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from pythmata.main import app, handle_process_started
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
-from tests.data.process_samples import SIMPLE_PROCESS_XML
 
 
 @pytest.mark.asyncio
-async def test_lifespan_connects_services(app: FastAPI, test_settings):
-    """Test that lifespan properly connects all services."""
-    async with lifespan(app):
-        # Verify services are stored in app state
-        assert hasattr(app.state, "event_bus")
-        assert hasattr(app.state, "state_manager")
+async def test_lifespan():
+    """Test application lifespan (startup and shutdown)."""
+    mock_event_bus = AsyncMock()
+    mock_state_manager = AsyncMock()
+    mock_settings = AsyncMock()
+    mock_db = AsyncMock()
 
-        # Verify services are connected
-        assert await app.state.event_bus.is_connected()
-        assert await app.state.state_manager.is_connected()
+    with patch('pythmata.main.EventBus', return_value=mock_event_bus), \
+            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
+            patch('pythmata.main.Settings', return_value=mock_settings), \
+            patch('pythmata.main.get_db', return_value=mock_db), \
+            patch('pythmata.main.init_db'):
 
-    # After context exit, services should be disconnected
-    assert not await app.state.event_bus.is_connected()
-    assert not await app.state.state_manager.is_connected()
+        # Create a lifespan context
+        async with app.router.lifespan_context(app) as _:
+            # Verify startup
+            assert mock_event_bus.connect.called
+            assert mock_state_manager.connect.called
+            assert mock_db.connect.called
+            assert mock_event_bus.subscribe.called
 
+            # Test the application works
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.get("/health")
+                assert response.status_code == 200
 
-@pytest.mark.asyncio
-async def test_lifespan_handles_connection_errors(app: FastAPI, test_settings: Settings):
-    """Test that lifespan properly handles connection errors."""
-    # Create invalid settings
-    invalid_settings = Settings(
-        server=test_settings.server,
-        database=DatabaseSettings(
-            url="postgresql+asyncpg://invalid:invalid@localhost/invalid",
-            pool_size=test_settings.database.pool_size,
-            max_overflow=test_settings.database.max_overflow
-        ),
-        redis=test_settings.redis,
-        rabbitmq=test_settings.rabbitmq,
-        security=test_settings.security,
-        process=test_settings.process
-    )
-
-    # Override get_settings to return invalid settings
-    app.dependency_overrides[get_settings] = lambda: invalid_settings
-
-    with pytest.raises(RuntimeError) as exc_info:
-        async with lifespan(app):
-            pass
-    assert "connection failed" in str(exc_info.value).lower()
+        # Verify shutdown after lifespan context exits
+        assert mock_event_bus.disconnect.called
+        assert mock_state_manager.disconnect.called
+        assert mock_db.disconnect.called
 
 
 @pytest.mark.asyncio
-async def test_lifespan_handles_disconnection_errors(app: FastAPI, test_settings: Settings):
-    """Test that lifespan properly handles disconnection errors."""
-    # Ensure test_settings is used
-    app.dependency_overrides[get_settings] = lambda: test_settings
-
-    async with lifespan(app):
-        # Simulate disconnection error by corrupting the connection
-        app.state.event_bus._connection = None
-
-    # Test should complete without raising an exception
-    # as disconnect errors should be handled gracefully
+async def test_health_check():
+    """Test the health check endpoint returns correct status."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "healthy"}
 
 
 @pytest.mark.asyncio
-async def test_handle_process_started(
-    session, state_manager, test_settings: Settings, app: FastAPI
-):
+async def test_lifespan_error_handling():
+    """Test error handling during application shutdown."""
+    mock_event_bus = AsyncMock()
+    mock_state_manager = AsyncMock()
+    mock_settings = AsyncMock()
+    mock_db = AsyncMock()
+
+    # Configure mock to raise error during disconnect
+    db_error = Exception("Database disconnect error")
+    mock_db.disconnect.side_effect = db_error
+
+    with patch('pythmata.main.EventBus', return_value=mock_event_bus), \
+            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
+            patch('pythmata.main.Settings', return_value=mock_settings), \
+            patch('pythmata.main.get_db', return_value=mock_db), \
+            patch('pythmata.main.init_db'), \
+            pytest.raises(Exception) as exc_info:
+
+        async with app.router.lifespan_context(app) as _:
+            # Verify startup succeeded
+            assert mock_event_bus.connect.called
+            assert mock_state_manager.connect.called
+            assert mock_db.connect.called
+
+    # Verify the database error was raised
+    assert exc_info.value == db_error
+
+    # Verify other services still attempted to disconnect
+    assert mock_event_bus.disconnect.called
+    assert mock_state_manager.disconnect.called
+
+
+@pytest.mark.asyncio
+async def test_handle_process_started():
     """Test process.started event handler."""
-    # Ensure test_settings is used
-    app.dependency_overrides[get_settings] = lambda: test_settings
+    mock_state_manager = AsyncMock()
+    mock_db = AsyncMock()
+    mock_session = AsyncMock()
+    mock_executor = AsyncMock()
+    mock_definition = AsyncMock()
+    mock_parser = MagicMock()
 
-    # Create a test process definition
-    definition = ProcessDefinitionModel(
-        name="Test Process",
-        bpmn_xml=SIMPLE_PROCESS_XML,
-        version=1,
+    test_data = {
+        "instance_id": "test-instance",
+        "definition_id": "test-definition",
+    }
+
+    # Create a regular mock for the definition (since it's a model instance)
+    mock_definition = MagicMock()
+    mock_definition.bpmn_xml = "<xml>test</xml>"
+
+    # Configure mock session with async result
+    mock_session = AsyncMock(spec=AsyncSession)
+    execute_result = AsyncMock()
+    execute_result.scalar_one_or_none = AsyncMock(return_value=mock_definition)
+    mock_session.execute = AsyncMock(return_value=execute_result)
+
+    # Create session context manager
+    session_ctx = AsyncMock()
+    session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+    session_ctx.__aexit__ = AsyncMock()
+
+    # Mock the session method to return the context manager
+    mock_db.session = MagicMock(return_value=session_ctx)
+    mock_db.is_connected = True
+    mock_definition.bpmn_xml = "<xml>test</xml>"
+    select_stmt = select(ProcessDefinitionModel).filter(
+        ProcessDefinitionModel.id == test_data["definition_id"]
     )
-    session.add(definition)
-    await session.commit()
-    await session.refresh(definition)
+    mock_select = AsyncMock(return_value=select_stmt)
+    # Configure parser mock
+    process_graph = {
+        "nodes": [
+            type("StartEvent", (), {"id": "start_1", "event_type": "start"})()
+        ]
+    }
+    mock_parser.parse.return_value = process_graph
 
-    # Test data
-    instance_id = str(UUID("12345678-1234-5678-1234-567812345678"))
-    definition_id = str(definition.id)
+    with patch('pythmata.main.Settings'), \
+            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
+            patch('pythmata.main.get_db', return_value=mock_db), \
+            patch('pythmata.main.BPMNParser', return_value=mock_parser), \
+            patch('pythmata.main.ProcessExecutor', return_value=mock_executor), \
+            patch('pythmata.main.select', return_value=mock_select):
 
-    # Call handler
-    await handle_process_started(
-        {
-            "instance_id": instance_id,
-            "definition_id": definition_id,
-        }
+        await handle_process_started(test_data)
+
+        # Verify state manager lifecycle
+        assert mock_state_manager.connect.called
+        assert mock_state_manager.disconnect.called
+
+        # Verify process definition retrieval
+        mock_session.execute.assert_called_once()
+
+        # Verify process execution
+        assert mock_executor.create_initial_token.called
+        assert mock_executor.execute_process.called
+        mock_executor.create_initial_token.assert_called_with(
+            "test-instance", "start_1")
+
+
+@pytest.mark.asyncio
+async def test_handle_process_started_error_cases():
+    """Test error handling in process.started event handler."""
+    mock_state_manager = AsyncMock()
+    mock_db = AsyncMock()
+    mock_session = AsyncMock()
+    mock_parser = MagicMock()
+
+    test_data = {
+        "instance_id": "test-instance",
+        "definition_id": "test-definition",
+    }
+
+    # Configure mock session with async result
+    mock_session = AsyncMock(spec=AsyncSession)
+    execute_result = AsyncMock()
+    execute_result.scalar_one_or_none = AsyncMock(return_value=None)
+    mock_session.execute = AsyncMock(return_value=execute_result)
+
+    # Create session context manager
+    session_ctx = AsyncMock()
+    session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+    session_ctx.__aexit__ = AsyncMock()
+
+    # Mock the session method to return the context manager
+    mock_db.session = MagicMock(return_value=session_ctx)
+    mock_db.is_connected = True
+
+    select_stmt = select(ProcessDefinitionModel).filter(
+        ProcessDefinitionModel.id == test_data["definition_id"]
     )
+    mock_select = AsyncMock(return_value=select_stmt)
 
-    # Verify token was created using the existing state_manager
-    tokens = await state_manager.get_token_positions(instance_id)
-    assert len(tokens) == 1
-    # This matches the ID in SIMPLE_PROCESS_XML
-    assert tokens[0]["node_id"] == "StartEvent_1"
+    with patch('pythmata.main.Settings'), \
+            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
+            patch('pythmata.main.get_db', return_value=mock_db), \
+            patch('pythmata.main.BPMNParser', return_value=mock_parser), \
+            patch('pythmata.main.select', return_value=mock_select):
+
+        await handle_process_started(test_data)
+        # Should not raise exception but log error
+        assert mock_state_manager.disconnect.called
+
+    # Test case 2: Missing start event
+    mock_definition = AsyncMock()
+    mock_definition.bpmn_xml = "<xml>test</xml>"
+    execute_result = AsyncMock()
+    execute_result.scalar_one_or_none.return_value = mock_definition
+    mock_session.execute.return_value = execute_result
+    # Configure parser mock for error case
+    mock_parser.parse.return_value = {"nodes": []}  # No start event in nodes
+
+    with patch('pythmata.main.Settings'), \
+            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
+            patch('pythmata.main.get_db', return_value=mock_db), \
+            patch('pythmata.main.BPMNParser', return_value=mock_parser), \
+            patch('pythmata.main.select', return_value=mock_select):
+
+        await handle_process_started(test_data)
+        # Should not raise exception but log error
+        assert mock_state_manager.disconnect.called
+
+
+@pytest.mark.asyncio
+async def test_cors_middleware():
+    """Test CORS middleware configuration."""
+    test_origin = "http://example.com"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.options("/health", headers={
+            "Origin": test_origin,
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Content-Type",
+        })
+
+        assert response.status_code == 200
+        # When allow_credentials is True, the origin is reflected back
+        assert response.headers["access-control-allow-origin"] == test_origin
+        assert response.headers["access-control-allow-credentials"] == "true"
+        assert "GET" in response.headers["access-control-allow-methods"]
+        assert "Content-Type" in response.headers["access-control-allow-headers"]

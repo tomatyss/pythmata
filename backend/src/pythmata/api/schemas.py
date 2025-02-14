@@ -97,10 +97,14 @@ class ProcessVariableValue(BaseModel):
 
     model_config = {
         "strict": True,  # Ensure strict type checking
-        "json_encoders": {
-            datetime: lambda v: v.isoformat(),  # Handle datetime serialization
-        },
     }
+
+    def model_dump_json(self, **kwargs):
+        """Custom JSON serialization."""
+        data = self.model_dump(**kwargs)
+        if self.type == "date" and isinstance(self.value, datetime):
+            data["value"] = self.value.isoformat()
+        return data
 
     @property
     def is_valid_type(self) -> bool:

@@ -1,11 +1,6 @@
 """FastAPI dependencies."""
 
 from typing import AsyncGenerator, Optional
-
-from pythmata.utils.logger import get_logger
-
-logger = get_logger(__name__)
-
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +10,9 @@ from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.instance import ProcessInstanceManager
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
+from pythmata.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 _event_bus: Optional[EventBus] = None
 _instance_manager: Optional[ProcessInstanceManager] = None

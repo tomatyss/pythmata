@@ -1,11 +1,11 @@
 """Connection management utilities."""
 
 import functools
-import logging
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Protocol, TypeVar, runtime_checkable
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 T = TypeVar("T")
 

@@ -6,14 +6,14 @@ from typing import Any, Callable
 
 # Configure root logger
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 # Set specific loggers to appropriate levels
 logging.getLogger("uvicorn").setLevel(logging.INFO)
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> logging.Logger:

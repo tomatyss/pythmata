@@ -19,8 +19,9 @@ from pythmata.models.process import (
 )
 from pythmata.utils.logger import get_logger, log_error
 
-router = APIRouter(prefix="/processes", tags=["processes"])
 logger = get_logger(__name__)
+
+router = APIRouter(prefix="/processes", tags=["processes"])
 
 
 @router.get(
@@ -32,7 +33,8 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
     # Query process definitions with instance counts
     query = select(
         ProcessDefinitionModel,
-        func.count(case((ProcessInstanceModel.status == ProcessStatus.RUNNING, 1))).label('active_instances'),
+        func.count(case((ProcessInstanceModel.status == ProcessStatus.RUNNING, 1))).label(
+            'active_instances'),
         func.count(ProcessInstanceModel.id).label('total_instances')
     ).outerjoin(
         ProcessInstanceModel,
@@ -42,7 +44,7 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
     ).order_by(
         ProcessDefinitionModel.created_at.desc()
     )
-    
+
     result = await session.execute(query)
     processes = result.all()
     return {
@@ -70,7 +72,8 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
 async def get_process(process_id: str, session: AsyncSession = Depends(get_session)):
     """Get a specific process definition."""
     result = await session.execute(
-        select(ProcessDefinitionModel).filter(ProcessDefinitionModel.id == process_id)
+        select(ProcessDefinitionModel).filter(
+            ProcessDefinitionModel.id == process_id)
     )
     process = result.scalar_one_or_none()
     if not process:
@@ -95,7 +98,8 @@ async def create_process(
         existing_version = result.scalar_one_or_none()
 
         # If process exists, increment version
-        version = (existing_version or 0) + 1 if data.version is None else data.version
+        version = (existing_version or 0) + \
+            1 if data.version is None else data.version
 
         process = ProcessDefinitionModel(
             name=data.name, bpmn_xml=data.bpmn_xml, version=version

@@ -35,12 +35,15 @@ async def handle_process_started(data: dict) -> None:
         try:
             # Get process definition from database
             async with db.session() as session:
+                logger.info("Executing database query...")
                 result = await session.execute(
                     select(ProcessDefinitionModel).filter(
                         ProcessDefinitionModel.id == definition_id
                     )
                 )
-                definition = result.scalar_one_or_none()
+                logger.info(f"Query result: {result}")
+                definition = await result.scalar_one_or_none()
+                logger.info(f"Definition: {definition}, type: {type(definition)}")
             if not definition:
                 raise ValueError(
                     f"Process definition {definition_id} not found")

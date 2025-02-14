@@ -1,11 +1,11 @@
-import logging
 from typing import Dict
 
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, EventType
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class EventHandler:
