@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Set
 
 import aio_pika
 from aio_pika import Channel, Connection, Exchange, Queue
@@ -20,6 +20,7 @@ class EventBus:
         self.channel: Optional[Channel] = None
         self.exchange: Optional[Exchange] = None
         self._event_handlers: Dict[str, list[Callable]] = {}
+        self._tasks: Set[asyncio.Task] = set()
 
     async def connect(self) -> None:
         """Establish connection to RabbitMQ."""
@@ -49,12 +50,44 @@ class EventBus:
             raise
 
     async def disconnect(self) -> None:
-        """Close RabbitMQ connection."""
-        if self.connection:
-            await self.connection.close()
-            self.connection = None
-            self.channel = None
-            self.exchange = None
+        """Close RabbitMQ connection and cleanup resources."""
+        try:
+            # Cancel all pending tasks
+            for task in self._tasks:
+                if not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+
+            # Close channel first
+            if self.channel:
+                try:
+                    await self.channel.close()
+                except Exception:
+                    pass
+                self.channel = None
+                self.exchange = None
+
+            # Then close connection
+            if self.connection:
+                try:
+                    await self.connection.close()
+                except Exception:
+                    pass
+                self.connection = None
+
+        except Exception as e:
+            logger.error(f"Error during disconnect: {e}")
+            # Don't raise the exception as we're cleaning up
+
+    def _create_task(self, coro) -> asyncio.Task:
+        """Create a tracked task."""
+        task = asyncio.create_task(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
 
     async def publish(self, routing_key: str, data: Dict[str, Any]) -> None:
         """Publish an event to RabbitMQ.
@@ -115,5 +148,6 @@ class EventBus:
                     # Depending on the error, we might want to reject/requeue the message
                     message.reject(requeue=True)
 
-        await queue.consume(process_message)
+        # Create a tracked task for the consumer
+        self._create_task(queue.consume(process_message))
         logger.info(f"Subscribed to {routing_key} events")

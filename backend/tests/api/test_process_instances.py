@@ -84,13 +84,17 @@ async def test_list_instances_pagination(
 ):
     """Test GET /instances pagination."""
     # Create multiple instances
+    instances = []
     for _ in range(15):
         instance = ProcessInstance(
             definition_id=process_definition.id,
             status=ProcessStatus.RUNNING,
         )
+        instances.append(instance)
         session.add(instance)
     await session.commit()
+    for instance in instances:
+        await session.refresh(instance)
 
     # Test default pagination
     response = await async_client.get("/instances")
@@ -126,6 +130,7 @@ async def test_list_instances_filtering(
     ]
     # Create instances with timestamps after a reference date
     reference_date = datetime.now(timezone.utc).replace(microsecond=0)
+    instances = []
     for status in statuses:
         instance = ProcessInstance(
             definition_id=process_definition.id,
@@ -133,8 +138,11 @@ async def test_list_instances_filtering(
             start_time=reference_date
             + timedelta(hours=1),  # Future time to ensure it's after reference
         )
+        instances.append(instance)
         session.add(instance)
     await session.commit()
+    for instance in instances:
+        await session.refresh(instance)
 
     # Test status filter
     response = await async_client.get(
@@ -280,6 +288,7 @@ async def test_get_statistics(
         ProcessStatus.COMPLETED: 3,
         ProcessStatus.ERROR: 1,
     }
+    instances = []
     for status, count in statuses.items():
         for _ in range(count):
             instance = ProcessInstance(
@@ -288,8 +297,11 @@ async def test_get_statistics(
                 start_time=now - timedelta(hours=1),
                 end_time=now if status == ProcessStatus.COMPLETED else None,
             )
+            instances.append(instance)
             session.add(instance)
     await session.commit()
+    for instance in instances:
+        await session.refresh(instance)
 
     response = await async_client.get("/stats")
     assert response.status_code == 200
