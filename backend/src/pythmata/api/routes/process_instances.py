@@ -57,7 +57,11 @@ async def parse_datetime(date_str: Optional[str] = Query(None)) -> Optional[date
     response_model=ApiResponse[PaginatedResponse[ProcessInstanceResponse]],
 )
 async def list_instances(
-    status: Optional[ProcessStatus] = Query(None, enum=ProcessStatus),
+    status: Optional[str] = Query(
+        None,
+        description="Process status",
+        enum=[status.value for status in ProcessStatus]
+    ),
     start_date: Optional[datetime] = FastAPIDepends(parse_datetime),
     end_date: Optional[datetime] = FastAPIDepends(parse_datetime),
     definition_id: Optional[UUID] = Query(None),
@@ -65,14 +69,16 @@ async def list_instances(
     page_size: int = Query(10, gt=0, le=100),
     session: AsyncSession = Depends(get_session),
 ):
+    # Convert string status to enum if provided
+    status_enum = ProcessStatus(status) if status else None
     """Get process instances with filtering and pagination."""
     try:
         query = select(ProcessInstanceModel)
 
         # Apply filters
         conditions = []
-        if status:
-            conditions.append(ProcessInstanceModel.status == status)
+        if status_enum:
+            conditions.append(ProcessInstanceModel.status == status_enum)
         if start_date:
             conditions.append(ProcessInstanceModel.start_time >= start_date)
         if end_date:

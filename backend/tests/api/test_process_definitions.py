@@ -1,10 +1,12 @@
+import json
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
+from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.routes import router
-from pythmata.api.schemas import ProcessDefinitionResponse
+from pythmata.api.schemas import ProcessDefinitionResponse, ProcessStats
 from pythmata.models.process import ProcessDefinition, ProcessInstance, ProcessStatus
 from tests.data.process_samples import SIMPLE_PROCESS_XML
 
@@ -123,3 +125,33 @@ async def test_get_processes_with_no_instances(
     process_data = data["items"][0]
     assert process_data["active_instances"] == 0
     assert process_data["total_instances"] == 0
+
+
+async def test_process_status_enum_serialization():
+    """Test that ProcessStatus enum can be properly serialized in responses."""
+    # Test schema generation
+    type_adapter = TypeAdapter(ProcessStatus)
+    schema = type_adapter.json_schema()
+
+    # Verify schema contains enum values
+    assert schema["enum"] == ["RUNNING", "COMPLETED", "SUSPENDED", "ERROR"]
+    assert schema["type"] == "string"
+
+    # Test serialization in complex structures
+    stats = ProcessStats(
+        total_instances=10,
+        status_counts={
+            "RUNNING": 5,
+            "COMPLETED": 3,
+            "ERROR": 2,
+        },
+        average_completion_time=60.0,
+        error_rate=0.2,
+        active_instances=5,
+    )
+
+    # Verify complex structure serialization works
+    json_str = stats.model_dump_json()
+    data = json.loads(json_str)
+    assert "RUNNING" in data["status_counts"]
+    assert data["status_counts"]["RUNNING"] == 5
