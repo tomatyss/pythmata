@@ -1,4 +1,5 @@
 import json
+
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
@@ -68,7 +69,7 @@ async def process_with_mixed_status_instances(
         ProcessStatus.SUSPENDED: 2,
         ProcessStatus.ERROR: 1,
     }
-    
+
     for status, count in status_counts.items():
         for _ in range(count):
             instance = ProcessInstance(
@@ -76,7 +77,7 @@ async def process_with_mixed_status_instances(
                 status=status,
             )
             session.add(instance)
-    
+
     await session.commit()
     return process_definition, status_counts
 
@@ -131,7 +132,9 @@ async def test_get_single_process_not_found(async_client: AsyncClient):
 
 async def test_instance_counting_with_mixed_status(
     async_client: AsyncClient,
-    process_with_mixed_status_instances: tuple[ProcessDefinition, dict[ProcessStatus, int]],
+    process_with_mixed_status_instances: tuple[
+        ProcessDefinition, dict[ProcessStatus, int]
+    ],
 ):
     """Test that instance counting correctly handles different process statuses."""
     process, status_counts = process_with_mixed_status_instances
@@ -243,7 +246,7 @@ async def test_multiple_processes_instance_counting(
             status=ProcessStatus.RUNNING,
         )
         session.add(instance)
-    
+
     # Add instances to process2
     for _ in range(2):
         instance = ProcessInstance(
@@ -257,7 +260,7 @@ async def test_multiple_processes_instance_counting(
             status=ProcessStatus.COMPLETED,
         )
         session.add(instance)
-    
+
     await session.commit()
 
     # Test individual process endpoints
@@ -275,7 +278,7 @@ async def test_multiple_processes_instance_counting(
     response_list = await async_client.get("/processes")
     data_list = response_list.json()["data"]
     assert len(data_list["items"]) == 2
-    
+
     # Verify processes are ordered by created_at desc
     processes = data_list["items"]
     assert processes[0]["name"] == "Process 2"  # Created later

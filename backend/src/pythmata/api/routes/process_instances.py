@@ -60,7 +60,7 @@ async def list_instances(
     status: Optional[str] = Query(
         None,
         description="Process status",
-        enum=[status.value for status in ProcessStatus]
+        enum=[status.value for status in ProcessStatus],
     ),
     start_date: Optional[datetime] = FastAPIDepends(parse_datetime),
     end_date: Optional[datetime] = FastAPIDepends(parse_datetime),
@@ -96,12 +96,11 @@ async def list_instances(
 
         # Build data query with inner join to get definition name
         data_query = select(
-            ProcessInstanceModel,
-            ProcessDefinitionModel.name.label('definition_name')
+            ProcessInstanceModel, ProcessDefinitionModel.name.label("definition_name")
         ).join(
             ProcessDefinitionModel,
             ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
-            isouter=False  # Use inner join
+            isouter=False,  # Use inner join
         )
 
         # Apply same conditions to data query
@@ -150,13 +149,14 @@ async def get_instance(
     """Get a specific process instance."""
     result = await session.execute(
         select(
-            ProcessInstanceModel,
-            ProcessDefinitionModel.name.label('definition_name')
-        ).join(
+            ProcessInstanceModel, ProcessDefinitionModel.name.label("definition_name")
+        )
+        .join(
             ProcessDefinitionModel,
             ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
-            isouter=False
-        ).where(ProcessInstanceModel.id == instance_id)
+            isouter=False,
+        )
+        .where(ProcessInstanceModel.id == instance_id)
     )
     row = result.one_or_none()
     if not row:
@@ -283,11 +283,13 @@ async def suspend_instance(
         instance = await instance_manager.suspend_instance(instance_id)
         # Get definition name using the same query pattern
         result = await session.execute(
-            select(ProcessDefinitionModel.name).join(
+            select(ProcessDefinitionModel.name)
+            .join(
                 ProcessInstanceModel,
                 ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
-                isouter=False
-            ).where(ProcessInstanceModel.id == instance_id)
+                isouter=False,
+            )
+            .where(ProcessInstanceModel.id == instance_id)
         )
         instance.definition_name = result.scalar_one()
         return {"data": instance}
@@ -312,11 +314,13 @@ async def resume_instance(
         instance = await instance_manager.resume_instance(instance_id)
         # Get definition name using the same query pattern
         result = await session.execute(
-            select(ProcessDefinitionModel.name).join(
+            select(ProcessDefinitionModel.name)
+            .join(
                 ProcessInstanceModel,
                 ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
-                isouter=False
-            ).where(ProcessInstanceModel.id == instance_id)
+                isouter=False,
+            )
+            .where(ProcessInstanceModel.id == instance_id)
         )
         instance.definition_name = result.scalar_one()
         return {"data": instance}

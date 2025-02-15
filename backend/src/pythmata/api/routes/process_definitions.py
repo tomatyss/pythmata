@@ -28,11 +28,11 @@ async def get_process_stats(
 ) -> list[Tuple[ProcessDefinitionModel, int, int]]:
     """
     Get process definition(s) with their instance statistics.
-    
+
     Args:
         session: The database session
         process_id: Optional process definition ID to filter by
-    
+
     Returns:
         List of tuples containing (process_definition, active_instances, total_instances)
     """
@@ -50,12 +50,12 @@ async def get_process_stats(
         )
         .group_by(ProcessDefinitionModel.id)
     )
-    
+
     if process_id:
         query = query.filter(ProcessDefinitionModel.id == process_id)
     else:
         query = query.order_by(ProcessDefinitionModel.created_at.desc())
-    
+
     result = await session.execute(query)
     return result.all()
 
@@ -67,7 +67,7 @@ async def get_process_stats(
 async def get_processes(session: AsyncSession = Depends(get_session)):
     """Get all process definitions with their instance statistics."""
     processes = await get_process_stats(session)
-    
+
     return {
         "data": {
             "items": [
@@ -96,18 +96,14 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
 async def get_process(process_id: str, session: AsyncSession = Depends(get_session)):
     """Get a specific process definition with its instance statistics."""
     processes = await get_process_stats(session, process_id)
-    
+
     if not processes:
         raise HTTPException(status_code=404, detail="Process not found")
-        
+
     process, active_instances, total_instances = processes[0]
     return {
         "data": ProcessDefinitionResponse.model_validate(
-            {
-                k: v
-                for k, v in process.__dict__.items()
-                if k != "_sa_instance_state"
-            }
+            {k: v for k, v in process.__dict__.items() if k != "_sa_instance_state"}
             | {"active_instances": active_instances, "total_instances": total_instances}
         )
     }
