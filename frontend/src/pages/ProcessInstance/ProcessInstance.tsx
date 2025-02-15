@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import apiService from '@/services/api';
 import { formatDate } from '@/utils/date';
 import ProcessDiagramViewer from '@/components/shared/ProcessDiagramViewer';
+import { useProcessTokens } from '@/hooks/useProcessTokens';
 import {
   Box,
   Card,
@@ -47,20 +48,16 @@ interface ProcessInstanceDetails {
   bpmnXml?: string;
 }
 
-interface Token {
-  nodeId: string;
-  state: string;
-  scopeId?: string;
-  data?: Record<string, unknown>;
-}
-
 const ProcessInstance = () => {
   const { instanceId } = useParams();
   const [loading, setLoading] = useState(true);
   const [instance, setInstance] = useState<ProcessInstanceDetails | null>(null);
 
-  const [tokens, setTokens] = useState<Token[]>([]);
-  const refreshInterval = 5000; // 5 seconds
+  const { tokens } = useProcessTokens({
+    instanceId: instanceId || '',
+    enabled: !!instanceId && instance?.status === 'RUNNING',
+    pollingInterval: 2000,
+  });
 
   useEffect(() => {
     const fetchInstanceData = async () => {
@@ -68,12 +65,15 @@ const ProcessInstance = () => {
 
       try {
         setLoading(true);
-        const [instanceResponse, definitionResponse] = await Promise.all([
-          apiService.getProcessInstance(instanceId),
-          apiService.getProcessDefinition(instanceId),
-        ]);
-
+        // First get the instance data to get the definition ID
+        const instanceResponse =
+          await apiService.getProcessInstance(instanceId);
         const instanceData = instanceResponse.data;
+
+        // Then get the process definition using the correct definition ID
+        const definitionResponse = await apiService.getProcessDefinition(
+          instanceData.definitionId
+        );
         const definitionData = definitionResponse.data;
 
         setInstance({
@@ -96,28 +96,6 @@ const ProcessInstance = () => {
 
     fetchInstanceData();
   }, [instanceId]);
-
-  useEffect(() => {
-    const fetchTokens = async () => {
-      if (!instanceId) return;
-
-      try {
-        const response = await apiService.getInstanceTokens(instanceId);
-        setTokens(response.data);
-      } catch (error) {
-        console.error('Failed to fetch tokens:', error);
-      }
-    };
-
-    // Initial fetch
-    fetchTokens();
-
-    // Set up polling if instance is running
-    if (instance?.status === 'RUNNING') {
-      const interval = setInterval(fetchTokens, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [instanceId, instance?.status, refreshInterval]);
 
   if (loading || !instance) {
     return (

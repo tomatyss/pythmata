@@ -9,6 +9,7 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const ProcessList = lazy(() => import('@/pages/ProcessList'));
 const ProcessDesigner = lazy(() => import('@/pages/ProcessDesigner'));
 const ProcessInstance = lazy(() => import('@/pages/ProcessInstance'));
+const ProcessInstanceList = lazy(() => import('@/pages/ProcessInstanceList'));
 const ProcessDiagram = lazy(() => import('@/pages/ProcessDiagram'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
@@ -57,8 +58,17 @@ const routes: RouteObject[] = [
                 id: 'process-diagram',
               },
               {
-                path: 'instances/:instanceId',
-                element: withSuspense(ProcessInstance),
+                path: 'instances',
+                children: [
+                  {
+                    index: true,
+                    element: withSuspense(ProcessInstanceList),
+                  },
+                  {
+                    path: ':instanceId',
+                    element: withSuspense(ProcessInstance),
+                  },
+                ],
               },
             ],
           },

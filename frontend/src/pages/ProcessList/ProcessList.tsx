@@ -17,6 +17,7 @@ import {
   IconButton,
   Chip,
   CircularProgress,
+  Link,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -24,6 +25,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
+  ListAlt as ListAltIcon,
 } from '@mui/icons-material';
 import ProcessVariablesDialog, {
   ProcessVariables,
@@ -175,7 +177,17 @@ const ProcessList = () => {
                       variant="outlined"
                     />
                   </TableCell>
-                  <TableCell>{process.active_instances}</TableCell>
+                  <TableCell>
+                    <Link
+                      component="button"
+                      onClick={() =>
+                        navigate(`/processes/${process.id}/instances`)
+                      }
+                      sx={{ textDecoration: 'none' }}
+                    >
+                      {process.active_instances}
+                    </Link>
+                  </TableCell>
                   <TableCell>{process.total_instances}</TableCell>
                   <TableCell>{formatDate(process.updated_at)}</TableCell>
                   <TableCell align="right">
@@ -187,6 +199,15 @@ const ProcessList = () => {
                       title="View Diagram"
                     >
                       <VisibilityIcon />
+                    </IconButton>
+                    <IconButton
+                      color="primary"
+                      onClick={() =>
+                        navigate(`/processes/${process.id}/instances`)
+                      }
+                      title="View Instances"
+                    >
+                      <ListAltIcon />
                     </IconButton>
                     <IconButton
                       color="primary"

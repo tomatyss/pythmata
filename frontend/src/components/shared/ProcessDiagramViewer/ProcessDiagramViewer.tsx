@@ -4,15 +4,63 @@ import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 import { Box } from '@mui/material';
 
+interface TokenData {
+  nodeId: string;
+  state: string;
+  scopeId?: string;
+  data?: Record<string, unknown>;
+}
+
 interface ProcessDiagramViewerProps {
   bpmnXml: string;
   className?: string;
-  tokens?: Array<{
-    nodeId: string;
-    state: string;
-    scopeId?: string;
-  }>;
+  tokens?: TokenData[];
 }
+
+// Group tokens by nodeId for counting
+const groupTokensByNode = (tokens: TokenData[]) => {
+  return tokens.reduce(
+    (acc, token) => {
+      const nodeGroup = acc[token.nodeId] || {
+        count: 0,
+        states: new Set<string>(),
+        tokens: [],
+      };
+
+      acc[token.nodeId] = {
+        count: nodeGroup.count + 1,
+        states: nodeGroup.states.add(token.state),
+        tokens: [...nodeGroup.tokens, token],
+      };
+
+      return acc;
+    },
+    {} as Record<
+      string,
+      { count: number; states: Set<string>; tokens: TokenData[] }
+    >
+  );
+};
+
+// Get token style based on state
+const getTokenStyle = (states: Set<string>) => {
+  if (states.has('error')) {
+    return {
+      backgroundColor: '#dc3545', // Red for error
+      boxShadow: '0 2px 4px rgba(220,53,69,0.3)',
+    };
+  }
+  if (states.has('async')) {
+    return {
+      backgroundColor: '#ffc107', // Yellow for async
+      boxShadow: '0 2px 4px rgba(255,193,7,0.3)',
+    };
+  }
+  return {
+    backgroundColor: '#4CAF50', // Green for active/default
+    boxShadow: '0 2px 4px rgba(76,175,80,0.3)',
+  };
+};
 
 const ProcessDiagramViewer = ({
   bpmnXml,
@@ -77,19 +125,25 @@ const ProcessDiagramViewer = ({
     // Clear existing overlays
     overlays.clear();
 
-    // Add token overlays
-    tokens.forEach((token) => {
-      overlays.add(token.nodeId, {
+    // Group tokens by node for counting
+    const tokenGroups = groupTokensByNode(tokens);
+
+    // Add token overlays with counts and tooltips
+    Object.entries(tokenGroups).forEach(([nodeId, group]) => {
+      const style = getTokenStyle(group.states);
+
+      overlays.add(nodeId, {
         position: {
           top: -10,
           left: -10,
         },
         html: `
           <div
+            class="token-overlay"
             style="
-              width: 20px;
-              height: 20px;
-              background-color: #4CAF50;
+              width: ${group.count > 1 ? '25px' : '20px'};
+              height: ${group.count > 1 ? '25px' : '20px'};
+              background-color: ${style.backgroundColor};
               border-radius: 50%;
               display: flex;
               align-items: center;
@@ -97,9 +151,14 @@ const ProcessDiagramViewer = ({
               color: white;
               font-size: 12px;
               font-weight: bold;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              box-shadow: ${style.boxShadow};
+              cursor: pointer;
+              transition: transform 0.2s;
             "
-          ></div>
+            title="${group.count} token${group.count > 1 ? 's' : ''} (${Array.from(group.states).join(', ')})"
+          >
+            ${group.count > 1 ? group.count : ''}
+          </div>
         `,
       });
     });
@@ -116,7 +175,12 @@ const ProcessDiagramViewer = ({
         borderRadius: 1,
         '& .djs-overlay': {
           position: 'absolute',
-          pointerEvents: 'none',
+        },
+        '& .token-overlay': {
+          pointerEvents: 'auto',
+          '&:hover': {
+            transform: 'scale(1.1)',
+          },
         },
       }}
     />
