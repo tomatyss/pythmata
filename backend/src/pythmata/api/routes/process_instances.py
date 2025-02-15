@@ -73,34 +73,55 @@ async def list_instances(
     status_enum = ProcessStatus(status) if status else None
     """Get process instances with filtering and pagination."""
     try:
-        query = select(ProcessInstanceModel)
+        # Build base query starting from ProcessInstanceModel
+        base_query = select(ProcessInstanceModel)
 
-        # Apply filters
+        # Build conditions
         conditions = []
+        if definition_id:
+            conditions.append(ProcessInstanceModel.definition_id == definition_id)
         if status_enum:
             conditions.append(ProcessInstanceModel.status == status_enum)
         if start_date:
             conditions.append(ProcessInstanceModel.start_time >= start_date)
         if end_date:
             conditions.append(ProcessInstanceModel.start_time <= end_date)
-        if definition_id:
-            conditions.append(ProcessInstanceModel.definition_id == definition_id)
 
+        # Apply conditions to base query
         if conditions:
-            query = query.where(and_(*conditions))
+            base_query = base_query.where(and_(*conditions))
+
+        # Get total count directly from ProcessInstanceModel
+        total = await session.scalar(select(func.count()).select_from(base_query))
+
+        # Build data query with inner join to get definition name
+        data_query = select(
+            ProcessInstanceModel,
+            ProcessDefinitionModel.name.label('definition_name')
+        ).join(
+            ProcessDefinitionModel,
+            ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+            isouter=False  # Use inner join
+        )
+
+        # Apply same conditions to data query
+        if conditions:
+            data_query = data_query.where(and_(*conditions))
 
         # Add ordering
-        query = query.order_by(ProcessInstanceModel.created_at.desc())
-
-        # Get total count
-        count_query = select(func.count()).select_from(query.subquery())
-        total = await session.scalar(count_query)
+        data_query = data_query.order_by(ProcessInstanceModel.created_at.desc())
 
         # Apply pagination
-        query = query.offset((page - 1) * page_size).limit(page_size)
+        data_query = data_query.offset((page - 1) * page_size).limit(page_size)
 
-        result = await session.execute(query)
-        instances = result.scalars().all()
+        # Execute data query
+        result = await session.execute(data_query)
+        rows = result.all()
+        instances = []
+        for row in rows:
+            instance = row[0]
+            instance.definition_name = row[1]
+            instances.append(instance)
 
         total_pages = (total + page_size - 1) // page_size
 
@@ -128,11 +149,20 @@ async def get_instance(
 ):
     """Get a specific process instance."""
     result = await session.execute(
-        select(ProcessInstanceModel).filter(ProcessInstanceModel.id == instance_id)
+        select(
+            ProcessInstanceModel,
+            ProcessDefinitionModel.name.label('definition_name')
+        ).join(
+            ProcessDefinitionModel,
+            ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+            isouter=False
+        ).where(ProcessInstanceModel.id == instance_id)
     )
-    instance = result.scalar_one_or_none()
-    if not instance:
+    row = result.one_or_none()
+    if not row:
         raise HTTPException(status_code=404, detail="Process instance not found")
+    instance = row[0]
+    instance.definition_name = row[1]
     return {"data": instance}
 
 
@@ -227,6 +257,8 @@ async def create_instance(
                 status_code=500, detail=f"Failed to start process: {str(e)}"
             )
 
+        # Add definition name to instance before returning
+        instance.definition_name = definition.name
         return {"data": instance}
     except HTTPException:
         raise
@@ -244,10 +276,20 @@ async def create_instance(
 async def suspend_instance(
     instance_id: UUID,
     instance_manager: ProcessInstanceManager = Depends(get_instance_manager),
+    session: AsyncSession = Depends(get_session),
 ):
     """Suspend a process instance."""
     try:
         instance = await instance_manager.suspend_instance(instance_id)
+        # Get definition name using the same query pattern
+        result = await session.execute(
+            select(ProcessDefinitionModel.name).join(
+                ProcessInstanceModel,
+                ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+                isouter=False
+            ).where(ProcessInstanceModel.id == instance_id)
+        )
+        instance.definition_name = result.scalar_one()
         return {"data": instance}
     except ProcessInstanceError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -263,10 +305,20 @@ async def suspend_instance(
 async def resume_instance(
     instance_id: UUID,
     instance_manager: ProcessInstanceManager = Depends(get_instance_manager),
+    session: AsyncSession = Depends(get_session),
 ):
     """Resume a suspended process instance."""
     try:
         instance = await instance_manager.resume_instance(instance_id)
+        # Get definition name using the same query pattern
+        result = await session.execute(
+            select(ProcessDefinitionModel.name).join(
+                ProcessInstanceModel,
+                ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+                isouter=False
+            ).where(ProcessInstanceModel.id == instance_id)
+        )
+        instance.definition_name = result.scalar_one()
         return {"data": instance}
     except ProcessInstanceError as e:
         raise HTTPException(status_code=400, detail=str(e))

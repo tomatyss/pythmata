@@ -253,13 +253,14 @@ class ProcessInstanceResponse(BaseModel):
 
     id: UUID
     definition_id: UUID
+    definition_name: str
     status: ProcessStatus
     start_time: datetime
     end_time: Optional[datetime]
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class ProcessInstanceFilter(BaseModel):

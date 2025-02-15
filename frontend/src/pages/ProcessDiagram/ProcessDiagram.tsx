@@ -36,24 +36,35 @@ const ProcessDiagram = () => {
   const navigate = useNavigate();
 
   // Fetch active instances and their tokens
+  // Auto-select Active Instances tab when instances exist
   useEffect(() => {
     const fetchActiveInstances = async () => {
-      if (!id || tabValue !== 1) return;
+      if (!id) return;
 
       try {
-        const response = await apiService.getProcessInstances(id);
+        const response = await apiService.getProcessInstances({
+          definition_id: id,
+        });
         const instances = response.data.items.filter(
           (instance) => instance.status === 'RUNNING'
         );
         setActiveInstances(instances);
 
-        // Fetch tokens for all active instances
-        const tokenPromises = instances.map((instance) =>
-          apiService.getInstanceTokens(instance.id)
-        );
-        const tokenResponses = await Promise.all(tokenPromises);
-        const allTokens = tokenResponses.flatMap((response) => response.data);
-        setTokens(allTokens);
+        // Auto-select Active Instances tab if there are active instances
+        if (instances.length > 0 && tabValue === 0) {
+          setTabValue(1);
+        }
+
+        // Only fetch tokens if we're on the Active Instances tab
+        if (tabValue === 1) {
+          // Fetch tokens for all active instances
+          const tokenPromises = instances.map((instance) =>
+            apiService.getInstanceTokens(instance.id)
+          );
+          const tokenResponses = await Promise.all(tokenPromises);
+          const allTokens = tokenResponses.flatMap((response) => response.data);
+          setTokens(allTokens);
+        }
       } catch (error) {
         console.error('Failed to fetch active instances:', error);
       }

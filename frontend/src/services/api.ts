@@ -79,10 +79,27 @@ class ApiService {
   }
 
   // Process Instances
-  async getProcessInstances(
-    definitionId?: string
-  ): Promise<ApiResponse<PaginatedResponse<ProcessInstance>>> {
-    const params = definitionId ? { definitionId } : undefined;
+  private readonly statusMap: Record<string, string> = {
+    running: 'RUNNING',
+    completed: 'COMPLETED',
+    suspended: 'SUSPENDED',
+    error: 'ERROR',
+  };
+
+  async getProcessInstances(options?: {
+    definition_id?: string;
+    page?: number;
+    page_size?: number;
+    status?: string;
+  }): Promise<ApiResponse<PaginatedResponse<ProcessInstance>>> {
+    const params = {
+      ...(options?.definition_id
+        ? { definition_id: options.definition_id }
+        : {}),
+      ...(options?.page ? { page: options.page } : {}),
+      ...(options?.page_size ? { page_size: options.page_size } : {}),
+      ...(options?.status ? { status: this.statusMap[options.status] } : {}),
+    };
     const response = await this.client.get('/instances', { params });
     return response.data;
   }
