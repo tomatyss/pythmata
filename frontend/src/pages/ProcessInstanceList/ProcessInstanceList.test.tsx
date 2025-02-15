@@ -6,6 +6,7 @@ import {
   PaginatedResponse,
   ProcessDefinition,
   ProcessInstance,
+  ProcessStatus,
 } from '@/types/process';
 import '@testing-library/jest-dom';
 
@@ -43,15 +44,17 @@ jest.mock('@/services/api', () => {
 
 describe('ProcessInstanceList', () => {
   const mockProcessId = '03fffc6c-b6da-43eb-aed5-a582ac8dde72';
-  const mockInstances = {
+  const mockInstances: ApiResponse<PaginatedResponse<ProcessInstance>> = {
     data: {
       items: [
         {
           id: '1',
           definitionId: mockProcessId,
           definitionName: 'Test Process',
-          status: 'RUNNING',
+          status: ProcessStatus.RUNNING,
           startTime: '2024-02-15T12:00:00Z',
+          createdAt: '2024-02-15T12:00:00Z',
+          updatedAt: '2024-02-15T12:00:00Z',
         },
       ],
       total: 1,
@@ -61,11 +64,17 @@ describe('ProcessInstanceList', () => {
     },
   };
 
-  const mockProcessDefinition = {
+  const mockProcessDefinition: ApiResponse<ProcessDefinition> = {
     data: {
       id: mockProcessId,
       name: 'Test Process',
       version: 1,
+      bpmn_xml: '<xml></xml>',
+      variable_definitions: [],
+      active_instances: 1,
+      total_instances: 1,
+      created_at: '2024-02-15T12:00:00Z',
+      updated_at: '2024-02-15T12:00:00Z',
     },
   };
 
@@ -114,15 +123,19 @@ describe('ProcessInstanceList', () => {
 
   it('handles different process IDs correctly', async () => {
     const anotherProcessId = '41deafdb-189d-4359-9dc7-4c64cd9aa6e3';
-    const anotherProcessInstances = {
+    const anotherProcessInstances: ApiResponse<
+      PaginatedResponse<ProcessInstance>
+    > = {
       data: {
         items: [
           {
             id: '2',
             definitionId: anotherProcessId,
             definitionName: 'Another Process',
-            status: 'RUNNING',
+            status: ProcessStatus.RUNNING,
             startTime: '2024-02-15T12:00:00Z',
+            createdAt: '2024-02-15T12:00:00Z',
+            updatedAt: '2024-02-15T12:00:00Z',
           },
         ],
         total: 1,
@@ -132,11 +145,17 @@ describe('ProcessInstanceList', () => {
       },
     };
 
-    const anotherProcessDefinition = {
+    const anotherProcessDefinition: ApiResponse<ProcessDefinition> = {
       data: {
         id: anotherProcessId,
         name: 'Another Process',
         version: 1,
+        bpmn_xml: '<xml></xml>',
+        variable_definitions: [],
+        active_instances: 1,
+        total_instances: 1,
+        created_at: '2024-02-15T12:00:00Z',
+        updated_at: '2024-02-15T12:00:00Z',
       },
     };
 
@@ -181,23 +200,33 @@ describe('ProcessInstanceList', () => {
 
   it('handles status filtering correctly', async () => {
     mockGetProcessInstances.mockImplementation(
-      ({ status }: { status?: string }) => ({
-        data: {
-          items: [
-            {
-              id: '1',
-              definitionId: mockProcessId,
-              definitionName: 'Test Process',
-              status: status ? status.toUpperCase() : 'RUNNING',
-              startTime: '2024-02-15T12:00:00Z',
-            },
-          ],
-          total: 1,
-          page: 1,
-          pageSize: 10,
-          totalPages: 1,
-        },
-      })
+      (options?: {
+        definition_id?: string;
+        page?: number;
+        page_size?: number;
+        status?: string;
+      }) =>
+        Promise.resolve({
+          data: {
+            items: [
+              {
+                id: '1',
+                definitionId: mockProcessId,
+                definitionName: 'Test Process',
+                status: options?.status
+                  ? (options.status.toUpperCase() as ProcessStatus)
+                  : ProcessStatus.RUNNING,
+                startTime: '2024-02-15T12:00:00Z',
+                createdAt: '2024-02-15T12:00:00Z',
+                updatedAt: '2024-02-15T12:00:00Z',
+              },
+            ],
+            total: 1,
+            page: 1,
+            pageSize: 10,
+            totalPages: 1,
+          },
+        })
     );
 
     render(
