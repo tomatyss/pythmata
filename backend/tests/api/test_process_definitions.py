@@ -57,6 +57,30 @@ async def process_with_instances(
     return process_definition, running_count, running_count + completed_count
 
 
+@pytest.fixture
+async def process_with_mixed_status_instances(
+    session: AsyncSession, process_definition: ProcessDefinition
+) -> tuple[ProcessDefinition, dict[ProcessStatus, int]]:
+    """Create a process definition with instances in various states."""
+    status_counts = {
+        ProcessStatus.RUNNING: 5,
+        ProcessStatus.COMPLETED: 3,
+        ProcessStatus.SUSPENDED: 2,
+        ProcessStatus.ERROR: 1,
+    }
+    
+    for status, count in status_counts.items():
+        for _ in range(count):
+            instance = ProcessInstance(
+                definition_id=process_definition.id,
+                status=status,
+            )
+            session.add(instance)
+    
+    await session.commit()
+    return process_definition, status_counts
+
+
 async def test_get_processes_serialization(
     async_client: AsyncClient,
     process_with_instances: tuple[ProcessDefinition, int, int],
@@ -81,6 +105,43 @@ async def test_get_processes_serialization(
 
     # Verify no SQLAlchemy internal state is present
     assert "_sa_instance_state" not in process_data
+
+
+async def test_get_single_process(
+    async_client: AsyncClient,
+    process_with_instances: tuple[ProcessDefinition, int, int],
+):
+    """Test that GET /processes/{id} returns correct process with instance counts."""
+    process, active_count, total_count = process_with_instances
+
+    response = await async_client.get(f"/processes/{process.id}")
+    assert response.status_code == 200
+
+    data = response.json()["data"]
+    assert data["id"] == str(process.id)
+    assert data["active_instances"] == active_count
+    assert data["total_instances"] == total_count
+
+
+async def test_get_single_process_not_found(async_client: AsyncClient):
+    """Test that GET /processes/{id} returns 404 for non-existent process."""
+    response = await async_client.get("/processes/00000000-0000-0000-0000-000000000000")
+    assert response.status_code == 404
+
+
+async def test_instance_counting_with_mixed_status(
+    async_client: AsyncClient,
+    process_with_mixed_status_instances: tuple[ProcessDefinition, dict[ProcessStatus, int]],
+):
+    """Test that instance counting correctly handles different process statuses."""
+    process, status_counts = process_with_mixed_status_instances
+
+    response = await async_client.get(f"/processes/{process.id}")
+    assert response.status_code == 200
+
+    data = response.json()["data"]
+    assert data["active_instances"] == status_counts[ProcessStatus.RUNNING]
+    assert data["total_instances"] == sum(status_counts.values())
 
 
 async def test_process_definition_response_validation():
@@ -155,3 +216,67 @@ async def test_process_status_enum_serialization():
     data = json.loads(json_str)
     assert "RUNNING" in data["status_counts"]
     assert data["status_counts"]["RUNNING"] == 5
+
+
+async def test_multiple_processes_instance_counting(
+    async_client: AsyncClient, session: AsyncSession
+):
+    """Test that instance counting works correctly across multiple processes."""
+    # Create two processes
+    process1 = ProcessDefinition(
+        name="Process 1",
+        bpmn_xml=SIMPLE_PROCESS_XML,
+        version=1,
+    )
+    process2 = ProcessDefinition(
+        name="Process 2",
+        bpmn_xml=SIMPLE_PROCESS_XML,
+        version=1,
+    )
+    session.add_all([process1, process2])
+    await session.commit()
+
+    # Add instances to process1
+    for _ in range(3):
+        instance = ProcessInstance(
+            definition_id=process1.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+    
+    # Add instances to process2
+    for _ in range(2):
+        instance = ProcessInstance(
+            definition_id=process2.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+    for _ in range(2):
+        instance = ProcessInstance(
+            definition_id=process2.id,
+            status=ProcessStatus.COMPLETED,
+        )
+        session.add(instance)
+    
+    await session.commit()
+
+    # Test individual process endpoints
+    response1 = await async_client.get(f"/processes/{process1.id}")
+    data1 = response1.json()["data"]
+    assert data1["active_instances"] == 3
+    assert data1["total_instances"] == 3
+
+    response2 = await async_client.get(f"/processes/{process2.id}")
+    data2 = response2.json()["data"]
+    assert data2["active_instances"] == 2
+    assert data2["total_instances"] == 4
+
+    # Test list endpoint
+    response_list = await async_client.get("/processes")
+    data_list = response_list.json()["data"]
+    assert len(data_list["items"]) == 2
+    
+    # Verify processes are ordered by created_at desc
+    processes = data_list["items"]
+    assert processes[0]["name"] == "Process 2"  # Created later
+    assert processes[1]["name"] == "Process 1"  # Created first

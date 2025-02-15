@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional, Tuple
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import case, func, select
@@ -22,13 +23,19 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/processes", tags=["processes"])
 
 
-@router.get(
-    "",
-    response_model=ApiResponse[PaginatedResponse[ProcessDefinitionResponse]],
-)
-async def get_processes(session: AsyncSession = Depends(get_session)):
-    """Get all process definitions."""
-    # Query process definitions with instance counts
+async def get_process_stats(
+    session: AsyncSession, process_id: Optional[str] = None
+) -> list[Tuple[ProcessDefinitionModel, int, int]]:
+    """
+    Get process definition(s) with their instance statistics.
+    
+    Args:
+        session: The database session
+        process_id: Optional process definition ID to filter by
+    
+    Returns:
+        List of tuples containing (process_definition, active_instances, total_instances)
+    """
     query = (
         select(
             ProcessDefinitionModel,
@@ -42,11 +49,25 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
             ProcessDefinitionModel.id == ProcessInstanceModel.definition_id,
         )
         .group_by(ProcessDefinitionModel.id)
-        .order_by(ProcessDefinitionModel.created_at.desc())
     )
-
+    
+    if process_id:
+        query = query.filter(ProcessDefinitionModel.id == process_id)
+    else:
+        query = query.order_by(ProcessDefinitionModel.created_at.desc())
+    
     result = await session.execute(query)
-    processes = result.all()
+    return result.all()
+
+
+@router.get(
+    "",
+    response_model=ApiResponse[PaginatedResponse[ProcessDefinitionResponse]],
+)
+async def get_processes(session: AsyncSession = Depends(get_session)):
+    """Get all process definitions with their instance statistics."""
+    processes = await get_process_stats(session)
+    
     return {
         "data": {
             "items": [
@@ -73,14 +94,23 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
     response_model=ApiResponse[ProcessDefinitionResponse],
 )
 async def get_process(process_id: str, session: AsyncSession = Depends(get_session)):
-    """Get a specific process definition."""
-    result = await session.execute(
-        select(ProcessDefinitionModel).filter(ProcessDefinitionModel.id == process_id)
-    )
-    process = result.scalar_one_or_none()
-    if not process:
+    """Get a specific process definition with its instance statistics."""
+    processes = await get_process_stats(session, process_id)
+    
+    if not processes:
         raise HTTPException(status_code=404, detail="Process not found")
-    return {"data": process}
+        
+    process, active_instances, total_instances = processes[0]
+    return {
+        "data": ProcessDefinitionResponse.model_validate(
+            {
+                k: v
+                for k, v in process.__dict__.items()
+                if k != "_sa_instance_state"
+            }
+            | {"active_instances": active_instances, "total_instances": total_instances}
+        )
+    }
 
 
 @router.post("", response_model=ApiResponse[ProcessDefinitionResponse])
