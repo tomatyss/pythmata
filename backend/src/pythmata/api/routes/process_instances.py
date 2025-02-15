@@ -91,8 +91,8 @@ async def list_instances(
         if conditions:
             base_query = base_query.where(and_(*conditions))
 
-        # Get total count directly from ProcessInstanceModel
-        total = await session.scalar(select(func.count()).select_from(base_query))
+        # Get total count using subquery as recommended by SQLAlchemy
+        total = await session.scalar(select(func.count()).select_from(base_query.subquery()))
 
         # Build data query with inner join to get definition name
         data_query = select(
