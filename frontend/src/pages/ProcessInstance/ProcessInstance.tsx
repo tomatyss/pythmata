@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '@/services/api';
 import { formatDate } from '@/utils/date';
+import ProcessDiagramViewer from '@/components/shared/ProcessDiagramViewer';
 import {
   Box,
   Card,
@@ -43,6 +44,14 @@ interface ProcessInstanceDetails {
   endTime?: string;
   variables: ProcessVariable[];
   activities: ActivityLog[];
+  bpmnXml?: string;
+}
+
+interface Token {
+  nodeId: string;
+  state: string;
+  scopeId?: string;
+  data?: Record<string, unknown>;
 }
 
 const ProcessInstance = () => {
@@ -50,14 +59,22 @@ const ProcessInstance = () => {
   const [loading, setLoading] = useState(true);
   const [instance, setInstance] = useState<ProcessInstanceDetails | null>(null);
 
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const refreshInterval = 5000; // 5 seconds
+
   useEffect(() => {
     const fetchInstanceData = async () => {
       if (!instanceId) return;
 
       try {
         setLoading(true);
-        const response = await apiService.getProcessInstance(instanceId);
-        const instanceData = response.data;
+        const [instanceResponse, definitionResponse] = await Promise.all([
+          apiService.getProcessInstance(instanceId),
+          apiService.getProcessDefinition(instanceId),
+        ]);
+
+        const instanceData = instanceResponse.data;
+        const definitionData = definitionResponse.data;
 
         setInstance({
           id: instanceData.id,
@@ -66,9 +83,9 @@ const ProcessInstance = () => {
           status: instanceData.status,
           startTime: instanceData.startTime,
           endTime: instanceData.endTime,
-          // For now, show empty arrays until API endpoints are available
           variables: [],
           activities: [],
+          bpmnXml: definitionData.bpmn_xml,
         });
       } catch (error) {
         console.error('Failed to fetch instance:', error);
@@ -79,6 +96,28 @@ const ProcessInstance = () => {
 
     fetchInstanceData();
   }, [instanceId]);
+
+  useEffect(() => {
+    const fetchTokens = async () => {
+      if (!instanceId) return;
+
+      try {
+        const response = await apiService.getInstanceTokens(instanceId);
+        setTokens(response.data);
+      } catch (error) {
+        console.error('Failed to fetch tokens:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchTokens();
+
+    // Set up polling if instance is running
+    if (instance?.status === 'RUNNING') {
+      const interval = setInterval(fetchTokens, refreshInterval);
+      return () => clearInterval(interval);
+    }
+  }, [instanceId, instance?.status, refreshInterval]);
 
   if (loading || !instance) {
     return (
@@ -102,6 +141,24 @@ const ProcessInstance = () => {
       </Typography>
 
       <Grid container spacing={3}>
+        {/* Process Diagram */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Process Diagram
+              </Typography>
+              <Box sx={{ height: '500px' }}>
+                {instance.bpmnXml && (
+                  <ProcessDiagramViewer
+                    bpmnXml={instance.bpmnXml}
+                    tokens={tokens}
+                  />
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
         {/* Instance Details */}
         <Grid item xs={12}>
           <Card>

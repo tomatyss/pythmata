@@ -1,4 +1,5 @@
 """Test configuration and shared fixtures."""
+
 import os
 import subprocess
 from pathlib import Path
@@ -40,11 +41,11 @@ from tests.core.testing.constants import (
     DEFAULT_DB_POOL_SIZE,
     DEFAULT_DEBUG,
     DEFAULT_MAX_INSTANCES,
-    DEFAULT_REDIS_POOL_SIZE,
-    DEFAULT_REDIS_URL,
-    DEFAULT_RABBITMQ_URL,
     DEFAULT_RABBITMQ_CONNECTION_ATTEMPTS,
     DEFAULT_RABBITMQ_RETRY_DELAY,
+    DEFAULT_RABBITMQ_URL,
+    DEFAULT_REDIS_POOL_SIZE,
+    DEFAULT_REDIS_URL,
     DEFAULT_SCRIPT_TIMEOUT,
     DEFAULT_SECRET_KEY,
     DEFAULT_SERVER_HOST,
@@ -61,8 +62,7 @@ def pytest_configure(config: Config) -> None:
     Raises:
         SystemExit: If database setup fails
     """
-    setup_script = Path(__file__).parent.parent / \
-        "scripts" / "setup_test_db.py"
+    setup_script = Path(__file__).parent.parent / "scripts" / "setup_test_db.py"
     try:
         subprocess.run([str(setup_script)], check=True)
     except subprocess.CalledProcessError as e:
@@ -72,6 +72,7 @@ def pytest_configure(config: Config) -> None:
 # ============================================================================
 # Core Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def expression_evaluator() -> ExpressionEvaluator:
@@ -170,6 +171,7 @@ def setup_test_data_dir(test_data_dir: Path):
 # ============================================================================
 # Application Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 async def state_manager(test_settings: Settings) -> AsyncGenerator:
@@ -315,41 +317,45 @@ def test_settings() -> Settings:
         ),
         database=DatabaseSettings(
             url=db_url,
-            pool_size=int(os.getenv("DB_POOL_SIZE",
-                          str(DEFAULT_DB_POOL_SIZE))),
-            max_overflow=int(os.getenv("DB_MAX_OVERFLOW",
-                             str(DEFAULT_DB_MAX_OVERFLOW))),
+            pool_size=int(os.getenv("DB_POOL_SIZE", str(DEFAULT_DB_POOL_SIZE))),
+            max_overflow=int(
+                os.getenv("DB_MAX_OVERFLOW", str(DEFAULT_DB_MAX_OVERFLOW))
+            ),
         ),
         redis=RedisSettings(
             url=os.getenv(DEFAULT_REDIS_URL, "redis://localhost:6379/0"),
-            pool_size=int(os.getenv("REDIS_POOL_SIZE",
-                          str(DEFAULT_REDIS_POOL_SIZE))),
+            pool_size=int(os.getenv("REDIS_POOL_SIZE", str(DEFAULT_REDIS_POOL_SIZE))),
         ),
         rabbitmq=RabbitMQSettings(
-            url=os.getenv(DEFAULT_RABBITMQ_URL,
-                          "amqp://guest:guest@localhost:5672/"),
+            url=os.getenv(DEFAULT_RABBITMQ_URL, "amqp://guest:guest@localhost:5672/"),
             connection_attempts=int(
-                os.getenv("RABBITMQ_CONNECTION_ATTEMPTS", str(
-                    DEFAULT_RABBITMQ_CONNECTION_ATTEMPTS))
+                os.getenv(
+                    "RABBITMQ_CONNECTION_ATTEMPTS",
+                    str(DEFAULT_RABBITMQ_CONNECTION_ATTEMPTS),
+                )
             ),
-            retry_delay=int(os.getenv("RABBITMQ_RETRY_DELAY",
-                            str(DEFAULT_RABBITMQ_RETRY_DELAY))),
+            retry_delay=int(
+                os.getenv("RABBITMQ_RETRY_DELAY", str(DEFAULT_RABBITMQ_RETRY_DELAY))
+            ),
         ),
         security=SecuritySettings(
             secret_key=os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY),
             algorithm=os.getenv("ALGORITHM", DEFAULT_ALGORITHM),
             access_token_expire_minutes=int(
-                os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(
-                    DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES))
+                os.getenv(
+                    "ACCESS_TOKEN_EXPIRE_MINUTES",
+                    str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES),
+                )
             ),
         ),
         process=ProcessSettings(
             script_timeout=int(
-                os.getenv("SCRIPT_TIMEOUT", str(DEFAULT_SCRIPT_TIMEOUT))),
-            max_instances=int(
-                os.getenv("MAX_INSTANCES", str(DEFAULT_MAX_INSTANCES))),
+                os.getenv("SCRIPT_TIMEOUT", str(DEFAULT_SCRIPT_TIMEOUT))
+            ),
+            max_instances=int(os.getenv("MAX_INSTANCES", str(DEFAULT_MAX_INSTANCES))),
             cleanup_interval=int(
-                os.getenv("CLEANUP_INTERVAL", str(DEFAULT_CLEANUP_INTERVAL))),
+                os.getenv("CLEANUP_INTERVAL", str(DEFAULT_CLEANUP_INTERVAL))
+            ),
         ),
         _env_file=None,  # Disable environment file loading for tests
     )

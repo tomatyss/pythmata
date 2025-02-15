@@ -7,6 +7,7 @@ import {
   ProcessInstance,
   ProcessStats,
   Script,
+  Token,
   CreateProcessDefinitionRequest,
   UpdateProcessDefinitionRequest,
   StartProcessInstanceRequest,
@@ -109,6 +110,11 @@ class ApiService {
     id: string
   ): Promise<ApiResponse<ProcessInstance>> {
     const response = await this.client.post(`/instances/${id}/resume`);
+    return response.data;
+  }
+
+  async getInstanceTokens(id: string): Promise<ApiResponse<Token[]>> {
+    const response = await this.client.get(`/instances/${id}/tokens`);
     return response.data;
   }
 

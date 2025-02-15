@@ -23,6 +23,7 @@ import {
   PlayArrow as PlayArrowIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import ProcessVariablesDialog, {
   ProcessVariables,
@@ -178,6 +179,15 @@ const ProcessList = () => {
                   <TableCell>{process.total_instances}</TableCell>
                   <TableCell>{formatDate(process.updated_at)}</TableCell>
                   <TableCell align="right">
+                    <IconButton
+                      color="primary"
+                      onClick={() =>
+                        navigate(`/processes/${process.id}/diagram`)
+                      }
+                      title="View Diagram"
+                    >
+                      <VisibilityIcon />
+                    </IconButton>
                     <IconButton
                       color="primary"
                       onClick={() => handleStartProcess(process)}

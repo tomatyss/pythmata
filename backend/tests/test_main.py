@@ -1,8 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from httpx import AsyncClient, ASGITransport
-from unittest.mock import AsyncMock, patch, MagicMock
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from pythmata.main import app, handle_process_started
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 
@@ -15,11 +17,13 @@ async def test_lifespan():
     mock_settings = AsyncMock()
     mock_db = AsyncMock()
 
-    with patch('pythmata.main.EventBus', return_value=mock_event_bus), \
-            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
-            patch('pythmata.main.Settings', return_value=mock_settings), \
-            patch('pythmata.main.get_db', return_value=mock_db), \
-            patch('pythmata.main.init_db'):
+    with (
+        patch("pythmata.main.EventBus", return_value=mock_event_bus),
+        patch("pythmata.main.StateManager", return_value=mock_state_manager),
+        patch("pythmata.main.Settings", return_value=mock_settings),
+        patch("pythmata.main.get_db", return_value=mock_db),
+        patch("pythmata.main.init_db"),
+    ):
 
         # Create a lifespan context
         async with app.router.lifespan_context(app) as _:
@@ -30,7 +34,9 @@ async def test_lifespan():
             assert mock_event_bus.subscribe.called
 
             # Test the application works
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
                 response = await client.get("/health")
                 assert response.status_code == 200
 
@@ -43,7 +49,9 @@ async def test_lifespan():
 @pytest.mark.asyncio
 async def test_health_check():
     """Test the health check endpoint returns correct status."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get("/health")
         assert response.status_code == 200
         assert response.json() == {"status": "healthy"}
@@ -61,12 +69,14 @@ async def test_lifespan_error_handling():
     db_error = Exception("Database disconnect error")
     mock_db.disconnect.side_effect = db_error
 
-    with patch('pythmata.main.EventBus', return_value=mock_event_bus), \
-            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
-            patch('pythmata.main.Settings', return_value=mock_settings), \
-            patch('pythmata.main.get_db', return_value=mock_db), \
-            patch('pythmata.main.init_db'), \
-            pytest.raises(Exception) as exc_info:
+    with (
+        patch("pythmata.main.EventBus", return_value=mock_event_bus),
+        patch("pythmata.main.StateManager", return_value=mock_state_manager),
+        patch("pythmata.main.Settings", return_value=mock_settings),
+        patch("pythmata.main.get_db", return_value=mock_db),
+        patch("pythmata.main.init_db"),
+        pytest.raises(Exception) as exc_info,
+    ):
 
         async with app.router.lifespan_context(app) as _:
             # Verify startup succeeded
@@ -122,18 +132,18 @@ async def test_handle_process_started():
     mock_select = AsyncMock(return_value=select_stmt)
     # Configure parser mock
     process_graph = {
-        "nodes": [
-            type("StartEvent", (), {"id": "start_1", "event_type": "start"})()
-        ]
+        "nodes": [type("StartEvent", (), {"id": "start_1", "event_type": "start"})()]
     }
     mock_parser.parse.return_value = process_graph
 
-    with patch('pythmata.main.Settings'), \
-            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
-            patch('pythmata.main.get_db', return_value=mock_db), \
-            patch('pythmata.main.BPMNParser', return_value=mock_parser), \
-            patch('pythmata.main.ProcessExecutor', return_value=mock_executor), \
-            patch('pythmata.main.select', return_value=mock_select):
+    with (
+        patch("pythmata.main.Settings"),
+        patch("pythmata.main.StateManager", return_value=mock_state_manager),
+        patch("pythmata.main.get_db", return_value=mock_db),
+        patch("pythmata.main.BPMNParser", return_value=mock_parser),
+        patch("pythmata.main.ProcessExecutor", return_value=mock_executor),
+        patch("pythmata.main.select", return_value=mock_select),
+    ):
 
         await handle_process_started(test_data)
 
@@ -148,7 +158,8 @@ async def test_handle_process_started():
         assert mock_executor.create_initial_token.called
         assert mock_executor.execute_process.called
         mock_executor.create_initial_token.assert_called_with(
-            "test-instance", "start_1")
+            "test-instance", "start_1"
+        )
 
 
 @pytest.mark.asyncio
@@ -184,11 +195,13 @@ async def test_handle_process_started_error_cases():
     )
     mock_select = AsyncMock(return_value=select_stmt)
 
-    with patch('pythmata.main.Settings'), \
-            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
-            patch('pythmata.main.get_db', return_value=mock_db), \
-            patch('pythmata.main.BPMNParser', return_value=mock_parser), \
-            patch('pythmata.main.select', return_value=mock_select):
+    with (
+        patch("pythmata.main.Settings"),
+        patch("pythmata.main.StateManager", return_value=mock_state_manager),
+        patch("pythmata.main.get_db", return_value=mock_db),
+        patch("pythmata.main.BPMNParser", return_value=mock_parser),
+        patch("pythmata.main.select", return_value=mock_select),
+    ):
 
         await handle_process_started(test_data)
         # Should not raise exception but log error
@@ -203,11 +216,13 @@ async def test_handle_process_started_error_cases():
     # Configure parser mock for error case
     mock_parser.parse.return_value = {"nodes": []}  # No start event in nodes
 
-    with patch('pythmata.main.Settings'), \
-            patch('pythmata.main.StateManager', return_value=mock_state_manager), \
-            patch('pythmata.main.get_db', return_value=mock_db), \
-            patch('pythmata.main.BPMNParser', return_value=mock_parser), \
-            patch('pythmata.main.select', return_value=mock_select):
+    with (
+        patch("pythmata.main.Settings"),
+        patch("pythmata.main.StateManager", return_value=mock_state_manager),
+        patch("pythmata.main.get_db", return_value=mock_db),
+        patch("pythmata.main.BPMNParser", return_value=mock_parser),
+        patch("pythmata.main.select", return_value=mock_select),
+    ):
 
         await handle_process_started(test_data)
         # Should not raise exception but log error
@@ -218,12 +233,17 @@ async def test_handle_process_started_error_cases():
 async def test_cors_middleware():
     """Test CORS middleware configuration."""
     test_origin = "http://example.com"
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.options("/health", headers={
-            "Origin": test_origin,
-            "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "Content-Type",
-        })
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.options(
+            "/health",
+            headers={
+                "Origin": test_origin,
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
 
         assert response.status_code == 200
         # When allow_credentials is True, the origin is reflected back

@@ -5,11 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.routes import router
 from pythmata.api.schemas import ProcessDefinitionResponse
-from pythmata.models.process import (
-    ProcessDefinition,
-    ProcessInstance,
-    ProcessStatus,
-)
+from pythmata.models.process import ProcessDefinition, ProcessInstance, ProcessStatus
 from tests.data.process_samples import SIMPLE_PROCESS_XML
 
 # Setup test application
@@ -68,10 +64,10 @@ async def test_get_processes_serialization(
 
     response = await async_client.get("/processes")
     assert response.status_code == 200
-    
+
     data = response.json()["data"]
     assert len(data["items"]) == 1
-    
+
     process_data = data["items"][0]
     assert process_data["id"] == str(process.id)
     assert process_data["name"] == process.name
@@ -80,7 +76,7 @@ async def test_get_processes_serialization(
     assert process_data["variable_definitions"] == process.variable_definitions
     assert process_data["active_instances"] == active_count
     assert process_data["total_instances"] == total_count
-    
+
     # Verify no SQLAlchemy internal state is present
     assert "_sa_instance_state" not in process_data
 
@@ -94,19 +90,23 @@ async def test_process_definition_response_validation():
 
     # Test with invalid field types
     with pytest.raises(Exception) as exc_info:
-        ProcessDefinitionResponse.model_validate({
-            "id": "not-a-uuid",
-            "name": "Test",
-            "bpmn_xml": "<xml></xml>",
-            "version": "not-an-int",
-            "variable_definitions": [],
-            "created_at": "not-a-datetime",
-            "updated_at": "not-a-datetime",
-            "active_instances": "not-an-int",
-            "total_instances": "not-an-int"
-        })
-    assert any(field in str(exc_info.value) 
-              for field in ["id", "version", "active_instances", "total_instances"])
+        ProcessDefinitionResponse.model_validate(
+            {
+                "id": "not-a-uuid",
+                "name": "Test",
+                "bpmn_xml": "<xml></xml>",
+                "version": "not-an-int",
+                "variable_definitions": [],
+                "created_at": "not-a-datetime",
+                "updated_at": "not-a-datetime",
+                "active_instances": "not-an-int",
+                "total_instances": "not-an-int",
+            }
+        )
+    assert any(
+        field in str(exc_info.value)
+        for field in ["id", "version", "active_instances", "total_instances"]
+    )
 
 
 async def test_get_processes_with_no_instances(
@@ -116,10 +116,10 @@ async def test_get_processes_with_no_instances(
     """Test GET /processes when process has no instances."""
     response = await async_client.get("/processes")
     assert response.status_code == 200
-    
+
     data = response.json()["data"]
     assert len(data["items"]) == 1
-    
+
     process_data = data["items"][0]
     assert process_data["active_instances"] == 0
     assert process_data["total_instances"] == 0

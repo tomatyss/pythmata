@@ -1,11 +1,13 @@
 """Base class for engine tests."""
+
 from typing import Dict, List
 
 import pytest
+
 from pythmata.core.engine.executor import ProcessExecutor
+from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, EventType, Gateway, GatewayType, Task
-from pythmata.core.engine.token import Token
 
 
 class BaseEngineTest:
@@ -14,7 +16,7 @@ class BaseEngineTest:
     @pytest.fixture(autouse=True)
     async def setup_test(self, state_manager: StateManager):
         """Setup test environment with state manager.
-        
+
         Args:
             state_manager: The state manager fixture
         """
@@ -26,12 +28,12 @@ class BaseEngineTest:
         self, start_id: str = "Start_1", task_id: str = "Task_1", end_id: str = "End_1"
     ) -> dict:
         """Create a simple sequence flow process graph.
-        
+
         Args:
             start_id: ID for the start event
             task_id: ID for the task
             end_id: ID for the end event
-            
+
         Returns:
             dict: Process graph definition with nodes and flows
         """
@@ -72,10 +74,10 @@ class BaseEngineTest:
 
     def create_parallel_flow(self, tasks: List[str] = None) -> dict:
         """Create a parallel gateway process graph.
-        
+
         Args:
             tasks: List of task IDs to include in parallel branches
-            
+
         Returns:
             dict: Process graph definition with parallel flow
         """
@@ -162,10 +164,10 @@ class BaseEngineTest:
 
     def create_exclusive_flow(self, conditions: Dict[str, str]) -> dict:
         """Create an exclusive gateway process graph with conditions.
-        
+
         Args:
             conditions: Dictionary mapping task IDs to their conditions
-            
+
         Returns:
             dict: Process graph definition with exclusive gateway
         """
@@ -234,11 +236,11 @@ class BaseEngineTest:
         self, subprocess_id: str = "Subprocess_1", next_task_id: str = "Task_1"
     ) -> dict:
         """Create a process graph with a subprocess.
-        
+
         Args:
             subprocess_id: ID for the subprocess task
             next_task_id: ID for the task after subprocess
-            
+
         Returns:
             dict: Process graph definition with subprocess
         """
@@ -275,7 +277,11 @@ class BaseEngineTest:
             ],
             "flows": [
                 {"id": "Flow_1", "source_ref": start_id, "target_ref": subprocess_id},
-                {"id": "Flow_2", "source_ref": subprocess_id, "target_ref": next_task_id},
+                {
+                    "id": "Flow_2",
+                    "source_ref": subprocess_id,
+                    "target_ref": next_task_id,
+                },
                 {"id": "Flow_3", "source_ref": next_task_id, "target_ref": end_id},
             ],
         }
@@ -284,11 +290,11 @@ class BaseEngineTest:
         self, activity_id: str = "Activity_1", next_task_id: str = "Task_1"
     ) -> dict:
         """Create a process graph with a multi-instance activity.
-        
+
         Args:
             activity_id: ID for the multi-instance activity
             next_task_id: ID for the task after multi-instance activity
-            
+
         Returns:
             dict: Process graph definition with multi-instance activity
         """
@@ -338,13 +344,13 @@ class BaseEngineTest:
         is_parallel: bool = True,
     ) -> Token:
         """Helper to set up a multi-instance activity token with collection data.
-        
+
         Args:
             instance_id: Process instance ID
             activity_id: Activity node ID
             collection_data: List of items to process
             is_parallel: Whether to use parallel execution
-            
+
         Returns:
             Token: Configured token for multi-instance activity
         """

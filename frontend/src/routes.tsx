@@ -9,6 +9,7 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const ProcessList = lazy(() => import('@/pages/ProcessList'));
 const ProcessDesigner = lazy(() => import('@/pages/ProcessDesigner'));
 const ProcessInstance = lazy(() => import('@/pages/ProcessInstance'));
+const ProcessDiagram = lazy(() => import('@/pages/ProcessDiagram'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 // Wrap lazy loaded components with Suspense
@@ -49,6 +50,11 @@ const routes: RouteObject[] = [
               {
                 index: true,
                 element: withSuspense(ProcessDesigner),
+              },
+              {
+                path: 'diagram',
+                element: withSuspense(ProcessDiagram),
+                id: 'process-diagram',
               },
               {
                 path: 'instances/:instanceId',

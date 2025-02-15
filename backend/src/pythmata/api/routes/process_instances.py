@@ -1,7 +1,7 @@
 """Process instance API routes."""
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,12 +10,18 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import and_
 
-from pythmata.api.dependencies import get_event_bus, get_instance_manager, get_session
+from pythmata.api.dependencies import (
+    get_event_bus,
+    get_instance_manager,
+    get_session,
+    get_state_manager,
+)
 from pythmata.api.schemas import (
     ApiResponse,
     PaginatedResponse,
     ProcessInstanceCreate,
     ProcessInstanceResponse,
+    TokenResponse,
 )
 from pythmata.core.engine.instance import ProcessInstanceError, ProcessInstanceManager
 from pythmata.core.events import EventBus
@@ -260,4 +266,31 @@ async def resume_instance(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error resuming instance: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/{instance_id}/tokens",
+    response_model=ApiResponse[List[TokenResponse]],
+)
+async def get_instance_tokens(
+    instance_id: UUID,
+    state_manager=Depends(get_state_manager),
+):
+    """Get current token positions for a process instance."""
+    try:
+        tokens = await state_manager.get_token_positions(str(instance_id))
+        return {
+            "data": [
+                TokenResponse(
+                    node_id=token["node_id"],
+                    state=token["state"],
+                    scope_id=token.get("scope_id"),
+                    data=token.get("data"),
+                )
+                for token in tokens
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error getting instance tokens: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

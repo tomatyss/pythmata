@@ -74,8 +74,10 @@ class Database(ConnectionManager):
         while self._connection_attempts < self._max_connection_attempts:
             self._connection_attempts += 1
             try:
-                logger.info(f"Attempting database connection (attempt {self._connection_attempts}/{self._max_connection_attempts})")
-                
+                logger.info(
+                    f"Attempting database connection (attempt {self._connection_attempts}/{self._max_connection_attempts})"
+                )
+
                 # Test connection by creating a new connection
                 conn = await self.engine.connect()
                 try:
@@ -85,14 +87,17 @@ class Database(ConnectionManager):
                     return
                 finally:
                     await conn.close()
-                    
+
             except Exception as e:
-                logger.error(f"Database connection attempt {self._connection_attempts} failed: {e}")
+                logger.error(
+                    f"Database connection attempt {self._connection_attempts} failed: {e}"
+                )
                 if self._connection_attempts >= self._max_connection_attempts:
                     logger.error("Maximum connection attempts reached")
                     raise
                 logger.info(f"Retrying in {self._retry_delay} seconds...")
                 import asyncio
+
                 await asyncio.sleep(self._retry_delay)
 
     async def _do_disconnect(self) -> None:

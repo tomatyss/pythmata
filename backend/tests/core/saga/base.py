@@ -1,4 +1,5 @@
 """Base class for saga tests."""
+
 from typing import Optional
 
 from pythmata.core.engine.saga import ParallelStepGroup, SagaOrchestrator
@@ -11,11 +12,11 @@ class BaseSagaTest:
         self, saga_id: str = "Saga_1", instance_id: str = "test_instance"
     ) -> SagaOrchestrator:
         """Create a basic saga with default configuration.
-        
+
         Args:
             saga_id: Unique identifier for the saga
             instance_id: Process instance ID
-            
+
         Returns:
             SagaOrchestrator: Configured saga orchestrator
         """
@@ -28,7 +29,7 @@ class BaseSagaTest:
         fail_step: Optional[int] = None,
     ) -> None:
         """Add sequential steps to a saga, optionally making one step fail.
-        
+
         Args:
             saga: Saga orchestrator to add steps to
             num_steps: Number of sequential steps to add
@@ -46,12 +47,12 @@ class BaseSagaTest:
         self, saga: SagaOrchestrator, num_steps: int = 2, sleep_time: float = 0.1
     ) -> ParallelStepGroup:
         """Create a parallel step group with specified number of steps.
-        
+
         Args:
             saga: Saga orchestrator to add parallel steps to
             num_steps: Number of parallel steps to add
             sleep_time: Time to sleep between steps (for testing timing)
-            
+
         Returns:
             ParallelStepGroup: Configured parallel step group
         """

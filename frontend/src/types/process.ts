@@ -104,6 +104,13 @@ export interface ScriptExecution {
   createdAt: string;
 }
 
+export interface Token {
+  nodeId: string;
+  state: string;
+  scopeId?: string;
+  data?: Record<string, unknown>;
+}
+
 // API Response Types
 export interface ApiResponse<T> {
   data: T;
