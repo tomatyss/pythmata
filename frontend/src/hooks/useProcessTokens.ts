@@ -6,7 +6,7 @@ import { Token } from '@/types/process';
 export type TokenData = Token;
 
 interface UseProcessTokensProps {
-  instanceId: string;
+  instanceId: string | string[];
   enabled?: boolean;
   pollingInterval?: number;
 }
@@ -24,17 +24,26 @@ export const useProcessTokens = ({
   // Fetch token data
   const fetchTokens = useCallback(async () => {
     try {
-      const response = await apiService.getInstanceTokens(instanceId);
-      // Map snake_case to camelCase
-      const mappedTokens = (response.data ?? []).map(
-        (token): TokenData => ({
-          nodeId: token.node_id,
-          state: token.state,
-          scopeId: token.scope_id,
-          data: token.data,
-        })
+      const instanceIds = Array.isArray(instanceId) ? instanceId : [instanceId];
+
+      // Fetch tokens for all instances in parallel
+      const responses = await Promise.all(
+        instanceIds.map((id) => apiService.getInstanceTokens(id))
       );
-      setTokens(mappedTokens);
+
+      // Combine and map all tokens
+      const allTokens = responses.flatMap((response) =>
+        (response.data ?? []).map(
+          (token): TokenData => ({
+            nodeId: token.node_id,
+            state: token.state,
+            scopeId: token.scope_id,
+            data: token.data,
+          })
+        )
+      );
+
+      setTokens(allTokens);
       setError(null);
     } catch (err) {
       setError(

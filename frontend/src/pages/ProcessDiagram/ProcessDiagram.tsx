@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import apiService from '@/services/api';
 import ProcessDiagramViewer from '@/components/shared/ProcessDiagramViewer';
 import { useProcessTokens } from '@/hooks/useProcessTokens';
+import { ProcessInstance, ProcessStatus } from '@/types/process';
 import {
   Box,
   Card,
@@ -13,25 +14,20 @@ import {
   Tab,
   Breadcrumbs,
   Link,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 
 interface ProcessDetails {
   name: string;
   bpmn_xml: string;
-}
-
-interface ProcessInstance {
-  id: string;
-  status: string;
-  definitionId: string;
-  definitionName: string;
-  startTime: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /**
@@ -51,13 +47,18 @@ const ProcessDiagram = (): React.ReactElement => {
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [activeInstances, setActiveInstances] = useState<ProcessInstance[]>([]);
-  const [selectedInstanceId, setSelectedInstanceId] = useState<string | ''>('');
+  const [showFinishedInstances, setShowFinishedInstances] = useState(false);
   const navigate = useNavigate();
 
-  // Use the useProcessTokens hook for the selected instance
-  const { tokens = [], error: tokensError } = useProcessTokens({
-    instanceId: selectedInstanceId || '',
-    enabled: tabValue === 1 && !!selectedInstanceId,
+  // Get IDs of running instances
+  const runningInstanceIds = activeInstances
+    .filter((instance) => instance.status === ProcessStatus.RUNNING)
+    .map((instance) => instance.id);
+
+  // Use the useProcessTokens hook with all running instance IDs
+  const { tokens: allTokens, error: tokensError } = useProcessTokens({
+    instanceId: runningInstanceIds,
+    enabled: tabValue === 1 && runningInstanceIds.length > 0,
     pollingInterval: 2000,
   });
 
@@ -67,41 +68,26 @@ const ProcessDiagram = (): React.ReactElement => {
       if (!id) return undefined;
 
       try {
-        let allInstances: ProcessInstance[] = [];
-        let currentPage = 1;
-        let hasMorePages = true;
+        const response = await apiService.getProcessInstances({
+          definition_id: id,
+          page: 1,
+          page_size: 100,
+        });
 
-        // Fetch all pages of instances
-        while (hasMorePages) {
-          const response = await apiService.getProcessInstances({
-            definition_id: id,
-            page: currentPage,
-            page_size: 100, // Fetch more instances per page
-          });
-
-          if (!response.data?.items || !response.data.totalPages) {
-            throw new Error('Invalid API response format');
-          }
-
-          const runningInstances = response.data.items.filter(
-            (instance) => instance?.status === 'RUNNING'
-          ) as ProcessInstance[];
-          allInstances = [...allInstances, ...runningInstances];
-
-          // Check if there are more pages
-          hasMorePages = currentPage < response.data.totalPages;
-          currentPage++;
+        if (!response.data?.items) {
+          throw new Error('Invalid API response format');
         }
 
-        setActiveInstances(allInstances);
+        const instances = response.data.items.filter(
+          (instance) =>
+            showFinishedInstances || instance?.status === ProcessStatus.RUNNING
+        );
 
-        // Auto-select Active Instances tab if there are active instances
-        if (allInstances.length > 0 && tabValue === 0) {
+        setActiveInstances(instances);
+
+        // Auto-select Active Instances tab if there are instances
+        if (instances.length > 0 && tabValue === 0) {
           setTabValue(1);
-          // Auto-select first instance if none selected
-          if (!selectedInstanceId) {
-            setSelectedInstanceId(allInstances[0].id);
-          }
         }
       } catch (error) {
         console.error('Failed to fetch active instances:', error);
@@ -114,7 +100,7 @@ const ProcessDiagram = (): React.ReactElement => {
       const interval = setInterval(fetchActiveInstances, 2000);
       return () => clearInterval(interval);
     }
-  }, [id, tabValue, selectedInstanceId]);
+  }, [id, tabValue, showFinishedInstances]);
 
   useEffect(() => {
     const fetchProcess = async () => {
@@ -151,13 +137,6 @@ const ProcessDiagram = (): React.ReactElement => {
 
     fetchProcess();
   }, [id]);
-
-  // Reset selected instance when changing tabs
-  useEffect(() => {
-    if (tabValue === 0) {
-      setSelectedInstanceId('');
-    }
-  }, [tabValue]);
 
   if (loading) {
     return (
@@ -233,45 +212,88 @@ const ProcessDiagram = (): React.ReactElement => {
         </Tabs>
       </Box>
 
-      {tabValue === 1 && activeInstances.length > 0 && (
-        <Box sx={{ mb: 2 }}>
-          <FormControl fullWidth>
-            <InputLabel id="instance-select-label">Select Instance</InputLabel>
-            <Select
-              labelId="instance-select-label"
-              value={selectedInstanceId}
-              label="Select Instance"
-              onChange={(e) => setSelectedInstanceId(e.target.value)}
-            >
-              {activeInstances.map((instance) => (
-                <MenuItem key={instance.id} value={instance.id}>
-                  Instance {instance.id}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      )}
+      {tabValue === 1 && (
+        <>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Box sx={{ height: '600px' }}>
+                <ProcessDiagramViewer
+                  bpmnXml={process.bpmn_xml}
+                  key={process.bpmn_xml}
+                  tokens={tabValue === 1 ? allTokens : []}
+                />
+                {tokensError && (
+                  <Typography color="error" sx={{ mt: 2 }}>
+                    Error loading tokens:{' '}
+                    {tokensError instanceof Error
+                      ? tokensError.message
+                      : 'Failed to load tokens'}
+                  </Typography>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardContent>
-          <Box sx={{ height: '600px' }}>
-            <ProcessDiagramViewer
-              bpmnXml={process.bpmn_xml}
-              key={process.bpmn_xml} // Force re-render when XML changes
-              tokens={tabValue === 1 && selectedInstanceId ? tokens : []}
+          <Box sx={{ mb: 2 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showFinishedInstances}
+                  onChange={(e) => setShowFinishedInstances(e.target.checked)}
+                />
+              }
+              label="Show Finished Instances"
             />
-            {tokensError && (
-              <Typography color="error" sx={{ mt: 2 }}>
-                Error loading tokens:{' '}
-                {tokensError instanceof Error
-                  ? tokensError.message
-                  : 'Failed to load tokens'}
-              </Typography>
-            )}
           </Box>
-        </CardContent>
-      </Card>
+
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Instance ID</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Start Time</TableCell>
+                  <TableCell>Last Updated</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {activeInstances.map((instance) => (
+                  <TableRow
+                    key={instance.id}
+                    hover
+                    sx={{
+                      backgroundColor:
+                        instance.status === ProcessStatus.RUNNING
+                          ? 'rgba(0, 128, 0, 0.1)'
+                          : undefined,
+                    }}
+                  >
+                    <TableCell>
+                      <RouterLink
+                        to={`/processes/${id}/instances/${instance.id}`}
+                        style={{ color: 'inherit', textDecoration: 'none' }}
+                      >
+                        {instance.id}
+                      </RouterLink>
+                    </TableCell>
+                    <TableCell>{instance.status}</TableCell>
+                    <TableCell>
+                      {instance.startTime
+                        ? new Date(instance.startTime).toLocaleString()
+                        : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {instance.updatedAt
+                        ? new Date(instance.updatedAt).toLocaleString()
+                        : 'N/A'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </>
+      )}
     </Box>
   );
 };
