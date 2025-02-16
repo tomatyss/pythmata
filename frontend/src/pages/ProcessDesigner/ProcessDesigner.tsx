@@ -63,10 +63,10 @@ const ProcessDesigner = () => {
       if (id) {
         try {
           const response = await apiService.getProcessDefinition(id);
-          const { name, bpmnXml, variable_definitions } = response.data;
+          const { name, bpmnXml, variableDefinitions } = response.data;
           setProcessName(name);
           setBpmnXml(bpmnXml);
-          setVariableDefinitions(variable_definitions || []);
+          setVariableDefinitions(variableDefinitions || []);
         } catch (error) {
           console.error('Failed to load process:', error);
           setError('Failed to load process. Please try again.');
@@ -91,9 +91,6 @@ const ProcessDesigner = () => {
 
         modelerRef.current = new BpmnModeler({
           container: containerRef.current as HTMLElement,
-          keyboard: {
-            bindTo: document,
-          },
         });
 
         await modelerRef.current.importXML(bpmnXml);
@@ -140,7 +137,7 @@ const ProcessDesigner = () => {
         await apiService.updateProcessDefinition(id, {
           name: processName,
           bpmnXml: xml,
-          variable_definitions: variableDefinitions,
+          variableDefinitions: variableDefinitions,
         });
       } else {
         // Create new process
@@ -148,7 +145,7 @@ const ProcessDesigner = () => {
           name: processName,
           bpmnXml: xml,
           version: 1,
-          variable_definitions: variableDefinitions,
+          variableDefinitions: variableDefinitions,
         });
       }
 
