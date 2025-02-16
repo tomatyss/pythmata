@@ -1,5 +1,6 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ApiError } from '@/lib/errors';
+import { convertKeysToCamel } from '@/utils/case';
 import {
   ApiResponse,
   PaginatedResponse,
@@ -24,9 +25,15 @@ class ApiService {
       },
     });
 
-    // Add response interceptor for error handling
+    // Add response interceptors for error handling and case conversion
     this.client.interceptors.response.use(
-      (response) => response,
+      (response: AxiosResponse) => {
+        // Convert snake_case to camelCase in response data
+        if (response.data) {
+          response.data = convertKeysToCamel(response.data);
+        }
+        return response;
+      },
       (error) => {
         if (error.response) {
           const message =
@@ -86,17 +93,15 @@ class ApiService {
   };
 
   async getProcessInstances(options?: {
-    definition_id?: string;
+    definitionId?: string;
     page?: number;
-    page_size?: number;
+    pageSize?: number;
     status?: string;
   }): Promise<ApiResponse<PaginatedResponse<ProcessInstance>>> {
     const params = {
-      ...(options?.definition_id
-        ? { definition_id: options.definition_id }
-        : {}),
+      ...(options?.definitionId ? { definition_id: options.definitionId } : {}),
       ...(options?.page ? { page: options.page } : {}),
-      ...(options?.page_size ? { page_size: options.page_size } : {}),
+      ...(options?.pageSize ? { page_size: options.pageSize } : {}),
       ...(options?.status ? { status: this.statusMap[options.status] } : {}),
     };
     const response = await this.client.get('/instances', { params });
@@ -129,15 +134,12 @@ class ApiService {
     return response.data;
   }
 
-  // Snake case response type for tokens
-  async getInstanceTokens(
-    id: string
-  ): Promise<
+  async getInstanceTokens(id: string): Promise<
     ApiResponse<
       {
-        node_id: string;
+        nodeId: string;
         state: string;
-        scope_id?: string;
+        scopeId?: string;
         data?: Record<string, unknown>;
       }[]
     >

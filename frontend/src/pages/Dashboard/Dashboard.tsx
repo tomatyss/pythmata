@@ -26,16 +26,16 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<ProcessStats>({
-    total_instances: 0,
-    status_counts: {
+    totalInstances: 0,
+    statusCounts: {
       [ProcessStatus.RUNNING]: 0,
       [ProcessStatus.COMPLETED]: 0,
       [ProcessStatus.SUSPENDED]: 0,
       [ProcessStatus.ERROR]: 0,
     },
-    average_completion_time: null,
-    error_rate: 0,
-    active_instances: 0,
+    averageCompletionTime: null,
+    errorRate: 0,
+    activeInstances: 0,
   });
 
   useEffect(() => {
@@ -145,7 +145,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Processes"
-            value={stats.total_instances}
+            value={stats.totalInstances}
             icon={AddIcon}
             color="#1976d2"
             tooltip="Total number of process instances"
@@ -154,7 +154,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Active"
-            value={stats.active_instances}
+            value={stats.activeInstances}
             icon={PlayArrowIcon}
             color="#2e7d32"
             tooltip="Currently running process instances"
@@ -163,7 +163,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Completed"
-            value={stats.status_counts[ProcessStatus.COMPLETED] || 0}
+            value={stats.statusCounts[ProcessStatus.COMPLETED] || 0}
             icon={CheckCircleIcon}
             color="#1976d2"
             tooltip="Successfully completed process instances"
@@ -172,7 +172,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Errors"
-            value={stats.status_counts[ProcessStatus.ERROR] || 0}
+            value={stats.statusCounts[ProcessStatus.ERROR] || 0}
             icon={ErrorIcon}
             color="#d32f2f"
             tooltip="Process instances that encountered errors"
@@ -181,7 +181,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Avg. Completion Time"
-            value={formatDuration(stats.average_completion_time)}
+            value={formatDuration(stats.averageCompletionTime)}
             icon={AccessTimeIcon}
             color="#f57c00"
             tooltip="Average time to complete a process"
@@ -190,7 +190,7 @@ const Dashboard = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Error Rate"
-            value={`${stats.error_rate.toFixed(1)}%`}
+            value={`${stats.errorRate.toFixed(1)}%`}
             icon={AssessmentIcon}
             color="#7b1fa2"
             tooltip="Percentage of processes that resulted in errors"

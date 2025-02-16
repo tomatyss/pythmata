@@ -85,7 +85,7 @@ const ProcessInstance = () => {
           endTime: instanceData.endTime,
           variables: [],
           activities: [],
-          bpmnXml: definitionData.bpmn_xml,
+          bpmnXml: definitionData.bpmnXml,
         });
       } catch (error) {
         console.error('Failed to fetch instance:', error);

@@ -35,9 +35,9 @@ export const useProcessTokens = ({
       const allTokens = responses.flatMap((response) =>
         (response.data ?? []).map(
           (token): TokenData => ({
-            nodeId: token.node_id,
+            nodeId: token.nodeId,
             state: token.state,
-            scopeId: token.scope_id,
+            scopeId: token.scopeId,
             data: token.data,
           })
         )

@@ -27,7 +27,7 @@ import {
 
 interface ProcessDetails {
   name: string;
-  bpmn_xml: string;
+  bpmnXml: string;
 }
 
 /**
@@ -69,9 +69,9 @@ const ProcessDiagram = (): React.ReactElement => {
 
       try {
         const response = await apiService.getProcessInstances({
-          definition_id: id,
+          definitionId: id,
           page: 1,
-          page_size: 100,
+          pageSize: 100,
         });
 
         if (!response.data?.items) {
@@ -115,13 +115,13 @@ const ProcessDiagram = (): React.ReactElement => {
         setError(null);
         const response = await apiService.getProcessDefinition(id);
 
-        if (!response.data.bpmn_xml) {
+        if (!response.data.bpmnXml) {
           throw new Error('Process definition has no BPMN XML');
         }
 
         setProcess({
           name: response.data.name,
-          bpmn_xml: response.data.bpmn_xml,
+          bpmnXml: response.data.bpmnXml,
         });
       } catch (error) {
         console.error('Failed to fetch process:', error);
@@ -218,8 +218,8 @@ const ProcessDiagram = (): React.ReactElement => {
             <CardContent>
               <Box sx={{ height: '600px' }}>
                 <ProcessDiagramViewer
-                  bpmnXml={process.bpmn_xml}
-                  key={process.bpmn_xml}
+                  bpmnXml={process.bpmnXml}
+                  key={process.bpmnXml}
                   tokens={tabValue === 1 ? allTokens : []}
                 />
                 {tokensError && (
