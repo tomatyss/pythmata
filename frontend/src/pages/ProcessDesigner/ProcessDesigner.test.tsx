@@ -169,9 +169,9 @@ describe('ProcessDesigner', () => {
     expect(apiService.createProcessDefinition).toHaveBeenCalledWith(
       expect.objectContaining({
         name: newProcess.name,
-        bpmn_xml: expect.any(String),
+        bpmnXml: expect.any(String),
         version: 1,
-        variable_definitions: [],
+        variableDefinitions: [],
       })
     );
   });
@@ -283,8 +283,8 @@ describe('ProcessDesigner', () => {
       mockProcess.id,
       expect.objectContaining({
         name: mockProcess.name,
-        bpmn_xml: expect.any(String),
-        variable_definitions: [],
+        bpmnXml: expect.any(String),
+        variableDefinitions: [],
       })
     );
   });
