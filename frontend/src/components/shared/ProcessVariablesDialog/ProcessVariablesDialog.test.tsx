@@ -1,9 +1,10 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ProcessVariablesDialog from './ProcessVariablesDialog';
 
 describe('ProcessVariablesDialog', () => {
-  const mockOnClose = jest.fn();
-  const mockOnSubmit = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnSubmit = vi.fn();
   const mockProcessId = 'test-process';
   const mockVariableDefinitions = [
     {
@@ -18,7 +19,7 @@ describe('ProcessVariablesDialog', () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders dialog when open', () => {

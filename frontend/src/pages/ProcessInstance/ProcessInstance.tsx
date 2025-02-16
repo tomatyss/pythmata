@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '@/services/api';
 import { formatDate } from '@/utils/date';
+import ProcessDiagramViewer from '@/components/shared/ProcessDiagramViewer';
+import { useProcessTokens } from '@/hooks/useProcessTokens';
 import {
   Box,
   Card,
@@ -43,6 +45,7 @@ interface ProcessInstanceDetails {
   endTime?: string;
   variables: ProcessVariable[];
   activities: ActivityLog[];
+  bpmnXml?: string;
 }
 
 const ProcessInstance = () => {
@@ -50,14 +53,28 @@ const ProcessInstance = () => {
   const [loading, setLoading] = useState(true);
   const [instance, setInstance] = useState<ProcessInstanceDetails | null>(null);
 
+  const { tokens } = useProcessTokens({
+    instanceId: instanceId || '',
+    enabled: !!instanceId && instance?.status === 'RUNNING',
+    pollingInterval: 2000,
+  });
+
   useEffect(() => {
     const fetchInstanceData = async () => {
       if (!instanceId) return;
 
       try {
         setLoading(true);
-        const response = await apiService.getProcessInstance(instanceId);
-        const instanceData = response.data;
+        // First get the instance data to get the definition ID
+        const instanceResponse =
+          await apiService.getProcessInstance(instanceId);
+        const instanceData = instanceResponse.data;
+
+        // Then get the process definition using the correct definition ID
+        const definitionResponse = await apiService.getProcessDefinition(
+          instanceData.definitionId
+        );
+        const definitionData = definitionResponse.data;
 
         setInstance({
           id: instanceData.id,
@@ -66,9 +83,9 @@ const ProcessInstance = () => {
           status: instanceData.status,
           startTime: instanceData.startTime,
           endTime: instanceData.endTime,
-          // For now, show empty arrays until API endpoints are available
           variables: [],
           activities: [],
+          bpmnXml: definitionData.bpmnXml,
         });
       } catch (error) {
         console.error('Failed to fetch instance:', error);
@@ -102,6 +119,24 @@ const ProcessInstance = () => {
       </Typography>
 
       <Grid container spacing={3}>
+        {/* Process Diagram */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Process Diagram
+              </Typography>
+              <Box sx={{ height: '500px' }}>
+                {instance.bpmnXml && (
+                  <ProcessDiagramViewer
+                    bpmnXml={instance.bpmnXml}
+                    tokens={tokens}
+                  />
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
         {/* Instance Details */}
         <Grid item xs={12}>
           <Card>

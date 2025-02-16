@@ -2,6 +2,7 @@
 """Script to set up the test database."""
 
 import asyncio
+
 import asyncpg
 
 from pythmata.core.testing.config import POSTGRES_MAIN_DB, POSTGRES_TEST_DB, get_db_url

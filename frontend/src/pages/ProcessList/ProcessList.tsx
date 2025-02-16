@@ -17,12 +17,15 @@ import {
   IconButton,
   Chip,
   CircularProgress,
+  Link,
 } from '@mui/material';
 import {
   Add as AddIcon,
   PlayArrow as PlayArrowIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Visibility as VisibilityIcon,
+  ListAlt as ListAltIcon,
 } from '@mui/icons-material';
 import ProcessVariablesDialog, {
   ProcessVariables,
@@ -33,8 +36,8 @@ const ProcessList = () => {
   const [loading, setLoading] = useState(true);
   const [processes, setProcesses] = useState<
     (ProcessDefinition & {
-      active_instances: number;
-      total_instances: number;
+      activeInstances: number;
+      totalInstances: number;
     })[]
   >([]);
   const [selectedProcess, setSelectedProcess] =
@@ -58,13 +61,13 @@ const ProcessList = () => {
 
   const handleStartProcess = async (process: ProcessDefinition) => {
     if (
-      !process.variable_definitions ||
-      process.variable_definitions.length === 0
+      !process.variableDefinitions ||
+      process.variableDefinitions.length === 0
     ) {
       // If no variables defined, start process directly
       try {
         const payload = {
-          definition_id: process.id,
+          definitionId: process.id,
           variables: {},
         };
 
@@ -91,7 +94,7 @@ const ProcessList = () => {
 
     try {
       const response = await apiService.startProcessInstance({
-        definition_id: selectedProcess.id,
+        definitionId: selectedProcess.id,
         variables,
       });
       navigate(
@@ -174,10 +177,38 @@ const ProcessList = () => {
                       variant="outlined"
                     />
                   </TableCell>
-                  <TableCell>{process.active_instances}</TableCell>
-                  <TableCell>{process.total_instances}</TableCell>
-                  <TableCell>{formatDate(process.updated_at)}</TableCell>
+                  <TableCell>
+                    <Link
+                      component="button"
+                      onClick={() =>
+                        navigate(`/processes/${process.id}/instances`)
+                      }
+                      sx={{ textDecoration: 'none' }}
+                    >
+                      {process.activeInstances}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{process.totalInstances}</TableCell>
+                  <TableCell>{formatDate(process.updatedAt)}</TableCell>
                   <TableCell align="right">
+                    <IconButton
+                      color="primary"
+                      onClick={() =>
+                        navigate(`/processes/${process.id}/diagram`)
+                      }
+                      title="View Diagram"
+                    >
+                      <VisibilityIcon />
+                    </IconButton>
+                    <IconButton
+                      color="primary"
+                      onClick={() =>
+                        navigate(`/processes/${process.id}/instances`)
+                      }
+                      title="View Instances"
+                    >
+                      <ListAltIcon />
+                    </IconButton>
                     <IconButton
                       color="primary"
                       onClick={() => handleStartProcess(process)}
@@ -219,7 +250,7 @@ const ProcessList = () => {
       <ProcessVariablesDialog
         open={dialogOpen}
         processId={selectedProcess?.id || ''}
-        variableDefinitions={selectedProcess?.variable_definitions || []}
+        variableDefinitions={selectedProcess?.variableDefinitions || []}
         onClose={() => {
           setDialogOpen(false);
           setSelectedProcess(null);

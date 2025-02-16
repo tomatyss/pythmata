@@ -22,8 +22,7 @@ async def handle_process_started(data: dict) -> None:
     try:
         instance_id = data["instance_id"]
         definition_id = data["definition_id"]
-        logger.info(
-            f"Handling process.started event for instance {instance_id}")
+        logger.info(f"Handling process.started event for instance {instance_id}")
 
         # Get required services
         settings = Settings()
@@ -45,8 +44,7 @@ async def handle_process_started(data: dict) -> None:
                 definition = await result.scalar_one_or_none()
                 logger.info(f"Definition: {definition}, type: {type(definition)}")
             if not definition:
-                raise ValueError(
-                    f"Process definition {definition_id} not found")
+                raise ValueError(f"Process definition {definition_id} not found")
 
             # Parse BPMN XML to process graph
             parser = BPMNParser()
@@ -79,8 +77,7 @@ async def handle_process_started(data: dict) -> None:
             await state_manager.disconnect()
 
     except Exception as e:
-        logger.error(
-            f"Error handling process.started event: {e}", exc_info=True)
+        logger.error(f"Error handling process.started event: {e}", exc_info=True)
 
 
 @asynccontextmanager

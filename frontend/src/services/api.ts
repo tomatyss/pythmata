@@ -1,5 +1,6 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ApiError } from '@/lib/errors';
+import { convertKeysToCamel } from '@/utils/case';
 import {
   ApiResponse,
   PaginatedResponse,
@@ -24,9 +25,15 @@ class ApiService {
       },
     });
 
-    // Add response interceptor for error handling
+    // Add response interceptors for error handling and case conversion
     this.client.interceptors.response.use(
-      (response) => response,
+      (response: AxiosResponse) => {
+        // Convert snake_case to camelCase in response data
+        if (response.data) {
+          response.data = convertKeysToCamel(response.data);
+        }
+        return response;
+      },
       (error) => {
         if (error.response) {
           const message =
@@ -78,10 +85,25 @@ class ApiService {
   }
 
   // Process Instances
-  async getProcessInstances(
-    definitionId?: string
-  ): Promise<ApiResponse<PaginatedResponse<ProcessInstance>>> {
-    const params = definitionId ? { definitionId } : undefined;
+  private readonly statusMap: Record<string, string> = {
+    running: 'RUNNING',
+    completed: 'COMPLETED',
+    suspended: 'SUSPENDED',
+    error: 'ERROR',
+  };
+
+  async getProcessInstances(options?: {
+    definitionId?: string;
+    page?: number;
+    pageSize?: number;
+    status?: string;
+  }): Promise<ApiResponse<PaginatedResponse<ProcessInstance>>> {
+    const params = {
+      ...(options?.definitionId ? { definition_id: options.definitionId } : {}),
+      ...(options?.page ? { page: options.page } : {}),
+      ...(options?.pageSize ? { page_size: options.pageSize } : {}),
+      ...(options?.status ? { status: this.statusMap[options.status] } : {}),
+    };
     const response = await this.client.get('/instances', { params });
     return response.data;
   }
@@ -109,6 +131,20 @@ class ApiService {
     id: string
   ): Promise<ApiResponse<ProcessInstance>> {
     const response = await this.client.post(`/instances/${id}/resume`);
+    return response.data;
+  }
+
+  async getInstanceTokens(id: string): Promise<
+    ApiResponse<
+      {
+        nodeId: string;
+        state: string;
+        scopeId?: string;
+        data?: Record<string, unknown>;
+      }[]
+    >
+  > {
+    const response = await this.client.get(`/instances/${id}/tokens`);
     return response.data;
   }
 

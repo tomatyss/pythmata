@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, Generic, List, Literal, Optional, TypeVar, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pythmata.models.process import ProcessStatus
 
@@ -15,7 +15,7 @@ class ProcessVariableValidation(BaseModel):
     pattern: Optional[str] = None
     options: Optional[List[Any]] = None
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProcessVariableDefinition(BaseModel):
@@ -29,7 +29,7 @@ class ProcessVariableDefinition(BaseModel):
     label: str
     description: Optional[str] = None
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProcessDefinitionBase(BaseModel):
@@ -38,10 +38,9 @@ class ProcessDefinitionBase(BaseModel):
     name: str
     bpmn_xml: str
     version: int
-    variable_definitions: List[ProcessVariableDefinition] = Field(
-        default_factory=list)
+    variable_definitions: List[ProcessVariableDefinition] = Field(default_factory=list)
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProcessDefinitionCreate(BaseModel):
@@ -54,7 +53,7 @@ class ProcessDefinitionCreate(BaseModel):
         default_factory=list
     )
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProcessDefinitionUpdate(BaseModel):
@@ -65,7 +64,7 @@ class ProcessDefinitionUpdate(BaseModel):
     version: Optional[int] = None  # Allow updating version
     variable_definitions: Optional[List[ProcessVariableDefinition]] = None
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProcessDefinitionResponse(ProcessDefinitionBase):
@@ -92,7 +91,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     pageSize: int
     totalPages: int
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ApiResponse(BaseModel, Generic[T]):
@@ -100,7 +99,7 @@ class ApiResponse(BaseModel, Generic[T]):
 
     data: T
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProcessVariableValue(BaseModel):
@@ -109,7 +108,7 @@ class ProcessVariableValue(BaseModel):
     type: Literal["string", "integer", "float", "boolean", "date", "json"]
     value: Union[str, int, float, bool, datetime, Dict[str, Any], List[Any]]
 
-    model_config = ConfigDict(strict=True, extra='forbid')
+    model_config = ConfigDict(strict=True, extra="forbid")
 
     def model_dump_json(self, **kwargs):
         """Custom JSON serialization."""
@@ -167,7 +166,7 @@ class ProcessInstanceCreate(BaseModel):
         description="Dictionary of process variables. Each variable must match the process definition's variable definitions.",
     )
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
     def validate_variables(self, variable_definitions: List[Dict[str, Any]]) -> None:
         """Validate variables against process definition.
@@ -182,8 +181,7 @@ class ProcessInstanceCreate(BaseModel):
             self.variables = {}
 
         # Convert dictionary definitions to ProcessVariableDefinition objects
-        var_defs = [ProcessVariableDefinition(
-            **v) for v in variable_definitions]
+        var_defs = [ProcessVariableDefinition(**v) for v in variable_definitions]
 
         # Check required variables
         for var_def in var_defs:
@@ -194,8 +192,7 @@ class ProcessInstanceCreate(BaseModel):
                         type=var_def.type, value=var_def.default_value
                     )
                 else:
-                    raise ValueError(
-                        f"Required variable '{var_def.name}' is missing")
+                    raise ValueError(f"Required variable '{var_def.name}' is missing")
 
         # Create map for validation
         var_def_map = {v.name: v for v in var_defs}
@@ -235,11 +232,9 @@ class ProcessInstanceCreate(BaseModel):
                         )
                     # Additional type validation
                     if var_def.type == "integer" and not isinstance(val, int):
-                        raise ValueError(
-                            f"Value for {var_name} must be an integer")
+                        raise ValueError(f"Value for {var_name} must be an integer")
                     elif var_def.type == "float" and not isinstance(val, (int, float)):
-                        raise ValueError(
-                            f"Value for {var_name} must be a float")
+                        raise ValueError(f"Value for {var_name} must be a float")
                 elif var_def.type == "string" and var_def.validation.pattern:
                     import re
 
@@ -258,13 +253,14 @@ class ProcessInstanceResponse(BaseModel):
 
     id: UUID
     definition_id: UUID
+    definition_name: str
     status: ProcessStatus
     start_time: datetime
     end_time: Optional[datetime]
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class ProcessInstanceFilter(BaseModel):
@@ -275,7 +271,7 @@ class ProcessInstanceFilter(BaseModel):
     end_date: Optional[datetime] = None
     definition_id: Optional[UUID] = None
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProcessStats(BaseModel):
@@ -287,7 +283,7 @@ class ProcessStats(BaseModel):
     error_rate: float  # percentage
     active_instances: int
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ScriptContent(BaseModel):
@@ -296,7 +292,7 @@ class ScriptContent(BaseModel):
     content: str
     version: int = 1
 
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ScriptResponse(BaseModel):
@@ -309,5 +305,16 @@ class ScriptResponse(BaseModel):
     version: int
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TokenResponse(BaseModel):
+    """Schema for token position response."""
+
+    node_id: str
+    state: str
+    scope_id: Optional[str] = None
+    data: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(from_attributes=True)

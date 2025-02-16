@@ -21,20 +21,20 @@ export interface ProcessDefinition {
   id: string;
   name: string;
   version: number;
-  bpmn_xml: string;
-  variable_definitions: ProcessVariableDefinition[];
-  active_instances: number;
-  total_instances: number;
-  created_at: string;
-  updated_at: string;
+  bpmnXml: string;
+  variableDefinitions: ProcessVariableDefinition[];
+  activeInstances: number;
+  totalInstances: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProcessStats {
-  total_instances: number;
-  status_counts: Record<ProcessStatus, number>;
-  average_completion_time: number | null;
-  error_rate: number;
-  active_instances: number;
+  totalInstances: number;
+  statusCounts: Record<ProcessStatus, number>;
+  averageCompletionTime: number | null;
+  errorRate: number;
+  activeInstances: number;
 }
 
 // Process Instance Types
@@ -104,6 +104,13 @@ export interface ScriptExecution {
   createdAt: string;
 }
 
+export interface Token {
+  nodeId: string;
+  state: string;
+  scopeId?: string;
+  data?: Record<string, unknown>;
+}
+
 // API Response Types
 export interface ApiResponse<T> {
   data: T;
@@ -122,16 +129,16 @@ export interface PaginatedResponse<T> {
 // API Request Types
 export interface CreateProcessDefinitionRequest {
   name: string;
-  bpmn_xml: string;
+  bpmnXml: string;
   version?: number; // Optional, defaults to 1
-  variable_definitions?: ProcessVariableDefinition[];
+  variableDefinitions?: ProcessVariableDefinition[];
 }
 
 export interface UpdateProcessDefinitionRequest {
   name?: string;
-  bpmn_xml?: string;
+  bpmnXml?: string;
   version?: number; // Optional, auto-increments if not provided
-  variable_definitions?: ProcessVariableDefinition[];
+  variableDefinitions?: ProcessVariableDefinition[];
 }
 
 export interface ProcessVariableValue {
@@ -140,7 +147,7 @@ export interface ProcessVariableValue {
 }
 
 export interface StartProcessInstanceRequest {
-  definition_id: string; // Match backend's snake_case
+  definitionId: string;
   variables?: Record<string, ProcessVariableValue>;
 }
 

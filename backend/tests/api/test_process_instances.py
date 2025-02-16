@@ -121,39 +121,79 @@ async def test_list_instances_filtering(
     process_definition: ProcessDefinition,
 ):
     """Test GET /instances filtering."""
-    # Create instances with different statuses
+    # Create two process definitions
+    another_definition = ProcessDefinition(
+        name="Another Process",
+        bpmn_xml=SIMPLE_PROCESS_XML,
+        version=1,
+    )
+    session.add(another_definition)
+    await session.commit()
+    await session.refresh(another_definition)
+
+    # Create instances with different statuses and process definitions
     statuses = [
         ProcessStatus.RUNNING,
         ProcessStatus.COMPLETED,
         ProcessStatus.SUSPENDED,
         ProcessStatus.ERROR,
     ]
-    # Create instances with timestamps after a reference date
     reference_date = datetime.now(timezone.utc).replace(microsecond=0)
     instances = []
+
+    # Create instances for first process definition
     for status in statuses:
         instance = ProcessInstance(
             definition_id=process_definition.id,
             status=status,
-            start_time=reference_date
-            + timedelta(hours=1),  # Future time to ensure it's after reference
+            start_time=reference_date + timedelta(hours=1),
         )
         instances.append(instance)
         session.add(instance)
+
+    # Create instances for second process definition
+    for status in statuses[:2]:  # Only create RUNNING and COMPLETED for second process
+        instance = ProcessInstance(
+            definition_id=another_definition.id,
+            status=status,
+            start_time=reference_date + timedelta(hours=1),
+        )
+        instances.append(instance)
+        session.add(instance)
+
     await session.commit()
     for instance in instances:
         await session.refresh(instance)
 
     # Test status filter
+    response = await async_client.get("/instances?status=RUNNING")
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert len(data["items"]) == 2  # One RUNNING instance from each process
+    assert all(item["status"] == ProcessStatus.RUNNING for item in data["items"])
+
+    # Test process definition filter
     response = await async_client.get(
-        f"/instances?status=RUNNING"  # Use string value instead of enum
+        f"/instances?definition_id={process_definition.id}"
     )
     assert response.status_code == 200
     data = response.json()["data"]
-    assert len(data["items"]) == 1
-    assert data["items"][0]["status"] == ProcessStatus.RUNNING
+    assert len(data["items"]) == 4  # All instances from first process
+    assert all(
+        item["definition_id"] == str(process_definition.id) for item in data["items"]
+    )
 
-    # Test date range filter using the reference date
+    # Test combined status and process definition filter
+    response = await async_client.get(
+        f"/instances?definition_id={process_definition.id}&status=RUNNING"
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert len(data["items"]) == 1  # Only RUNNING instance from first process
+    assert data["items"][0]["status"] == ProcessStatus.RUNNING
+    assert data["items"][0]["definition_id"] == str(process_definition.id)
+
+    # Test date range filter
     from urllib.parse import quote
 
     response = await async_client.get(
@@ -161,7 +201,7 @@ async def test_list_instances_filtering(
     )
     assert response.status_code == 200
     data = response.json()["data"]
-    assert len(data["items"]) == 4  # All instances
+    assert len(data["items"]) == 6  # All instances from both processes
 
 
 async def test_get_instance(

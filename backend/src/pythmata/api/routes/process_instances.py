@@ -1,7 +1,7 @@
 """Process instance API routes."""
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,15 +10,24 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import and_
 
-from pythmata.api.dependencies import get_event_bus, get_instance_manager, get_session
+from pythmata.api.dependencies import (
+    get_event_bus,
+    get_instance_manager,
+    get_session,
+    get_state_manager,
+)
 from pythmata.api.schemas import (
     ApiResponse,
     PaginatedResponse,
     ProcessInstanceCreate,
     ProcessInstanceResponse,
+    TokenResponse,
 )
+from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.engine.instance import ProcessInstanceError, ProcessInstanceManager
+from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.events import EventBus
+from pythmata.core.types import Event, EventType
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
@@ -51,7 +60,11 @@ async def parse_datetime(date_str: Optional[str] = Query(None)) -> Optional[date
     response_model=ApiResponse[PaginatedResponse[ProcessInstanceResponse]],
 )
 async def list_instances(
-    status: Optional[ProcessStatus] = Query(None, enum=ProcessStatus),
+    status: Optional[str] = Query(
+        None,
+        description="Process status",
+        enum=[status.value for status in ProcessStatus],
+    ),
     start_date: Optional[datetime] = FastAPIDepends(parse_datetime),
     end_date: Optional[datetime] = FastAPIDepends(parse_datetime),
     definition_id: Optional[UUID] = Query(None),
@@ -59,36 +72,58 @@ async def list_instances(
     page_size: int = Query(10, gt=0, le=100),
     session: AsyncSession = Depends(get_session),
 ):
+    # Convert string status to enum if provided
+    status_enum = ProcessStatus(status) if status else None
     """Get process instances with filtering and pagination."""
     try:
-        query = select(ProcessInstanceModel)
+        # Build base query starting from ProcessInstanceModel
+        base_query = select(ProcessInstanceModel)
 
-        # Apply filters
+        # Build conditions
         conditions = []
-        if status:
-            conditions.append(ProcessInstanceModel.status == status)
+        if definition_id:
+            conditions.append(ProcessInstanceModel.definition_id == definition_id)
+        if status_enum:
+            conditions.append(ProcessInstanceModel.status == status_enum)
         if start_date:
             conditions.append(ProcessInstanceModel.start_time >= start_date)
         if end_date:
             conditions.append(ProcessInstanceModel.start_time <= end_date)
-        if definition_id:
-            conditions.append(ProcessInstanceModel.definition_id == definition_id)
 
+        # Apply conditions to base query
         if conditions:
-            query = query.where(and_(*conditions))
+            base_query = base_query.where(and_(*conditions))
+
+        # Get total count using subquery as recommended by SQLAlchemy
+        total = await session.scalar(select(func.count()).select_from(base_query.subquery()))
+
+        # Build data query with inner join to get definition name
+        data_query = select(
+            ProcessInstanceModel, ProcessDefinitionModel.name.label("definition_name")
+        ).join(
+            ProcessDefinitionModel,
+            ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+            isouter=False,  # Use inner join
+        )
+
+        # Apply same conditions to data query
+        if conditions:
+            data_query = data_query.where(and_(*conditions))
 
         # Add ordering
-        query = query.order_by(ProcessInstanceModel.created_at.desc())
-
-        # Get total count
-        count_query = select(func.count()).select_from(query.subquery())
-        total = await session.scalar(count_query)
+        data_query = data_query.order_by(ProcessInstanceModel.created_at.desc())
 
         # Apply pagination
-        query = query.offset((page - 1) * page_size).limit(page_size)
+        data_query = data_query.offset((page - 1) * page_size).limit(page_size)
 
-        result = await session.execute(query)
-        instances = result.scalars().all()
+        # Execute data query
+        result = await session.execute(data_query)
+        rows = result.all()
+        instances = []
+        for row in rows:
+            instance = row[0]
+            instance.definition_name = row[1]
+            instances.append(instance)
 
         total_pages = (total + page_size - 1) // page_size
 
@@ -116,11 +151,21 @@ async def get_instance(
 ):
     """Get a specific process instance."""
     result = await session.execute(
-        select(ProcessInstanceModel).filter(ProcessInstanceModel.id == instance_id)
+        select(
+            ProcessInstanceModel, ProcessDefinitionModel.name.label("definition_name")
+        )
+        .join(
+            ProcessDefinitionModel,
+            ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+            isouter=False,
+        )
+        .where(ProcessInstanceModel.id == instance_id)
     )
-    instance = result.scalar_one_or_none()
-    if not instance:
+    row = result.one_or_none()
+    if not row:
         raise HTTPException(status_code=404, detail="Process instance not found")
+    instance = row[0]
+    instance.definition_name = row[1]
     return {"data": instance}
 
 
@@ -136,8 +181,6 @@ async def create_instance(
 ):
     """Create a new process instance."""
     try:
-        logger.info(f"Creating process instance with data: {data}")
-
         # Verify process definition exists
         result = await session.execute(
             select(ProcessDefinitionModel).filter(
@@ -146,24 +189,15 @@ async def create_instance(
         )
         definition = result.scalar_one_or_none()
         if not definition:
-            logger.error(f"Process definition {data.definition_id} not found")
             raise HTTPException(
                 status_code=404,
                 detail=f"Process definition {data.definition_id} not found",
             )
 
-        logger.info(
-            f"Found process definition: {definition.name} (v{definition.version})"
-        )
-        logger.info(f"Variable definitions: {definition.variable_definitions}")
-
         try:
             # Validate variables against process definition
-            logger.info("Validating variables against process definition")
             data.validate_variables(definition.variable_definitions)
-            logger.info("Variable validation successful")
         except ValueError as e:
-            logger.error(f"Variable validation failed: {str(e)}")
             raise HTTPException(status_code=422, detail=str(e))
 
         # Create instance
@@ -174,7 +208,6 @@ async def create_instance(
         )
         session.add(instance)
         await session.flush()  # Get the ID without committing
-        logger.info(f"Created process instance with ID: {instance.id}")
 
         # Convert variables to storage format
         variables = {}
@@ -182,21 +215,17 @@ async def create_instance(
             variables = {
                 name: var.to_storage_format() for name, var in data.variables.items()
             }
-            logger.info(f"Converted variables for storage: {variables}")
 
         try:
             # Start process execution
-            logger.info("Starting process execution")
             instance = await instance_manager.start_instance(
                 instance=instance,
                 bpmn_xml=definition.bpmn_xml,
                 variables=variables,
             )
-            logger.info("Process execution started successfully")
 
             # Commit the transaction to save the instance
             await session.commit()
-            logger.info("Process instance committed to database")
 
             # Publish process.started event with just IDs
             await event_bus.publish(
@@ -206,7 +235,6 @@ async def create_instance(
                     "definition_id": str(instance.definition_id),
                 },
             )
-            logger.info("Published process.started event")
 
         except Exception as e:
             await session.rollback()
@@ -215,6 +243,8 @@ async def create_instance(
                 status_code=500, detail=f"Failed to start process: {str(e)}"
             )
 
+        # Add definition name to instance before returning
+        instance.definition_name = definition.name
         return {"data": instance}
     except HTTPException:
         raise
@@ -232,10 +262,22 @@ async def create_instance(
 async def suspend_instance(
     instance_id: UUID,
     instance_manager: ProcessInstanceManager = Depends(get_instance_manager),
+    session: AsyncSession = Depends(get_session),
 ):
     """Suspend a process instance."""
     try:
         instance = await instance_manager.suspend_instance(instance_id)
+        # Get definition name using the same query pattern
+        result = await session.execute(
+            select(ProcessDefinitionModel.name)
+            .join(
+                ProcessInstanceModel,
+                ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+                isouter=False,
+            )
+            .where(ProcessInstanceModel.id == instance_id)
+        )
+        instance.definition_name = result.scalar_one()
         return {"data": instance}
     except ProcessInstanceError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -251,13 +293,92 @@ async def suspend_instance(
 async def resume_instance(
     instance_id: UUID,
     instance_manager: ProcessInstanceManager = Depends(get_instance_manager),
+    session: AsyncSession = Depends(get_session),
 ):
     """Resume a suspended process instance."""
     try:
         instance = await instance_manager.resume_instance(instance_id)
+        # Get definition name using the same query pattern
+        result = await session.execute(
+            select(ProcessDefinitionModel.name)
+            .join(
+                ProcessInstanceModel,
+                ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+                isouter=False,
+            )
+            .where(ProcessInstanceModel.id == instance_id)
+        )
+        instance.definition_name = result.scalar_one()
         return {"data": instance}
     except ProcessInstanceError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error resuming instance: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/{instance_id}/tokens",
+    response_model=ApiResponse[List[TokenResponse]],
+)
+async def get_instance_tokens(
+    instance_id: UUID,
+    state_manager=Depends(get_state_manager),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get current token positions for a process instance."""
+    try:
+        # First verify instance exists and get its details
+        instance = await session.get(ProcessInstanceModel, instance_id)
+        if not instance:
+            raise HTTPException(status_code=404, detail="Process instance not found")
+        
+        # Get process definition to get BPMN XML
+        definition = await session.get(ProcessDefinitionModel, instance.definition_id)
+        if not definition:
+            raise HTTPException(status_code=404, detail="Process definition not found")
+        
+        # Get tokens from Redis
+        tokens = await state_manager.get_token_positions(str(instance_id))
+        
+        # If instance is running but has no tokens, try to recreate initial token
+        if instance.status == ProcessStatus.RUNNING and not tokens:
+            # Parse BPMN to find start event
+            parser = BPMNParser()
+            process_graph = parser.parse(definition.bpmn_xml)
+            start_event = next(
+                (
+                    node
+                    for node in process_graph["nodes"]
+                    if isinstance(node, Event) and node.event_type == EventType.START
+                ),
+                None,
+            )
+            if start_event:
+                token = Token(instance_id=str(instance_id), node_id=start_event.id)
+                await state_manager.add_token(
+                    instance_id=str(instance_id),
+                    node_id=start_event.id,
+                    data=token.to_dict()
+                )
+                await state_manager.update_token_state(
+                    instance_id=str(instance_id),
+                    node_id=start_event.id,
+                    state=TokenState.ACTIVE
+                )
+                tokens = await state_manager.get_token_positions(str(instance_id))
+        
+        return {
+            "data": [
+                TokenResponse(
+                    node_id=token["node_id"],
+                    state=token["state"],
+                    scope_id=token.get("scope_id"),
+                    data=token.get("data"),
+                )
+                for token in tokens
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error getting instance tokens: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
