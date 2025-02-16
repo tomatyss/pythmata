@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ApiError } from '@/lib/errors';
-import { convertKeysToCamel } from '@/utils/case';
+import { convertKeysToCamel, convertKeysToSnake } from '@/utils/case';
 import {
   ApiResponse,
   PaginatedResponse,
@@ -24,6 +24,19 @@ class ApiService {
         'Content-Type': 'application/json',
       },
     });
+
+    // Add request interceptor to convert camelCase to snake_case
+    this.client.interceptors.request.use(
+      (config) => {
+        if (config.data) {
+          config.data = convertKeysToSnake(config.data);
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
 
     // Add response interceptors for error handling and case conversion
     this.client.interceptors.response.use(
