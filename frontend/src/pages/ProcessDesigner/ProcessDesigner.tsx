@@ -63,9 +63,9 @@ const ProcessDesigner = () => {
       if (id) {
         try {
           const response = await apiService.getProcessDefinition(id);
-          const { name, bpmn_xml, variable_definitions } = response.data;
+          const { name, bpmnXml, variable_definitions } = response.data;
           setProcessName(name);
-          setBpmnXml(bpmn_xml);
+          setBpmnXml(bpmnXml);
           setVariableDefinitions(variable_definitions || []);
         } catch (error) {
           console.error('Failed to load process:', error);
@@ -139,14 +139,14 @@ const ProcessDesigner = () => {
         // Update existing process
         await apiService.updateProcessDefinition(id, {
           name: processName,
-          bpmn_xml: xml,
+          bpmnXml: xml,
           variable_definitions: variableDefinitions,
         });
       } else {
         // Create new process
         await apiService.createProcessDefinition({
           name: processName,
-          bpmn_xml: xml,
+          bpmnXml: xml,
           version: 1,
           variable_definitions: variableDefinitions,
         });
