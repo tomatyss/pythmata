@@ -23,8 +23,11 @@ from pythmata.api.schemas import (
     ProcessInstanceResponse,
     TokenResponse,
 )
+from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.engine.instance import ProcessInstanceError, ProcessInstanceManager
+from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.events import EventBus
+from pythmata.core.types import Event, EventType
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
@@ -178,8 +181,6 @@ async def create_instance(
 ):
     """Create a new process instance."""
     try:
-        logger.info(f"Creating process instance with data: {data}")
-
         # Verify process definition exists
         result = await session.execute(
             select(ProcessDefinitionModel).filter(
@@ -188,24 +189,15 @@ async def create_instance(
         )
         definition = result.scalar_one_or_none()
         if not definition:
-            logger.error(f"Process definition {data.definition_id} not found")
             raise HTTPException(
                 status_code=404,
                 detail=f"Process definition {data.definition_id} not found",
             )
 
-        logger.info(
-            f"Found process definition: {definition.name} (v{definition.version})"
-        )
-        logger.info(f"Variable definitions: {definition.variable_definitions}")
-
         try:
             # Validate variables against process definition
-            logger.info("Validating variables against process definition")
             data.validate_variables(definition.variable_definitions)
-            logger.info("Variable validation successful")
         except ValueError as e:
-            logger.error(f"Variable validation failed: {str(e)}")
             raise HTTPException(status_code=422, detail=str(e))
 
         # Create instance
@@ -216,7 +208,6 @@ async def create_instance(
         )
         session.add(instance)
         await session.flush()  # Get the ID without committing
-        logger.info(f"Created process instance with ID: {instance.id}")
 
         # Convert variables to storage format
         variables = {}
@@ -224,21 +215,17 @@ async def create_instance(
             variables = {
                 name: var.to_storage_format() for name, var in data.variables.items()
             }
-            logger.info(f"Converted variables for storage: {variables}")
 
         try:
             # Start process execution
-            logger.info("Starting process execution")
             instance = await instance_manager.start_instance(
                 instance=instance,
                 bpmn_xml=definition.bpmn_xml,
                 variables=variables,
             )
-            logger.info("Process execution started successfully")
 
             # Commit the transaction to save the instance
             await session.commit()
-            logger.info("Process instance committed to database")
 
             # Publish process.started event with just IDs
             await event_bus.publish(
@@ -248,7 +235,6 @@ async def create_instance(
                     "definition_id": str(instance.definition_id),
                 },
             )
-            logger.info("Published process.started event")
 
         except Exception as e:
             await session.rollback()
@@ -338,10 +324,50 @@ async def resume_instance(
 async def get_instance_tokens(
     instance_id: UUID,
     state_manager=Depends(get_state_manager),
+    session: AsyncSession = Depends(get_session),
 ):
     """Get current token positions for a process instance."""
     try:
+        # First verify instance exists and get its details
+        instance = await session.get(ProcessInstanceModel, instance_id)
+        if not instance:
+            raise HTTPException(status_code=404, detail="Process instance not found")
+        
+        # Get process definition to get BPMN XML
+        definition = await session.get(ProcessDefinitionModel, instance.definition_id)
+        if not definition:
+            raise HTTPException(status_code=404, detail="Process definition not found")
+        
+        # Get tokens from Redis
         tokens = await state_manager.get_token_positions(str(instance_id))
+        
+        # If instance is running but has no tokens, try to recreate initial token
+        if instance.status == ProcessStatus.RUNNING and not tokens:
+            # Parse BPMN to find start event
+            parser = BPMNParser()
+            process_graph = parser.parse(definition.bpmn_xml)
+            start_event = next(
+                (
+                    node
+                    for node in process_graph["nodes"]
+                    if isinstance(node, Event) and node.event_type == EventType.START
+                ),
+                None,
+            )
+            if start_event:
+                token = Token(instance_id=str(instance_id), node_id=start_event.id)
+                await state_manager.add_token(
+                    instance_id=str(instance_id),
+                    node_id=start_event.id,
+                    data=token.to_dict()
+                )
+                await state_manager.update_token_state(
+                    instance_id=str(instance_id),
+                    node_id=start_event.id,
+                    state=TokenState.ACTIVE
+                )
+                tokens = await state_manager.get_token_positions(str(instance_id))
+        
         return {
             "data": [
                 TokenResponse(

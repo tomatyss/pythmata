@@ -1,12 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import apiService from '@/services/api';
+import { Token } from '@/types/process';
 
-export interface TokenData {
-  nodeId: string;
-  state: string;
-  scopeId?: string;
-  data?: Record<string, unknown>;
-}
+// Re-export the Token type as TokenData for consistency
+export type TokenData = Token;
 
 interface UseProcessTokensProps {
   instanceId: string;
@@ -28,7 +25,16 @@ export const useProcessTokens = ({
   const fetchTokens = useCallback(async () => {
     try {
       const response = await apiService.getInstanceTokens(instanceId);
-      setTokens(response.data);
+      // Map snake_case to camelCase
+      const mappedTokens = (response.data ?? []).map(
+        (token): TokenData => ({
+          nodeId: token.node_id,
+          state: token.state,
+          scopeId: token.scope_id,
+          data: token.data,
+        })
+      );
+      setTokens(mappedTokens);
       setError(null);
     } catch (err) {
       setError(

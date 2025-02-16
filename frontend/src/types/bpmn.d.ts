@@ -28,6 +28,11 @@ declare module 'bpmn-js' {
     [key: string]: unknown;
   }
 
+  export interface ElementRegistry {
+    get(id: string): ModdleElement | undefined;
+    getAll(): ModdleElement[];
+  }
+
   export interface ImportXMLResult {
     warnings: Array<Error>;
   }
@@ -40,6 +45,7 @@ declare module 'bpmn-js' {
 
     get(service: 'canvas'): Canvas;
     get(service: 'overlays'): Overlays;
+    get(service: 'elementRegistry'): ElementRegistry;
     get(service: string): unknown;
   }
 }

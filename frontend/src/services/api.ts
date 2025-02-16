@@ -7,7 +7,6 @@ import {
   ProcessInstance,
   ProcessStats,
   Script,
-  Token,
   CreateProcessDefinitionRequest,
   UpdateProcessDefinitionRequest,
   StartProcessInstanceRequest,
@@ -130,7 +129,19 @@ class ApiService {
     return response.data;
   }
 
-  async getInstanceTokens(id: string): Promise<ApiResponse<Token[]>> {
+  // Snake case response type for tokens
+  async getInstanceTokens(
+    id: string
+  ): Promise<
+    ApiResponse<
+      {
+        node_id: string;
+        state: string;
+        scope_id?: string;
+        data?: Record<string, unknown>;
+      }[]
+    >
+  > {
     const response = await this.client.get(`/instances/${id}/tokens`);
     return response.data;
   }

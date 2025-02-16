@@ -192,6 +192,8 @@ class StateManager:
         """
         key = f"process:{instance_id}:tokens"
         tokens = await self.redis.lrange(key, 0, -1)
+        parsed_tokens = [json.loads(token) for token in tokens]
+        
         return [json.loads(token) for token in tokens]
 
     async def add_token(
@@ -387,25 +389,12 @@ class StateManager:
             state: The new token state
             scope_id: Optional scope ID to match specific token
         """
-        logger.debug(
-            f"\nUpdating token state - node_id: {node_id}, scope_id: {scope_id}, new_state: {state.value}"
-        )
-
         key = f"process:{instance_id}:tokens"
         tokens = await self.get_token_positions(instance_id)
-
-        logger.debug("Current tokens:")
-        for t in tokens:
-            logger.debug(
-                f"Token - node_id: {t['node_id']}, scope_id: {t.get('scope_id')}, state: {t.get('state')}"
-            )
 
         # Find and update the token state
         updated = False
         for token in tokens:
-            logger.debug(
-                f"Checking token - node_id: {token['node_id']}, scope_id: {token.get('scope_id')}"
-            )
             if token["node_id"] == node_id and token.get("scope_id") == scope_id:
                 token["state"] = state.value
                 token["data"]["state"] = state.value  # Update state in data too
@@ -413,10 +402,7 @@ class StateManager:
                 break
 
         if not updated:
-            logger.error(f"No token found at node {node_id} with scope {scope_id}")
             raise ValueError(f"No token found at node {node_id} with scope {scope_id}")
-
-        logger.debug("Token state updated successfully")
         # Replace the token list
         await self.redis.delete(key)
         await self.redis.rpush(key, *[json.dumps(token) for token in tokens])
