@@ -17,6 +17,11 @@ export const convertKeysToCamel = <T>(obj: T): T => {
     return obj;
   }
 
+  // Handle Date objects
+  if (obj instanceof Date) {
+    return obj;
+  }
+
   if (Array.isArray(obj)) {
     return obj.map((item) => convertKeysToCamel(item)) as T;
   }
@@ -27,7 +32,10 @@ export const convertKeysToCamel = <T>(obj: T): T => {
     const value = (obj as Record<string, unknown>)[key];
     const newKey = snakeToCamel(key);
 
-    newObj[newKey] = convertKeysToCamel(value);
+    // Recursively convert nested objects, preserving Date objects
+    newObj[newKey] = value && typeof value === 'object'
+      ? (value instanceof Date ? value : convertKeysToCamel(value))
+      : value;
   });
 
   return newObj as T;

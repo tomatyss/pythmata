@@ -126,16 +126,16 @@ const ProcessInstanceList = () => {
       }
       setLoading(true);
       console.warn('Fetching instances with params:', {
-        definition_id: processId,
+        definitionId: processId,
         page: page + 1,
-        page_size: pageSize,
+        pageSize: pageSize,
         status: statusFilter === 'all' ? undefined : statusFilter,
       });
       const [instancesResponse, processResponse] = await Promise.all([
         apiService.getProcessInstances({
-          definition_id: processId,
+          definitionId: processId,
           page: page + 1,
-          page_size: pageSize,
+          pageSize: pageSize,
           status: statusFilter === 'all' ? undefined : statusFilter,
         }),
         processId ? apiService.getProcessDefinition(processId) : null,
@@ -167,15 +167,15 @@ const ProcessInstanceList = () => {
       await apiService.suspendProcessInstance(instanceId);
       // Refresh instances list with all current parameters
       console.warn('Refreshing after suspend with params:', {
-        definition_id: processId,
+        definitionId: processId,
         page: page + 1,
-        page_size: pageSize,
+        pageSize: pageSize,
         status: statusFilter === 'all' ? undefined : statusFilter,
       });
       const response = await apiService.getProcessInstances({
-        definition_id: processId,
+        definitionId: processId,
         page: page + 1,
-        page_size: pageSize,
+        pageSize: pageSize,
         status: statusFilter === 'all' ? undefined : statusFilter,
       });
       setInstances(response.data.items);
@@ -190,15 +190,15 @@ const ProcessInstanceList = () => {
       await apiService.resumeProcessInstance(instanceId);
       // Refresh instances list with all current parameters
       console.warn('Refreshing after resume with params:', {
-        definition_id: processId,
+        definitionId: processId,
         page: page + 1,
-        page_size: pageSize,
+        pageSize: pageSize,
         status: statusFilter === 'all' ? undefined : statusFilter,
       });
       const response = await apiService.getProcessInstances({
-        definition_id: processId,
+        definitionId: processId,
         page: page + 1,
-        page_size: pageSize,
+        pageSize: pageSize,
         status: statusFilter === 'all' ? undefined : statusFilter,
       });
       setInstances(response.data.items);

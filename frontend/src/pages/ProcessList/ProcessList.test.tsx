@@ -1,22 +1,30 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ProcessList from './ProcessList';
 import apiService from '@/services/api';
 import { ProcessStatus } from '@/types/process';
 
 // Mock API service
-jest.mock('@/services/api');
-const mockedApiService = apiService as jest.Mocked<typeof apiService>;
-
-// Mock useNavigate
-const mockNavigate = jest.fn();
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
+vi.mock('@/services/api', () => ({
+  default: {
+    getProcessDefinitions: vi.fn(),
+    startProcessInstance: vi.fn(),
+  },
 }));
 
+// Mock useNavigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 // Mock window.alert
-const mockAlert = jest.fn();
+const mockAlert = vi.fn();
 window.alert = mockAlert;
 
 describe('ProcessList', () => {
@@ -27,10 +35,10 @@ describe('ProcessList', () => {
           id: '1',
           name: 'Order Process',
           version: 1,
-          bpmn_xml: '<xml></xml>',
+          bpmnXml: '<xml></xml>',
           createdAt: '2025-02-06T12:00:00Z',
           updatedAt: '2025-02-06T12:00:00Z',
-          variable_definitions: [
+          variableDefinitions: [
             {
               name: 'amount',
               type: 'number' as const,
@@ -51,12 +59,12 @@ describe('ProcessList', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockedApiService.getProcessDefinitions.mockResolvedValue(mockProcesses);
+    vi.clearAllMocks();
+    (apiService.getProcessDefinitions as any).mockResolvedValue(mockProcesses);
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    vi.resetAllMocks();
   });
 
   it('renders process list', async () => {
@@ -91,7 +99,7 @@ describe('ProcessList', () => {
         updatedAt: '2025-02-06T12:00:00Z',
       },
     };
-    mockedApiService.startProcessInstance.mockResolvedValue(mockInstance);
+    (apiService.startProcessInstance as any).mockResolvedValue(mockInstance);
 
     render(
       <MemoryRouter>
@@ -119,8 +127,8 @@ describe('ProcessList', () => {
 
     // Verify API call
     await waitFor(() => {
-      expect(mockedApiService.startProcessInstance).toHaveBeenCalledWith({
-        definition_id: '1',
+      expect(apiService.startProcessInstance).toHaveBeenCalledWith({
+        definitionId: '1',
         variables: {
           amount: {
             type: 'number',
@@ -138,7 +146,7 @@ describe('ProcessList', () => {
 
   it('handles process start error', async () => {
     const error = new Error('Failed to start process');
-    mockedApiService.startProcessInstance.mockRejectedValue(error);
+    (apiService.startProcessInstance as any).mockRejectedValue(error);
 
     render(
       <MemoryRouter>

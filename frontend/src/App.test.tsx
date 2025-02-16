@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { describe, it, expect, vi } from 'vitest';
 import App from './App';
 
 // Mock Layout component
-jest.mock('./components/Layout', () => ({
-  __esModule: true,
+vi.mock('./components/Layout', () => ({
   default: () => (
     <>
       <div data-testid="app-bar">App Bar</div>
@@ -17,30 +17,26 @@ jest.mock('./components/Layout', () => ({
 }));
 
 // Mock page components
-jest.mock('./pages/Dashboard');
-jest.mock('./pages/ProcessList', () => ({
-  __esModule: true,
+vi.mock('./pages/Dashboard');
+vi.mock('./pages/ProcessList', () => ({
   default: () => <div>Process List Mock</div>,
 }));
 
-jest.mock('./pages/ProcessDesigner', () => ({
-  __esModule: true,
+vi.mock('./pages/ProcessDesigner', () => ({
   default: () => <div>Process Designer Mock</div>,
 }));
 
-jest.mock('./pages/ProcessInstance', () => ({
-  __esModule: true,
+vi.mock('./pages/ProcessInstance', () => ({
   default: () => <div>Process Instance Mock</div>,
 }));
 
-jest.mock('./pages/NotFound', () => ({
-  __esModule: true,
+vi.mock('./pages/NotFound', () => ({
   default: () => <div>Not Found Mock</div>,
 }));
 
 // Mock MUI components
-jest.mock('@mui/material', () => {
-  const actual = jest.requireActual('@mui/material');
+vi.mock('@mui/material', () => {
+  const actual = vi.importActual('@mui/material');
   return {
     ...actual,
     AppBar: function AppBar({ children }: { children: React.ReactNode }) {
@@ -101,7 +97,7 @@ jest.mock('@mui/material', () => {
 });
 
 // Mock MUI icons
-jest.mock('@mui/icons-material', () => ({
+vi.mock('@mui/icons-material', () => ({
   Menu: () => 'MenuIcon',
   Dashboard: () => 'DashboardIcon',
   List: () => 'ListIcon',

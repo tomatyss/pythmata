@@ -1,47 +1,57 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ProcessDesigner from './ProcessDesigner';
 import apiService from '@/services/api';
 
 // Mock the API service
-jest.mock('@/services/api');
-
-// Mock react-router-dom
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: jest.fn(),
+vi.mock('@/services/api', () => ({
+  default: {
+    getProcessDefinition: vi.fn(),
+    createProcessDefinition: vi.fn(),
+    updateProcessDefinition: vi.fn(),
+  },
 }));
 
-// Mock bpmn-js
-jest.mock('bpmn-js/lib/Modeler', () => {
-  return jest.fn().mockImplementation(() => ({
-    importXML: jest.fn().mockResolvedValue({}),
-    saveXML: jest.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
-    destroy: jest.fn(),
-  }));
+// Mock react-router-dom
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: vi.fn(),
+  };
 });
+
+// Mock bpmn-js
+vi.mock('bpmn-js/lib/Modeler', () => ({
+  default: vi.fn().mockImplementation(() => ({
+    importXML: vi.fn().mockResolvedValue({}),
+    saveXML: vi.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
+    destroy: vi.fn(),
+  }))
+}));
 
 describe('ProcessDesigner', () => {
   const mockProcess = {
     id: '123',
     name: 'Test Process',
-    bpmn_xml: '<test-xml/>',
+    bpmnXml: '<test-xml/>',
     version: 1,
-    created_at: '2024-02-06T00:00:00Z',
-    updated_at: '2024-02-06T00:00:00Z',
+    createdAt: '2024-02-06T00:00:00Z',
+    updatedAt: '2024-02-06T00:00:00Z',
   };
 
   // Mock window.alert before all tests
-  const mockAlert = jest.fn();
+  const mockAlert = vi.fn();
   const originalAlert = window.alert;
 
   beforeEach(() => {
     // Clear all mocks before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset useNavigate mock and provide default implementation
-    const mockNavigate = jest.fn();
-    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    const mockNavigate = vi.fn();
+    (useNavigate as any).mockReturnValue(mockNavigate);
     // Set up window.alert mock
     window.alert = mockAlert;
   });
@@ -53,7 +63,7 @@ describe('ProcessDesigner', () => {
 
   it('loads existing process when editing', async () => {
     // Mock the API call
-    (apiService.getProcessDefinition as jest.Mock).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
       data: mockProcess,
     });
 
@@ -82,7 +92,7 @@ describe('ProcessDesigner', () => {
 
   it('shows error message when loading fails', async () => {
     // Mock API error
-    (apiService.getProcessDefinition as jest.Mock).mockRejectedValueOnce(
+    (apiService.getProcessDefinition as any).mockRejectedValueOnce(
       new Error('Failed to load')
     );
 
@@ -118,7 +128,7 @@ describe('ProcessDesigner', () => {
 
     // Should initialize modeler with empty diagram
     await waitFor(() => {
-      const modelerInstance = (BpmnModeler as jest.Mock).mock.results[0]?.value;
+      const modelerInstance = (BpmnModeler as any).mock.results[0]?.value;
       expect(modelerInstance?.importXML).toHaveBeenCalledWith(
         expect.stringContaining('<bpmn:startEvent')
       );
@@ -133,7 +143,7 @@ describe('ProcessDesigner', () => {
     };
 
     // Mock the API call
-    (apiService.createProcessDefinition as jest.Mock).mockResolvedValueOnce({
+    (apiService.createProcessDefinition as any).mockResolvedValueOnce({
       data: newProcess,
     });
 
@@ -161,23 +171,24 @@ describe('ProcessDesigner', () => {
         name: newProcess.name,
         bpmn_xml: expect.any(String),
         version: 1,
+        variable_definitions: [],
       })
     );
   });
 
   it('cleans up modeler on unmount', async () => {
     const { default: BpmnModeler } = await import('bpmn-js/lib/Modeler');
-    const destroyMock = jest.fn();
+    const destroyMock = vi.fn();
 
     // Setup modeler mock with destroy function
-    (BpmnModeler as jest.Mock).mockImplementation(() => ({
-      importXML: jest.fn().mockResolvedValue({}),
-      saveXML: jest.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
+    (BpmnModeler as any).mockImplementation(() => ({
+      importXML: vi.fn().mockResolvedValue({}),
+      saveXML: vi.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
       destroy: destroyMock,
     }));
 
     // Mock the API call
-    (apiService.getProcessDefinition as jest.Mock).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
       data: mockProcess,
     });
 
@@ -205,14 +216,14 @@ describe('ProcessDesigner', () => {
 
   it('handles navigation after save', async () => {
     const user = userEvent.setup();
-    const mockNavigate = jest.fn();
-    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    const mockNavigate = vi.fn();
+    (useNavigate as any).mockReturnValue(mockNavigate);
 
     // Mock the API calls
-    (apiService.getProcessDefinition as jest.Mock).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
       data: mockProcess,
     });
-    (apiService.updateProcessDefinition as jest.Mock).mockResolvedValueOnce({
+    (apiService.updateProcessDefinition as any).mockResolvedValueOnce({
       data: mockProcess,
     });
 
@@ -243,10 +254,10 @@ describe('ProcessDesigner', () => {
     const user = userEvent.setup();
 
     // Mock the API calls
-    (apiService.getProcessDefinition as jest.Mock).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
       data: mockProcess,
     });
-    (apiService.updateProcessDefinition as jest.Mock).mockResolvedValueOnce({
+    (apiService.updateProcessDefinition as any).mockResolvedValueOnce({
       data: mockProcess,
     });
 
@@ -273,6 +284,7 @@ describe('ProcessDesigner', () => {
       expect.objectContaining({
         name: mockProcess.name,
         bpmn_xml: expect.any(String),
+        variable_definitions: [],
       })
     );
   });
@@ -282,10 +294,10 @@ describe('ProcessDesigner', () => {
     const mockError = new Error('Save failed');
 
     // Mock the API calls
-    (apiService.getProcessDefinition as jest.Mock).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
       data: mockProcess,
     });
-    (apiService.updateProcessDefinition as jest.Mock).mockRejectedValueOnce(
+    (apiService.updateProcessDefinition as any).mockRejectedValueOnce(
       mockError
     );
 

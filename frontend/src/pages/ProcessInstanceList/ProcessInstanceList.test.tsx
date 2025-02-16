@@ -1,5 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ProcessInstanceList from './ProcessInstanceList';
 import {
   ApiResponse,
@@ -8,39 +9,22 @@ import {
   ProcessInstance,
   ProcessStatus,
 } from '@/types/process';
-import '@testing-library/jest-dom';
 
 // Mock the API service
-const mockGetProcessInstances = jest.fn<
-  Promise<ApiResponse<PaginatedResponse<ProcessInstance>>>,
-  [
-    {
-      definition_id?: string;
-      page?: number;
-      page_size?: number;
-      status?: string;
-    }?,
-  ]
->();
-const mockGetProcessDefinition = jest.fn<
-  Promise<ApiResponse<ProcessDefinition>>,
-  [string]
->();
+const mockGetProcessInstances = vi.fn();
+const mockGetProcessDefinition = vi.fn();
 
-jest.mock('@/services/api', () => {
-  return {
-    __esModule: true,
-    default: {
-      getProcessInstances: (options?: {
-        definition_id?: string;
-        page?: number;
-        page_size?: number;
-        status?: string;
-      }) => mockGetProcessInstances(options),
-      getProcessDefinition: (id: string) => mockGetProcessDefinition(id),
-    },
-  };
-});
+vi.mock('@/services/api', () => ({
+  default: {
+    getProcessInstances: (options?: {
+      definitionId?: string;
+      page?: number;
+      pageSize?: number;
+      status?: string;
+    }) => mockGetProcessInstances(options),
+    getProcessDefinition: (id: string) => mockGetProcessDefinition(id),
+  },
+}));
 
 describe('ProcessInstanceList', () => {
   const mockProcessId = '03fffc6c-b6da-43eb-aed5-a582ac8dde72';
@@ -69,17 +53,17 @@ describe('ProcessInstanceList', () => {
       id: mockProcessId,
       name: 'Test Process',
       version: 1,
-      bpmn_xml: '<xml></xml>',
-      variable_definitions: [],
-      active_instances: 1,
-      total_instances: 1,
-      created_at: '2024-02-15T12:00:00Z',
-      updated_at: '2024-02-15T12:00:00Z',
+      bpmnXml: '<xml></xml>',
+      variableDefinitions: [],
+      activeInstances: 1,
+      totalInstances: 1,
+      createdAt: '2024-02-15T12:00:00Z',
+      updatedAt: '2024-02-15T12:00:00Z',
     },
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockGetProcessInstances.mockResolvedValue(mockInstances);
     mockGetProcessDefinition.mockResolvedValue(mockProcessDefinition);
   });
@@ -99,9 +83,9 @@ describe('ProcessInstanceList', () => {
     // Verify API calls
     await waitFor(() => {
       expect(mockGetProcessInstances).toHaveBeenCalledWith({
-        definition_id: mockProcessId,
+        definitionId: mockProcessId,
         page: 1,
-        page_size: 10,
+        pageSize: 10,
         status: undefined,
       });
     });
@@ -150,12 +134,12 @@ describe('ProcessInstanceList', () => {
         id: anotherProcessId,
         name: 'Another Process',
         version: 1,
-        bpmn_xml: '<xml></xml>',
-        variable_definitions: [],
-        active_instances: 1,
-        total_instances: 1,
-        created_at: '2024-02-15T12:00:00Z',
-        updated_at: '2024-02-15T12:00:00Z',
+        bpmnXml: '<xml></xml>',
+        variableDefinitions: [],
+        activeInstances: 1,
+        totalInstances: 1,
+        createdAt: '2024-02-15T12:00:00Z',
+        updatedAt: '2024-02-15T12:00:00Z',
       },
     };
 
@@ -178,9 +162,9 @@ describe('ProcessInstanceList', () => {
     // Verify API calls with different process ID
     await waitFor(() => {
       expect(mockGetProcessInstances).toHaveBeenCalledWith({
-        definition_id: anotherProcessId,
+        definitionId: anotherProcessId,
         page: 1,
-        page_size: 10,
+        pageSize: 10,
         status: undefined,
       });
     });
@@ -201,9 +185,9 @@ describe('ProcessInstanceList', () => {
   it('handles status filtering correctly', async () => {
     mockGetProcessInstances.mockImplementation(
       (options?: {
-        definition_id?: string;
+        definitionId?: string;
         page?: number;
-        page_size?: number;
+        pageSize?: number;
         status?: string;
       }) =>
         Promise.resolve({
@@ -256,9 +240,9 @@ describe('ProcessInstanceList', () => {
     // Verify API call with status filter
     await waitFor(() => {
       expect(mockGetProcessInstances).toHaveBeenCalledWith({
-        definition_id: mockProcessId,
+        definitionId: mockProcessId,
         page: 1,
-        page_size: 10,
+        pageSize: 10,
         status: 'running',
       });
     });
