@@ -7,23 +7,28 @@ import { ProcessStatus } from '@/types/process';
 vi.mock('axios', () => {
   const mockAxiosInstance = {
     interceptors: {
+      request: {
+        use: vi.fn((successFn) => {
+          mockAxiosInstance.transformRequest = successFn;
+        }),
+      },
       response: {
-        use: vi.fn(),
+        use: vi.fn((successFn) => {
+          mockAxiosInstance.transformResponse = successFn;
+        }),
       },
     },
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
     delete: vi.fn(),
+    transformRequest: null as any,
     transformResponse: null as any,
   };
 
   return {
     default: {
       create: vi.fn(() => {
-        mockAxiosInstance.interceptors.response.use = vi.fn((successFn) => {
-          mockAxiosInstance.transformResponse = successFn;
-        });
         return mockAxiosInstance;
       }),
     },
