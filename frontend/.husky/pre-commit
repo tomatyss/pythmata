@@ -1,13 +1,32 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# Get list of staged files
-files=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.ts$|\.tsx$")
+# Debug: Show all staged files
+echo "Debug: Listing all staged files:"
+git diff --cached --name-only --diff-filter=ACM
+
+# Get list of staged frontend files
+frontend_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E "^frontend/.*\.(ts|tsx)$" || true)
+
+# Debug: Show found frontend files
+echo "Debug: Frontend files found:"
+echo "$frontend_files"
+
+# If no frontend files are staged, skip
+if [ -z "$frontend_files" ]; then
+  echo "No frontend files staged, skipping pre-commit hooks"
+  exit 0
+fi
 
 # Skip pre-commit for test files
-if echo "$files" | grep -q "\.test\.ts$\|\.test\.tsx$"; then
+if echo "$frontend_files" | grep -q "\.test\.(ts|tsx)$"; then
   echo "Test files detected, skipping pre-commit hooks"
   exit 0
 fi
 
-cd frontend && npm run pre-commit
+# Debug: Running pre-commit
+echo "Debug: Running pre-commit hooks for frontend files"
+
+# Run pre-commit only if we have frontend changes
+cd frontend || exit 1
+npm run pre-commit || exit 1
