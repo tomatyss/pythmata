@@ -27,19 +27,29 @@ class SubprocessManager:
         Returns:
             The new token in subprocess scope
         """
-        # Remove token from current node and clear cache
-        await self.state_manager.remove_token(
-            instance_id=token.instance_id, node_id=token.node_id
-        )
-        await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
+        # Use Redis transaction for atomic operation
+        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+            # Remove token from current node and clear cache
+            await self.state_manager.remove_token(
+                instance_id=token.instance_id, node_id=token.node_id
+            )
+            await pipe.delete(f"tokens:{token.instance_id}")
 
-        # Create new token in subprocess scope
-        new_token = token.copy(node_id=subprocess_id, scope_id=subprocess_id)
-        await self.state_manager.add_token(
-            instance_id=new_token.instance_id,
-            node_id=new_token.node_id,
-            data=new_token.to_dict(),
-        )
+            # Create new token in subprocess scope
+            new_token = token.copy(node_id=subprocess_id, scope_id=subprocess_id)
+            await self.state_manager.add_token(
+                instance_id=new_token.instance_id,
+                node_id=new_token.node_id,
+                data=new_token.to_dict(),
+            )
+            await self.state_manager.update_token_state(
+                instance_id=new_token.instance_id,
+                node_id=new_token.node_id,
+                state=TokenState.ACTIVE,
+                scope_id=new_token.scope_id
+            )
+            
+            await pipe.execute()
 
         return new_token
 
@@ -54,19 +64,28 @@ class SubprocessManager:
         Returns:
             The new token in parent scope
         """
-        # Remove token from subprocess and clear cache
-        await self.state_manager.remove_token(
-            instance_id=token.instance_id, node_id=token.node_id
-        )
-        await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
+        # Use Redis transaction for atomic operation
+        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+            # Remove token from subprocess and clear cache
+            await self.state_manager.remove_token(
+                instance_id=token.instance_id, node_id=token.node_id
+            )
+            await pipe.delete(f"tokens:{token.instance_id}")
 
-        # Create new token in parent scope
-        new_token = token.copy(node_id=next_task_id, scope_id=None)
-        await self.state_manager.add_token(
-            instance_id=new_token.instance_id,
-            node_id=new_token.node_id,
-            data=new_token.to_dict(),
-        )
+            # Create new token in parent scope
+            new_token = token.copy(node_id=next_task_id, scope_id=None)
+            await self.state_manager.add_token(
+                instance_id=new_token.instance_id,
+                node_id=new_token.node_id,
+                data=new_token.to_dict(),
+            )
+            await self.state_manager.update_token_state(
+                instance_id=new_token.instance_id,
+                node_id=new_token.node_id,
+                state=TokenState.ACTIVE
+            )
+            
+            await pipe.execute()
 
         return new_token
 
@@ -92,34 +111,43 @@ class SubprocessManager:
         if output_vars:
             await self._map_subprocess_variables(token, output_vars)
 
-        # Mark token as completed before removing
-        await self.state_manager.update_token_state(
-            instance_id=token.instance_id,
-            node_id=token.node_id,
-            state=TokenState.COMPLETED,
-            scope_id=token.scope_id,
-        )
+        # Use Redis transaction for atomic operation
+        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+            # Mark token as completed before removing
+            await self.state_manager.update_token_state(
+                instance_id=token.instance_id,
+                node_id=token.node_id,
+                state=TokenState.COMPLETED,
+                scope_id=token.scope_id,
+            )
 
-        # Remove token from subprocess end event with scope
-        await self.state_manager.remove_token(
-            instance_id=token.instance_id,
-            node_id=token.node_id,
-            scope_id=token.scope_id,
-        )
-        await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
+            # Remove token from subprocess end event with scope
+            await self.state_manager.remove_token(
+                instance_id=token.instance_id,
+                node_id=token.node_id,
+                scope_id=token.scope_id,
+            )
+            await pipe.delete(f"tokens:{token.instance_id}")
 
-        # Clean up any remaining tokens in subprocess scope
-        await self.state_manager.clear_scope_tokens(
-            instance_id=token.instance_id, scope_id=token.scope_id
-        )
+            # Clean up any remaining tokens in subprocess scope
+            await self.state_manager.clear_scope_tokens(
+                instance_id=token.instance_id, scope_id=token.scope_id
+            )
 
-        # Create new token in parent scope
-        new_token = token.copy(node_id=next_task_id, scope_id=None)
-        await self.state_manager.add_token(
-            instance_id=new_token.instance_id,
-            node_id=new_token.node_id,
-            data=new_token.to_dict(),
-        )
+            # Create new token in parent scope
+            new_token = token.copy(node_id=next_task_id, scope_id=None)
+            await self.state_manager.add_token(
+                instance_id=new_token.instance_id,
+                node_id=new_token.node_id,
+                data=new_token.to_dict(),
+            )
+            await self.state_manager.update_token_state(
+                instance_id=new_token.instance_id,
+                node_id=new_token.node_id,
+                state=TokenState.ACTIVE
+            )
+            
+            await pipe.execute()
 
         return new_token
 

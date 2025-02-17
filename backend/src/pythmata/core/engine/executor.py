@@ -1,6 +1,6 @@
 import asyncio
 import functools
-from typing import Dict, List, Optional, Union, Callable, TypeVar, ParamSpec
+from typing import Dict, List, Optional, Union, Callable, TypeVar, ParamSpec, Set
 
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.call_activity_manager import CallActivityManager
@@ -12,10 +12,20 @@ from pythmata.core.engine.subprocess_manager import SubprocessManager
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.engine.token_manager import TokenManager
 from pythmata.core.state import StateManager
-from pythmata.core.types import Event, Gateway, SequenceFlow, Task
+from pythmata.core.types import Event, EventType, Gateway, SequenceFlow, Task
 from pythmata.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+class ProcessGraphValidationError(Exception):
+    """Raised when process graph validation fails."""
+    pass
+
+
+class ProcessExecutionLimitError(Exception):
+    """Raised when process execution exceeds iteration limits."""
+    pass
 
 
 T = TypeVar('T')
@@ -25,13 +35,13 @@ P = ParamSpec('P')
 def handle_execution_error(func: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator for handling execution errors in process methods.
-    
+
     Catches exceptions, logs them, notifies the instance manager if available,
     and re-raises the exception for proper error propagation.
-    
+
     Args:
         func: The async function to wrap with error handling
-        
+
     Returns:
         Wrapped function that includes error handling
     """
@@ -43,11 +53,11 @@ def handle_execution_error(func: Callable[P, T]) -> Callable[P, T]:
             # Extract instance_id and node_id from arguments if available
             instance_id = None
             node_id = None
-            
+
             # First argument after self should be token
             if args and hasattr(args[0], 'instance_id'):
                 instance_id = args[0].instance_id
-            
+
             # Second argument might be node or node_id
             if len(args) > 1:
                 if hasattr(args[1], 'id'):
@@ -57,11 +67,11 @@ def handle_execution_error(func: Callable[P, T]) -> Callable[P, T]:
             # Or it might be explicitly passed as node_id
             elif 'node_id' in kwargs:
                 node_id = kwargs['node_id']
-                
+
             if hasattr(self, 'instance_manager') and self.instance_manager:
                 await self.instance_manager.handle_error(instance_id, e, node_id)
             raise
-            
+
     return wrapper
 
 
@@ -78,6 +88,9 @@ class ProcessExecutor:
     - GatewayHandler: Gateway logic
     - EventHandler: Event processing
     """
+
+    # Maximum number of iterations to prevent infinite loops
+    MAX_ITERATIONS = 1000
 
     def __init__(
         self,
@@ -221,8 +234,28 @@ class ProcessExecutor:
     # Core execution methods
     @handle_execution_error
     async def execute_process(self, instance_id: str, process_graph: Dict) -> None:
-        """Execute process instance."""
+        """
+        Execute process instance.
+        
+        Args:
+            instance_id: ID of the process instance
+            process_graph: Process graph definition
+            
+        Raises:
+            ProcessGraphValidationError: If process graph validation fails
+            ProcessExecutionLimitError: If execution exceeds iteration limit
+        """
+        # Validate process graph before execution
+        self._validate_process_graph(process_graph)
+        
+        iteration_count = 0
         while True:
+            # Check iteration limit
+            iteration_count += 1
+            if iteration_count > self.MAX_ITERATIONS:
+                raise ProcessExecutionLimitError(
+                    f"Process execution exceeded {self.MAX_ITERATIONS} iterations"
+                )
             # Get current tokens
             tokens = await self.state_manager.get_token_positions(instance_id)
             if not tokens:
@@ -245,7 +278,8 @@ class ProcessExecutor:
                 # Get current node and its outgoing flows
                 current_node = self._find_node(process_graph, token.node_id)
                 if not current_node:
-                    logger.error(f"Node {token.node_id} not found in process graph")
+                    logger.error(
+                        f"Node {token.node_id} not found in process graph")
                     continue
 
                 # Execute the current node
@@ -270,7 +304,7 @@ class ProcessExecutor:
             if node.outgoing:
                 next_flow = self._find_flow(process_graph, node.outgoing[0])
                 if next_flow:
-                    await self.token_manager.move_token(token, next_flow.target_ref)
+                    await self.token_manager.move_token(token, next_flow["target_ref"])
                 else:
                     logger.error(
                         f"Flow {node.outgoing[0]} not found in process graph"
@@ -304,7 +338,8 @@ class ProcessExecutor:
             "set_variable": lambda name, value: self.state_manager.set_variable(
                 instance_id=token.instance_id,
                 name=name,
-                variable=ProcessVariableValue(type=type(value).__name__, value=value),
+                variable=ProcessVariableValue(
+                    type=type(value).__name__, value=value),
                 scope_id=token.scope_id,
             ),
             # Safe built-ins
@@ -339,16 +374,155 @@ class ProcessExecutor:
                 scope_id=token.scope_id,
             )
 
+    def _validate_process_graph(self, process_graph: Dict) -> None:
+        """
+        Validate process graph structure and connectivity.
+        
+        Args:
+            process_graph: The process graph to validate
+            
+        Raises:
+            ProcessGraphValidationError: If validation fails
+        """
+        # Check required sections
+        if "nodes" not in process_graph:
+            raise ProcessGraphValidationError("Missing nodes section in process graph")
+        if "flows" not in process_graph:
+            raise ProcessGraphValidationError("Missing flows section in process graph")
+            
+        # Get all node IDs for reference validation
+        node_ids = {node.id for node in process_graph["nodes"]}
+        
+        # Validate node references in flows
+        for flow in process_graph["flows"]:
+            if flow["source_ref"] not in node_ids:
+                raise ProcessGraphValidationError(
+                    f"Invalid node reference in flow: {flow['source_ref']}"
+                )
+            if flow["target_ref"] not in node_ids:
+                raise ProcessGraphValidationError(
+                    f"Invalid node reference in flow: {flow['target_ref']}"
+                )
+                
+        # Check for start and end events
+        has_start = any(
+            isinstance(node, Event) and node.event_type == EventType.START
+            for node in process_graph["nodes"]
+        )
+        if not has_start:
+            raise ProcessGraphValidationError("No start event found in process graph")
+            
+        has_end = any(
+            isinstance(node, Event) and node.event_type == EventType.END
+            for node in process_graph["nodes"]
+        )
+        if not has_end:
+            raise ProcessGraphValidationError("No end event found in process graph")
+            
+        # Build flow graph, separating self-loops
+        flows_by_source: Dict[str, List[str]] = {}
+        self_loops: Set[str] = set()
+        for flow in process_graph["flows"]:
+            source = flow["source_ref"]
+            target = flow["target_ref"]
+            if source == target:
+                self_loops.add(source)
+            else:
+                if source not in flows_by_source:
+                    flows_by_source[source] = []
+                flows_by_source[source].append(target)
+        
+        # Check for cycles and connectivity
+        visited: Set[str] = set()
+        path: Set[str] = set()
+        connected_nodes: Set[str] = set()
+        
+        def dfs(node_id: str) -> None:
+            if node_id in path and node_id not in self_loops:
+                raise ProcessGraphValidationError(
+                    f"Cycle detected in process graph at node: {node_id}"
+                )
+            
+            if node_id in visited:
+                return
+                
+            visited.add(node_id)
+            path.add(node_id)
+            connected_nodes.add(node_id)
+            
+            # Follow all outgoing flows except self-loops
+            for next_node in flows_by_source.get(node_id, []):
+                dfs(next_node)
+                
+            path.remove(node_id)
+        
+        # Start from start events
+        for node in process_graph["nodes"]:
+            if isinstance(node, Event) and node.event_type == EventType.START:
+                dfs(node.id)
+        
+        # Check if all nodes are connected
+        disconnected = node_ids - connected_nodes
+        if disconnected:
+            raise ProcessGraphValidationError(
+                f"Disconnected nodes detected: {', '.join(disconnected)}"
+            )
+
+    def _check_node_connectivity(
+        self, 
+        node_id: str, 
+        flows_by_source: Dict[str, str], 
+        connected_nodes: Set[str],
+        path: Optional[Set[str]] = None,
+        allow_self_loops: bool = True
+    ) -> None:
+        """
+        Recursively check node connectivity and detect cycles.
+        
+        Args:
+            node_id: Current node ID to check
+            flows_by_source: Map of source node IDs to target node IDs
+            connected_nodes: Set of connected node IDs
+            path: Set of node IDs in current path (for cycle detection)
+            allow_self_loops: Whether to allow self-loops in the graph
+        """
+        if path is None:
+            path = set()
+            
+        # Check for cycles, but allow self-loops if configured
+        if node_id in path:
+            next_node = flows_by_source.get(node_id)
+            if not (allow_self_loops and next_node == node_id):
+                raise ProcessGraphValidationError(
+                    f"Cycle detected in process graph at node: {node_id}"
+                )
+            
+        # Mark node as connected
+        connected_nodes.add(node_id)
+        
+        # Follow outgoing flows
+        if node_id in flows_by_source:
+            next_node = flows_by_source[node_id]
+            # Skip self-loops in path tracking to allow iteration limit to catch them
+            if next_node != node_id or not allow_self_loops:
+                path.add(node_id)
+                self._check_node_connectivity(
+                    next_node, flows_by_source, connected_nodes, path, allow_self_loops
+                )
+                path.remove(node_id)
+
     def _find_node(
         self, process_graph: Dict, node_id: str
     ) -> Optional[Union[Task, Gateway, Event]]:
         """Find node in process graph by ID."""
         return next(
-            (node for node in process_graph["nodes"] if node.id == node_id), None
+            (node for node in process_graph["nodes"]
+             if node.id == node_id), None
         )
 
-    def _find_flow(self, process_graph: Dict, flow_id: str) -> Optional[SequenceFlow]:
+    def _find_flow(self, process_graph: Dict, flow_id: str) -> Optional[Dict]:
         """Find sequence flow in process graph by ID."""
         return next(
-            (flow for flow in process_graph["flows"] if flow.id == flow_id), None
+            (flow for flow in process_graph["flows"]
+             if flow["id"] == flow_id), None
         )

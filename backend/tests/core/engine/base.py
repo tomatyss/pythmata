@@ -22,7 +22,14 @@ class BaseEngineTest:
         """
         self.state_manager = state_manager
         self.executor = ProcessExecutor(state_manager)
+        
+        # Clear Redis before each test
+        await state_manager.redis.flushdb()
+        
         yield
+        
+        # Clean up after test
+        await state_manager.redis.flushdb()
 
     def create_sequence_flow(
         self, start_id: str = "Start_1", task_id: str = "Task_1", end_id: str = "End_1"

@@ -76,17 +76,32 @@ class TestBasicSubprocess(BaseEngineTest):
         token = await self.executor.create_initial_token(instance_id, parent_process_id)
         subprocess_token = await self.executor.enter_subprocess(token, subprocess_id)
 
-        # Create end event in subprocess scope
+        # Create end event in subprocess scope and set up token
         end_event = Event(id=subprocess_end_id, type="event", event_type=EventType.END)
-
-        # Move to subprocess end event while maintaining scope
-        end_token = await self.executor.move_token(subprocess_token, subprocess_end_id)
-        await self.state_manager.update_token_state(
-            instance_id=end_token.instance_id,
-            node_id=end_token.node_id,
-            state=TokenState.ACTIVE,
-            scope_id=subprocess_id,
-        )
+        
+        # Create token at end event with proper scope
+        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+            # Remove old token
+            await self.state_manager.remove_token(
+                instance_id=subprocess_token.instance_id,
+                node_id=subprocess_token.node_id
+            )
+            await pipe.delete(f"tokens:{subprocess_token.instance_id}")
+            
+            # Create new token at end event
+            end_token = subprocess_token.copy(node_id=subprocess_end_id)
+            await self.state_manager.add_token(
+                instance_id=end_token.instance_id,
+                node_id=end_token.node_id,
+                data=end_token.to_dict()
+            )
+            await self.state_manager.update_token_state(
+                instance_id=end_token.instance_id,
+                node_id=end_token.node_id,
+                state=TokenState.ACTIVE,
+                scope_id=subprocess_id
+            )
+            await pipe.execute()
 
         # Complete subprocess
         parent_token = await self.executor.complete_subprocess(end_token, next_task_id)

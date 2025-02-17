@@ -99,12 +99,12 @@ class EventHandler:
                 (
                     flow
                     for flow in process_graph["flows"]
-                    if flow.id == event.outgoing[0]
+                    if flow["id"] == event.outgoing[0]
                 ),
                 None,
             )
             if flow:
-                new_token = await self._move_token(token, flow.target_ref)
+                new_token = await self._move_token(token, flow["target_ref"])
                 await self.state_manager.update_token_state(
                     instance_id=new_token.instance_id,
                     node_id=new_token.node_id,
