@@ -25,8 +25,8 @@ describe('convertKeysToCamel', () => {
       last_name: 'Doe',
       user_details: {
         email_address: 'john@example.com',
-        phone_number: '123-456-7890'
-      }
+        phone_number: '123-456-7890',
+      },
     };
 
     const expected = {
@@ -34,8 +34,8 @@ describe('convertKeysToCamel', () => {
       lastName: 'Doe',
       userDetails: {
         emailAddress: 'john@example.com',
-        phoneNumber: '123-456-7890'
-      }
+        phoneNumber: '123-456-7890',
+      },
     };
 
     expect(convertKeysToCamel(input)).toEqual(expected);
@@ -44,12 +44,12 @@ describe('convertKeysToCamel', () => {
   it('handles arrays of objects', () => {
     const input = [
       { user_id: 1, first_name: 'John' },
-      { user_id: 2, first_name: 'Jane' }
+      { user_id: 2, first_name: 'Jane' },
     ];
 
     const expected = [
       { userId: 1, firstName: 'John' },
-      { userId: 2, firstName: 'Jane' }
+      { userId: 2, firstName: 'Jane' },
     ];
 
     expect(convertKeysToCamel(input)).toEqual(expected);
@@ -57,15 +57,11 @@ describe('convertKeysToCamel', () => {
 
   it('handles nested arrays', () => {
     const input = {
-      user_list: [
-        { user_id: 1, address_list: [{ street_name: 'Main St' }] }
-      ]
+      user_list: [{ user_id: 1, address_list: [{ street_name: 'Main St' }] }],
     };
 
     const expected = {
-      userList: [
-        { userId: 1, addressList: [{ streetName: 'Main St' }] }
-      ]
+      userList: [{ userId: 1, addressList: [{ streetName: 'Main St' }] }],
     };
 
     expect(convertKeysToCamel(input)).toEqual(expected);
@@ -77,7 +73,7 @@ describe('convertKeysToCamel', () => {
       number_value: 123,
       boolean_value: true,
       null_value: null,
-      undefined_value: undefined
+      undefined_value: undefined,
     };
 
     const expected = {
@@ -85,7 +81,7 @@ describe('convertKeysToCamel', () => {
       numberValue: 123,
       booleanValue: true,
       nullValue: null,
-      undefinedValue: undefined
+      undefinedValue: undefined,
     };
 
     expect(convertKeysToCamel(input)).toEqual(expected);
@@ -94,12 +90,12 @@ describe('convertKeysToCamel', () => {
   it('handles empty objects and arrays', () => {
     const input = {
       empty_object: {},
-      empty_array: []
+      empty_array: [],
     };
 
     const expected = {
       emptyObject: {},
-      emptyArray: []
+      emptyArray: [],
     };
 
     expect(convertKeysToCamel(input)).toEqual(expected);
@@ -108,11 +104,11 @@ describe('convertKeysToCamel', () => {
   it('preserves Date objects', () => {
     const date = new Date();
     const input = {
-      created_at: date
+      created_at: date,
     };
 
     const expected = {
-      createdAt: date
+      createdAt: date,
     };
 
     expect(convertKeysToCamel(input)).toEqual(expected);
@@ -133,9 +129,9 @@ describe('convertKeysToCamel', () => {
           name: 'var1',
           type: 'string',
           required: true,
-          default_value: 'test'
-        }
-      ]
+          default_value: 'test',
+        },
+      ],
     };
 
     const expected = {
@@ -152,9 +148,9 @@ describe('convertKeysToCamel', () => {
           name: 'var1',
           type: 'string',
           required: true,
-          defaultValue: 'test'
-        }
-      ]
+          defaultValue: 'test',
+        },
+      ],
     };
 
     expect(convertKeysToCamel(input)).toEqual(expected);

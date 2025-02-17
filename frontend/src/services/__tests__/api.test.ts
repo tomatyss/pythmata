@@ -70,7 +70,9 @@ describe('ApiService', () => {
       };
 
       // Mock the axios get method to return our transformed response
-      (mockedAxios.get as any).mockResolvedValueOnce(mockResponseWithTransform(mockResponse));
+      (mockedAxios.get as any).mockResolvedValueOnce(
+        mockResponseWithTransform(mockResponse)
+      );
 
       const response = await apiService.getProcessDefinition('123');
 
@@ -105,7 +107,9 @@ describe('ApiService', () => {
         },
       };
 
-      (mockedAxios.get as any).mockResolvedValueOnce(mockResponseWithTransform(mockResponse));
+      (mockedAxios.get as any).mockResolvedValueOnce(
+        mockResponseWithTransform(mockResponse)
+      );
 
       const response = await apiService.getProcessInstance('123');
 
@@ -140,7 +144,9 @@ describe('ApiService', () => {
         },
       };
 
-      (mockedAxios.get as any).mockResolvedValueOnce(mockResponseWithTransform(mockResponse));
+      (mockedAxios.get as any).mockResolvedValueOnce(
+        mockResponseWithTransform(mockResponse)
+      );
 
       const response = await apiService.getProcessInstances();
 
@@ -176,7 +182,9 @@ describe('ApiService', () => {
         },
       };
 
-      (mockedAxios.get as any).mockResolvedValueOnce(mockResponseWithTransform(mockResponse));
+      (mockedAxios.get as any).mockResolvedValueOnce(
+        mockResponseWithTransform(mockResponse)
+      );
 
       const response = await apiService.getProcessStats();
 
@@ -210,7 +218,9 @@ describe('ApiService', () => {
         ],
       };
 
-      (mockedAxios.get as any).mockResolvedValueOnce(mockResponseWithTransform(mockResponse));
+      (mockedAxios.get as any).mockResolvedValueOnce(
+        mockResponseWithTransform(mockResponse)
+      );
 
       const response = await apiService.getInstanceTokens('123');
 
