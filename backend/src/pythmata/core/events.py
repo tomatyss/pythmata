@@ -4,7 +4,7 @@ import logging
 from typing import Any, Callable, Dict, Optional, Set
 
 import aio_pika
-from aio_pika import Channel, Connection, Exchange, Queue
+from aio_pika import Channel, Connection, Exchange
 
 from pythmata.core.config import Settings
 

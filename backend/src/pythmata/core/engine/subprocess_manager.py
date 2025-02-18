@@ -46,9 +46,9 @@ class SubprocessManager:
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
                 state=TokenState.ACTIVE,
-                scope_id=new_token.scope_id
+                scope_id=new_token.scope_id,
             )
-            
+
             await pipe.execute()
 
         return new_token
@@ -82,9 +82,9 @@ class SubprocessManager:
             await self.state_manager.update_token_state(
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
-                state=TokenState.ACTIVE
+                state=TokenState.ACTIVE,
             )
-            
+
             await pipe.execute()
 
         return new_token
@@ -144,9 +144,9 @@ class SubprocessManager:
             await self.state_manager.update_token_state(
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
-                state=TokenState.ACTIVE
+                state=TokenState.ACTIVE,
             )
-            
+
             await pipe.execute()
 
         return new_token

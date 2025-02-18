@@ -1,11 +1,15 @@
 """Process instance related schemas."""
+
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from pythmata.api.schemas.process.variables import ProcessVariableDefinition, ProcessVariableValue
+from pythmata.api.schemas.process.variables import (
+    ProcessVariableDefinition,
+    ProcessVariableValue,
+)
 from pythmata.models.process import ProcessStatus
 
 

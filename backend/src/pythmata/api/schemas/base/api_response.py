@@ -1,4 +1,5 @@
 """Base API response schemas."""
+
 from typing import Generic, List, TypeVar
 
 from pydantic import BaseModel, ConfigDict

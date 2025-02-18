@@ -24,31 +24,26 @@ if TYPE_CHECKING:
 class ProcessInstanceError(Exception):
     """Base class for process instance errors."""
 
-    pass
 
 
 class TransactionError(ProcessInstanceError):
     """Raised when transaction operations fail."""
 
-    pass
 
 
 class InvalidProcessDefinitionError(ProcessInstanceError):
     """Raised when process definition is invalid."""
 
-    pass
 
 
 class InvalidVariableError(ProcessInstanceError):
     """Raised when variable data is invalid."""
 
-    pass
 
 
 class InvalidStateTransitionError(ProcessInstanceError):
     """Raised when attempting invalid state transition."""
 
-    pass
 
 
 class ProcessInstanceManager:

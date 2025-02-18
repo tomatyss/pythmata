@@ -14,19 +14,16 @@ from typing import Any, Dict, List, Optional
 class ExpressionError(Exception):
     """Base class for expression-related errors."""
 
-    pass
 
 
 class ExpressionSyntaxError(ExpressionError):
     """Raised when expression syntax is invalid."""
 
-    pass
 
 
 class ExpressionEvalError(ExpressionError):
     """Raised when expression evaluation fails."""
 
-    pass
 
 
 class TokenType(Enum):
@@ -204,7 +201,6 @@ class Expression(ABC):
     @abstractmethod
     def evaluate(self, context: Dict[str, Any]) -> Any:
         """Evaluate expression with given context."""
-        pass
 
 
 class LiteralExpression(Expression):

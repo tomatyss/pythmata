@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class TokenStateError(Exception):
     """Raised when token state is invalid for requested operation."""
-    pass
+
 
 
 class TokenManager:
@@ -26,22 +26,21 @@ class TokenManager:
     async def _verify_token_state(self, token: Token) -> None:
         """
         Verify token is in valid state for operations.
-        
+
         Args:
             token: Token to verify
-            
+
         Raises:
             TokenStateError: If token state is invalid
         """
         # Get current token state from storage
         stored_token = await self.state_manager.get_token(
-            instance_id=token.instance_id,
-            node_id=token.node_id
+            instance_id=token.instance_id, node_id=token.node_id
         )
-        
+
         if not stored_token:
             raise TokenStateError(f"Token not found: {token.id}")
-            
+
         if stored_token.get("state") != TokenState.ACTIVE.value:
             raise TokenStateError(
                 f"Token {token.id} is not active (state: {stored_token.get('state')})"
@@ -61,26 +60,23 @@ class TokenManager:
             The created token
         """
         token = Token(instance_id=instance_id, node_id=start_event_id)
-        
+
         # Check if token already exists
         existing_token = await self.state_manager.get_token(
-            instance_id=instance_id,
-            node_id=start_event_id
+            instance_id=instance_id, node_id=start_event_id
         )
         if existing_token:
             raise TokenStateError(
                 f"Token already exists at {start_event_id} for instance {instance_id}"
             )
-        
+
         # Create token atomically
         async with self.state_manager.redis.pipeline(transaction=True) as pipe:
             await self.state_manager.add_token(
-                instance_id=instance_id,
-                node_id=start_event_id,
-                data=token.to_dict()
+                instance_id=instance_id, node_id=start_event_id, data=token.to_dict()
             )
             await pipe.execute()
-            
+
         return token
 
     async def move_token(
@@ -99,13 +95,13 @@ class TokenManager:
 
         Returns:
             The moved token
-            
+
         Raises:
             TokenStateError: If token state is invalid
         """
         # Verify token state before operation
         await self._verify_token_state(token)
-        
+
         # Handle transaction boundaries if instance manager is provided
         if instance_manager:
             if target_node_id == "Transaction_End":
@@ -123,8 +119,7 @@ class TokenManager:
         async with self.state_manager.redis.pipeline(transaction=True) as pipe:
             # Remove token from current node
             await self.state_manager.remove_token(
-                instance_id=token.instance_id,
-                node_id=token.node_id
+                instance_id=token.instance_id, node_id=token.node_id
             )
             await pipe.delete(f"tokens:{token.instance_id}")
 
@@ -133,15 +128,15 @@ class TokenManager:
             await self.state_manager.add_token(
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
-                data=new_token.to_dict()
+                data=new_token.to_dict(),
             )
             await self.state_manager.update_token_state(
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
                 state=TokenState.ACTIVE,
-                scope_id=new_token.scope_id
+                scope_id=new_token.scope_id,
             )
-            
+
             # Execute transaction
             await pipe.execute()
 
@@ -157,7 +152,7 @@ class TokenManager:
 
         Args:
             token: The token to consume
-            
+
         Raises:
             TokenStateError: If token state is invalid
         """
@@ -165,22 +160,20 @@ class TokenManager:
         async with self.state_manager.redis.pipeline(transaction=True) as pipe:
             # Get token state within transaction
             stored_token = await self.state_manager.get_token(
-                instance_id=token.instance_id,
-                node_id=token.node_id
+                instance_id=token.instance_id, node_id=token.node_id
             )
-            
+
             if not stored_token:
                 raise TokenStateError(f"Token not found: {token.id}")
-                
+
             if stored_token.get("state") != TokenState.ACTIVE.value:
                 raise TokenStateError(
                     f"Token {token.id} is not active (state: {stored_token.get('state')})"
                 )
-            
+
             # Remove token atomically
             await self.state_manager.remove_token(
-                instance_id=token.instance_id,
-                node_id=token.node_id
+                instance_id=token.instance_id, node_id=token.node_id
             )
             await pipe.delete(f"tokens:{token.instance_id}")
             await pipe.execute()
@@ -197,19 +190,18 @@ class TokenManager:
 
         Returns:
             List of new tokens
-            
+
         Raises:
             TokenStateError: If token state is invalid
         """
         # Verify token state before operation
         await self._verify_token_state(token)
-        
+
         # Use Redis transaction for atomic split
         async with self.state_manager.redis.pipeline(transaction=True) as pipe:
             # Remove original token
             await self.state_manager.remove_token(
-                instance_id=token.instance_id,
-                node_id=token.node_id
+                instance_id=token.instance_id, node_id=token.node_id
             )
             await pipe.delete(f"tokens:{token.instance_id}")
 
@@ -220,15 +212,15 @@ class TokenManager:
                 await self.state_manager.add_token(
                     instance_id=new_token.instance_id,
                     node_id=new_token.node_id,
-                    data=new_token.to_dict()
+                    data=new_token.to_dict(),
                 )
                 await self.state_manager.update_token_state(
                     instance_id=new_token.instance_id,
                     node_id=new_token.node_id,
-                    state=TokenState.ACTIVE
+                    state=TokenState.ACTIVE,
                 )
                 new_tokens.append(new_token)
-                
+
             # Execute transaction
             await pipe.execute()
 
@@ -244,25 +236,24 @@ class TokenManager:
             token: The token to update
             state: New state to set
             scope_id: Optional scope ID
-            
+
         Raises:
             TokenStateError: If token state is invalid
         """
         # Verify token exists before update
         stored_token = await self.state_manager.get_token(
-            instance_id=token.instance_id,
-            node_id=token.node_id
+            instance_id=token.instance_id, node_id=token.node_id
         )
         if not stored_token:
             raise TokenStateError(f"Token not found: {token.id}")
-            
+
         # Use Redis transaction for atomic update
         async with self.state_manager.redis.pipeline(transaction=True) as pipe:
             await self.state_manager.update_token_state(
                 instance_id=token.instance_id,
                 node_id=token.node_id,
                 state=state,
-                scope_id=scope_id or token.scope_id
+                scope_id=scope_id or token.scope_id,
             )
             await pipe.execute()
 
@@ -275,8 +266,7 @@ class TokenManager:
         async with self.state_manager.redis.pipeline(transaction=True) as pipe:
             # Remove current token
             await self.state_manager.remove_token(
-                instance_id=token.instance_id,
-                node_id=token.node_id
+                instance_id=token.instance_id, node_id=token.node_id
             )
             await pipe.delete(f"tokens:{token.instance_id}")
 
@@ -285,9 +275,9 @@ class TokenManager:
             await self.state_manager.add_token(
                 instance_id=new_token.instance_id,
                 node_id=new_token.node_id,
-                data=new_token.to_dict()
+                data=new_token.to_dict(),
             )
-            
+
             # Execute transaction
             await pipe.execute()
 

@@ -9,7 +9,6 @@ from pythmata.core.state import StateManager
 class MessageTimeoutError(Exception):
     """Raised when a message is not received within the specified timeout period."""
 
-    pass
 
 
 class MessageEvent(Event):

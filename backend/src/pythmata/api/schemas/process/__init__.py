@@ -1,4 +1,5 @@
 """Process related schemas."""
+
 from pythmata.api.schemas.process.definitions import (
     ProcessDefinitionBase,
     ProcessDefinitionCreate,

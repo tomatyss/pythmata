@@ -1,4 +1,5 @@
 """Process variable related schemas."""
+
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 

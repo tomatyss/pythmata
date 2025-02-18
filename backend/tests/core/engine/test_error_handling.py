@@ -1,6 +1,8 @@
 """Tests for error handling decorator in process execution."""
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from pythmata.core.engine.executor import handle_execution_error
 from pythmata.core.engine.token import Token
@@ -15,8 +17,10 @@ def mock_instance_manager():
 @pytest.fixture
 def test_instance(mock_instance_manager):
     """Create test instance with mock instance manager."""
+
     class TestClass:
         """Test class for decorator testing."""
+
         @handle_execution_error
         async def successful_method(self, token: Token):
             """Test method that succeeds."""
@@ -51,17 +55,15 @@ async def test_error_handler_preserves_successful_execution(test_instance, mock_
 async def test_error_handler_decorator_captures_exceptions(test_instance, mock_token):
     """Test that decorator properly catches and handles exceptions."""
     node_id = "test-node"
-    
+
     with pytest.raises(ValueError) as exc_info:
         await test_instance.failing_method(mock_token, node_id)
-    
+
     assert str(exc_info.value) == "Test error"
-    
+
     # Verify error was properly handled
     test_instance.instance_manager.handle_error.assert_called_once_with(
-        mock_token.instance_id, 
-        exc_info.value,
-        node_id
+        mock_token.instance_id, exc_info.value, node_id
     )
 
 
@@ -69,12 +71,10 @@ async def test_error_handler_without_node_id(test_instance, mock_token):
     """Test error handling when no node_id is provided."""
     with pytest.raises(ValueError) as exc_info:
         await test_instance.failing_method(mock_token)
-    
+
     assert str(exc_info.value) == "Test error"
-    
+
     # Verify error was handled without node_id
     test_instance.instance_manager.handle_error.assert_called_once_with(
-        mock_token.instance_id,
-        exc_info.value,
-        None
+        mock_token.instance_id, exc_info.value, None
     )

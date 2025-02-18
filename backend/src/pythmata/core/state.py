@@ -182,10 +182,7 @@ class StateManager:
         await self.redis.hset(key, scope_key, json.dumps(storage_format))
 
     async def get_token(
-        self,
-        instance_id: str,
-        node_id: str,
-        scope_id: Optional[str] = None
+        self, instance_id: str, node_id: str, scope_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """Get a specific token from a node.
 
@@ -214,7 +211,7 @@ class StateManager:
         """
         key = f"process:{instance_id}:tokens"
         tokens = await self.redis.lrange(key, 0, -1)
-        
+
         # Parse tokens and remove duplicates by node_id and scope_id
         seen = set()
         unique_tokens = []
@@ -224,7 +221,7 @@ class StateManager:
             if key not in seen:
                 seen.add(key)
                 unique_tokens.append(data)
-                
+
         return unique_tokens
 
     async def add_token(
