@@ -1,3 +1,5 @@
+"""Tests for main application functionality."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -5,6 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pythmata.core.types import Event, EventType
 from pythmata.main import app, handle_process_started
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 
@@ -24,7 +27,6 @@ async def test_lifespan():
         patch("pythmata.main.get_db", return_value=mock_db),
         patch("pythmata.main.init_db"),
     ):
-
         # Create a lifespan context
         async with app.router.lifespan_context(app) as _:
             # Verify startup
@@ -77,7 +79,6 @@ async def test_lifespan_error_handling():
         patch("pythmata.main.init_db"),
         pytest.raises(Exception) as exc_info,
     ):
-
         async with app.router.lifespan_context(app) as _:
             # Verify startup succeeded
             assert mock_event_bus.connect.called
@@ -125,14 +126,22 @@ async def test_handle_process_started():
     # Mock the session method to return the context manager
     mock_db.session = MagicMock(return_value=session_ctx)
     mock_db.is_connected = True
-    mock_definition.bpmn_xml = "<xml>test</xml>"
+
+    # Configure select statement
     select_stmt = select(ProcessDefinitionModel).filter(
         ProcessDefinitionModel.id == test_data["definition_id"]
     )
     mock_select = AsyncMock(return_value=select_stmt)
-    # Configure parser mock
+
+    # Configure parser mock with valid process graph
     process_graph = {
-        "nodes": [type("StartEvent", (), {"id": "start_1", "event_type": "start"})()]
+        "nodes": [
+            Event(id="Start_1", type="event", event_type=EventType.START, outgoing=["Flow_1"]),
+            Event(id="End_1", type="event", event_type=EventType.END, incoming=["Flow_1"])
+        ],
+        "flows": [
+            {"id": "Flow_1", "source_ref": "Start_1", "target_ref": "End_1"}
+        ]
     }
     mock_parser.parse.return_value = process_graph
 
@@ -144,7 +153,7 @@ async def test_handle_process_started():
         patch("pythmata.main.ProcessExecutor", return_value=mock_executor),
         patch("pythmata.main.select", return_value=mock_select),
     ):
-
+        # Execute handler
         await handle_process_started(test_data)
 
         # Verify state manager lifecycle
@@ -158,7 +167,13 @@ async def test_handle_process_started():
         assert mock_executor.create_initial_token.called
         assert mock_executor.execute_process.called
         mock_executor.create_initial_token.assert_called_with(
-            "test-instance", "start_1"
+            "test-instance", "Start_1"
+        )
+
+        # Verify process graph validation
+        mock_parser.parse.assert_called_once()
+        mock_executor.execute_process.assert_called_once_with(
+            "test-instance", process_graph
         )
 
 
@@ -202,7 +217,6 @@ async def test_handle_process_started_error_cases():
         patch("pythmata.main.BPMNParser", return_value=mock_parser),
         patch("pythmata.main.select", return_value=mock_select),
     ):
-
         await handle_process_started(test_data)
         # Should not raise exception but log error
         assert mock_state_manager.disconnect.called
@@ -214,7 +228,7 @@ async def test_handle_process_started_error_cases():
     execute_result.scalar_one_or_none.return_value = mock_definition
     mock_session.execute.return_value = execute_result
     # Configure parser mock for error case
-    mock_parser.parse.return_value = {"nodes": []}  # No start event in nodes
+    mock_parser.parse.return_value = {"nodes": [], "flows": []}  # No start event in nodes
 
     with (
         patch("pythmata.main.Settings"),
@@ -223,7 +237,6 @@ async def test_handle_process_started_error_cases():
         patch("pythmata.main.BPMNParser", return_value=mock_parser),
         patch("pythmata.main.select", return_value=mock_select),
     ):
-
         await handle_process_started(test_data)
         # Should not raise exception but log error
         assert mock_state_manager.disconnect.called

@@ -35,7 +35,12 @@ class ProcessValidator:
 
     def validate_process_graph(self, process_graph: Dict) -> None:
         """
-        Validate process graph structure and connectivity.
+        Validate process graph structure and connectivity following BPMN 2.0 spec order.
+
+        Validation order:
+        1. Basic structure (nodes and flows sections)
+        2. Start/End events presence and validity
+        3. Node connectivity and flow validity
 
         Args:
             process_graph: The process graph to validate
@@ -44,8 +49,8 @@ class ProcessValidator:
             ProcessGraphValidationError: If validation fails
         """
         self._validate_structure(process_graph)
+        self._validate_event_nodes(process_graph)  # Check events before connectivity
         self._validate_connectivity(process_graph)
-        self._validate_event_nodes(process_graph)
 
     def _validate_structure(self, process_graph: Dict) -> None:
         """Validate basic graph structure and required sections."""
@@ -77,19 +82,30 @@ class ProcessValidator:
                 )
 
     def _validate_event_nodes(self, process_graph: Dict) -> None:
-        """Validate presence of required event nodes."""
-        has_start = any(
-            isinstance(node, Event) and node.event_type == EventType.START
-            for node in process_graph["nodes"]
-        )
-        if not has_start:
+        """
+        Validate presence and configuration of event nodes.
+        
+        Checks:
+        - Presence of exactly one start event
+        - Presence of at least one end event
+        - Valid event configurations
+        """
+        start_events = [
+            node for node in process_graph["nodes"]
+            if isinstance(node, Event) and node.event_type == EventType.START
+        ]
+        
+        if not start_events:
             raise ProcessGraphValidationError("No start event found in process graph")
-
-        has_end = any(
-            isinstance(node, Event) and node.event_type == EventType.END
-            for node in process_graph["nodes"]
-        )
-        if not has_end:
+        if len(start_events) > 1:
+            raise ProcessGraphValidationError("Multiple start events found in process graph")
+        
+        end_events = [
+            node for node in process_graph["nodes"]
+            if isinstance(node, Event) and node.event_type == EventType.END
+        ]
+        
+        if not end_events:
             raise ProcessGraphValidationError("No end event found in process graph")
 
     def _validate_connectivity(self, process_graph: Dict) -> None:

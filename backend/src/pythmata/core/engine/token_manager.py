@@ -108,38 +108,42 @@ class TokenManager:
             The moved token
 
         Raises:
-            TokenStateError: If token state is invalid
+            TokenStateError: If token state is invalid or lock cannot be acquired
         """
-        logger.info(f"Moving token {token.id} from {token.node_id} to {target_node_id}")
+        logger.info(
+            f"Moving token {token.id} from {token.node_id} to {target_node_id}")
 
-        # Verify token state before operation
+        # Acquire instance lock first
+        if not await self.state_manager.acquire_lock(token.instance_id):
+            logger.error(f"Failed to acquire lock for instance {token.instance_id}")
+            raise TokenStateError("Failed to acquire instance lock")
+
         try:
+            # Verify token state
             await self._verify_token_state(token)
-        except TokenStateError as e:
-            logger.error(f"Token state verification failed: {str(e)}")
-            raise
 
-        # Handle transaction boundaries if instance manager is provided
-        if instance_manager:
-            if target_node_id == "Transaction_End":
-                logger.info(f"Handling transaction end for token {token.id}")
-                return await self._handle_transaction_end(token, instance_manager)
-            elif target_node_id.startswith("Transaction_") and target_node_id not in [
-                "Transaction_Start",
-                "Transaction_End",
-            ]:
-                logger.info(f"Starting transaction for token {token.id}")
-                await instance_manager.start_transaction(
-                    UUID(token.instance_id), target_node_id
-                )
-                target_node_id = "Transaction_Start"
+            # Handle transaction boundaries if instance manager is provided
+            if instance_manager:
+                if target_node_id == "Transaction_End":
+                    logger.info(f"Handling transaction end for token {token.id}")
+                    return await self._handle_transaction_end(token, instance_manager)
+                elif target_node_id.startswith("Transaction_") and target_node_id not in [
+                    "Transaction_Start",
+                    "Transaction_End",
+                ]:
+                    logger.info(f"Starting transaction for token {token.id}")
+                    await instance_manager.start_transaction(
+                        UUID(token.instance_id), target_node_id
+                    )
+                    target_node_id = "Transaction_Start"
 
-        try:
             # Use Redis transaction for atomic move
             async with self.state_manager.redis.pipeline(transaction=True) as pipe:
                 # Create new token at target node first
-                new_token = token.copy(node_id=target_node_id, scope_id=token.scope_id)
-                logger.info(f"Creating new token {new_token.id} at {target_node_id}")
+                new_token = token.copy(
+                    node_id=target_node_id, scope_id=token.scope_id)
+                logger.info(
+                    f"Creating new token {new_token.id} at {target_node_id}")
                 await self.state_manager.add_token(
                     instance_id=new_token.instance_id,
                     node_id=new_token.node_id,
@@ -165,13 +169,17 @@ class TokenManager:
 
             # Handle process completion if moving to end event
             if target_node_id == "End_1" and instance_manager:
-                logger.info(f"Token reached end event, handling process completion")
+                logger.info(
+                    f"Token reached end event, handling process completion")
                 await self._handle_process_completion(token, instance_manager)
 
             return new_token
         except Exception as e:
             logger.error(f"Failed to move token: {str(e)}")
             raise
+        finally:
+            # Always release the lock
+            await self.state_manager.release_lock(token.instance_id)
 
     async def consume_token(self, token: Token) -> None:
         """
@@ -181,29 +189,35 @@ class TokenManager:
             token: The token to consume
 
         Raises:
-            TokenStateError: If token state is invalid
+            TokenStateError: If token state is invalid or lock cannot be acquired
         """
         logger.info(f"Consuming token {token.id} at {token.node_id}")
+
+        # Acquire instance lock first
+        if not await self.state_manager.acquire_lock(token.instance_id):
+            logger.error(f"Failed to acquire lock for instance {token.instance_id}")
+            raise TokenStateError("Failed to acquire instance lock")
+
         try:
-            # Use Redis transaction for atomic consumption
-            async with self.state_manager.redis.pipeline(transaction=True) as pipe:
-                # Get token state within transaction
-                stored_token = await self.state_manager.get_token(
-                    instance_id=token.instance_id, node_id=token.node_id
+            # Get token state
+            stored_token = await self.state_manager.get_token(
+                instance_id=token.instance_id, node_id=token.node_id
+            )
+
+            if not stored_token:
+                logger.error(f"Token {token.id} not found for consumption")
+                raise TokenStateError(f"Token not found: {token.id}")
+
+            if stored_token.get("state") != TokenState.ACTIVE.value:
+                logger.error(
+                    f"Cannot consume inactive token {token.id} (state: {stored_token.get('state')})"
+                )
+                raise TokenStateError(
+                    f"Token {token.id} is not active (state: {stored_token.get('state')})"
                 )
 
-                if not stored_token:
-                    logger.error(f"Token {token.id} not found for consumption")
-                    raise TokenStateError(f"Token not found: {token.id}")
-
-                if stored_token.get("state") != TokenState.ACTIVE.value:
-                    logger.error(
-                        f"Cannot consume inactive token {token.id} (state: {stored_token.get('state')})"
-                    )
-                    raise TokenStateError(
-                        f"Token {token.id} is not active (state: {stored_token.get('state')})"
-                    )
-
+            # Use Redis transaction for atomic consumption
+            async with self.state_manager.redis.pipeline(transaction=True) as pipe:
                 # Remove token atomically
                 await self.state_manager.remove_token(
                     instance_id=token.instance_id, node_id=token.node_id
@@ -214,6 +228,9 @@ class TokenManager:
         except Exception as e:
             logger.error(f"Failed to consume token: {str(e)}")
             raise
+        finally:
+            # Always release the lock
+            await self.state_manager.release_lock(token.instance_id)
 
     async def split_token(
         self, token: Token, target_node_ids: List[str]
@@ -241,7 +258,8 @@ class TokenManager:
 
             # Use Redis transaction for atomic split
             async with self.state_manager.redis.pipeline(transaction=True) as pipe:
-                logger.info(f"Removing original token {token.id} from {token.node_id}")
+                logger.info(
+                    f"Removing original token {token.id} from {token.node_id}")
                 # Remove original token
                 await self.state_manager.remove_token(
                     instance_id=token.instance_id, node_id=token.node_id
@@ -252,7 +270,8 @@ class TokenManager:
                 new_tokens = []
                 for node_id in target_node_ids:
                     new_token = token.copy(node_id=node_id)
-                    logger.info(f"Creating new token {new_token.id} at {node_id}")
+                    logger.info(
+                        f"Creating new token {new_token.id} at {node_id}")
                     await self.state_manager.add_token(
                         instance_id=new_token.instance_id,
                         node_id=new_token.node_id,
@@ -321,7 +340,8 @@ class TokenManager:
         logger.info(f"Handling transaction end for token {token.id}")
         try:
             # Complete the transaction
-            logger.info(f"Completing transaction for instance {token.instance_id}")
+            logger.info(
+                f"Completing transaction for instance {token.instance_id}")
             await instance_manager.complete_transaction(UUID(token.instance_id))
 
             # Use Redis transaction for atomic operation
@@ -356,7 +376,8 @@ class TokenManager:
 
     async def _handle_process_completion(self, token: Token, instance_manager) -> None:
         """Handle process completion when token reaches end event."""
-        logger.info(f"Handling process completion for instance {token.instance_id}")
+        logger.info(
+            f"Handling process completion for instance {token.instance_id}")
         try:
             instance = await instance_manager.session.get(
                 ProcessInstance, UUID(token.instance_id)
