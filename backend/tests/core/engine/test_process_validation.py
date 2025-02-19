@@ -2,7 +2,7 @@
 
 import pytest
 
-from pythmata.core.engine.executor import ProcessGraphValidationError
+from pythmata.core.engine.validator import ProcessGraphValidationError
 from pythmata.core.types import Event, EventType, Task
 from tests.core.engine.base import BaseEngineTest
 
