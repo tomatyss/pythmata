@@ -9,6 +9,7 @@ from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.config import Settings
 from pythmata.core.database import get_db, init_db
 from pythmata.core.engine.executor import ProcessExecutor
+from pythmata.core.engine.instance import ProcessInstanceManager
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
@@ -35,14 +36,12 @@ async def handle_process_started(data: dict) -> None:
             # Get process definition from database
             async with db.session() as session:
                 logger.info("Executing database query...")
-                result = await session.execute(
-                    select(ProcessDefinitionModel).filter(
-                        ProcessDefinitionModel.id == definition_id
-                    )
+                stmt = select(ProcessDefinitionModel).filter(
+                    ProcessDefinitionModel.id == definition_id
                 )
-                logger.info(f"Query result: {result}")
-                definition = await result.scalar_one_or_none()
-                logger.info(f"Definition: {definition}, type: {type(definition)}")
+                result = await session.execute(stmt)
+                definition = result.scalar_one_or_none()  # No await needed here
+                logger.info(f"Definition found: {definition is not None}")
             if not definition:
                 raise ValueError(f"Process definition {definition_id} not found")
 
@@ -64,14 +63,16 @@ async def handle_process_started(data: dict) -> None:
                 raise ValueError("No start event found in process definition")
             logger.info(f"Found start event: {start_event.id}")
 
-            # Create executor and initialize process
-            executor = ProcessExecutor(state_manager=state_manager)
-            await executor.create_initial_token(instance_id, start_event.id)
-            logger.info(f"Created initial token at {start_event.id}")
-
-            # Execute process
-            await executor.execute_process(instance_id, process_graph)
-            logger.info(f"Process {instance_id} execution completed")
+            # Create instance manager and executor
+            async with db.session() as session:
+                instance_manager = ProcessInstanceManager(session, None, state_manager)
+                executor = ProcessExecutor(state_manager=state_manager, instance_manager=instance_manager)
+                # Set executor on instance manager after creation to avoid circular reference
+                instance_manager.executor = executor
+                
+                logger.info(f"Starting process execution for instance {instance_id}")
+                await executor.execute_process(instance_id, process_graph)
+                logger.info(f"Process {instance_id} execution completed")
 
         finally:
             await state_manager.disconnect()

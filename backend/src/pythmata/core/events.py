@@ -7,8 +7,9 @@ import aio_pika
 from aio_pika import Channel, Connection, Exchange
 
 from pythmata.core.config import Settings
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class EventBus:

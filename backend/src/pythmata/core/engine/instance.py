@@ -405,6 +405,25 @@ class ProcessInstanceManager:
 
         return {var.name: var.value_data for var in variables}
 
+    async def complete_instance(self, instance_id: UUID) -> ProcessInstance:
+        """
+        Complete a process instance.
+
+        Args:
+            instance_id: ID of the instance to complete
+
+        Returns:
+            Updated ProcessInstance
+        """
+        instance = await self.session.get(ProcessInstance, instance_id)
+        if not instance:
+            raise ProcessInstanceError(f"Instance {instance_id} not found")
+
+        instance.status = ProcessStatus.COMPLETED
+        instance.end_time = datetime.now(UTC)
+        await self.session.commit()
+        return instance
+
     async def start_instance(
         self,
         instance: ProcessInstance,

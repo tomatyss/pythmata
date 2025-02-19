@@ -6,8 +6,9 @@ from uuid import UUID
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessInstance, ProcessStatus
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TokenStateError(Exception):
@@ -59,6 +60,7 @@ class TokenManager:
         Returns:
             The created token
         """
+        logger.info(f"Creating initial token for instance {instance_id} at node {start_event_id}")
         token = Token(instance_id=instance_id, node_id=start_event_id)
 
         # Check if token already exists
@@ -66,18 +68,23 @@ class TokenManager:
             instance_id=instance_id, node_id=start_event_id
         )
         if existing_token:
+            logger.error(f"Token already exists at {start_event_id} for instance {instance_id}")
             raise TokenStateError(
                 f"Token already exists at {start_event_id} for instance {instance_id}"
             )
 
-        # Create token atomically
-        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
-            await self.state_manager.add_token(
-                instance_id=instance_id, node_id=start_event_id, data=token.to_dict()
-            )
-            await pipe.execute()
-
-        return token
+        try:
+            # Create token atomically
+            async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+                await self.state_manager.add_token(
+                    instance_id=instance_id, node_id=start_event_id, data=token.to_dict()
+                )
+                await pipe.execute()
+            logger.info(f"Initial token {token.id} created successfully")
+            return token
+        except Exception as e:
+            logger.error(f"Failed to create initial token: {str(e)}")
+            raise
 
     async def move_token(
         self,
@@ -99,52 +106,68 @@ class TokenManager:
         Raises:
             TokenStateError: If token state is invalid
         """
+        logger.info(f"Moving token {token.id} from {token.node_id} to {target_node_id}")
+        
         # Verify token state before operation
-        await self._verify_token_state(token)
+        try:
+            await self._verify_token_state(token)
+        except TokenStateError as e:
+            logger.error(f"Token state verification failed: {str(e)}")
+            raise
 
         # Handle transaction boundaries if instance manager is provided
         if instance_manager:
             if target_node_id == "Transaction_End":
+                logger.info(f"Handling transaction end for token {token.id}")
                 return await self._handle_transaction_end(token, instance_manager)
             elif target_node_id.startswith("Transaction_") and target_node_id not in [
                 "Transaction_Start",
                 "Transaction_End",
             ]:
+                logger.info(f"Starting transaction for token {token.id}")
                 await instance_manager.start_transaction(
                     UUID(token.instance_id), target_node_id
                 )
                 target_node_id = "Transaction_Start"
 
-        # Use Redis transaction for atomic move
-        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
-            # Remove token from current node
-            await self.state_manager.remove_token(
-                instance_id=token.instance_id, node_id=token.node_id
-            )
-            await pipe.delete(f"tokens:{token.instance_id}")
+        try:
+            # Use Redis transaction for atomic move
+            async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+                # Create new token at target node first
+                new_token = token.copy(node_id=target_node_id, scope_id=token.scope_id)
+                logger.info(f"Creating new token {new_token.id} at {target_node_id}")
+                await self.state_manager.add_token(
+                    instance_id=new_token.instance_id,
+                    node_id=new_token.node_id,
+                    data=new_token.to_dict(),
+                )
+                await self.state_manager.update_token_state(
+                    instance_id=new_token.instance_id,
+                    node_id=new_token.node_id,
+                    state=TokenState.ACTIVE,
+                    scope_id=new_token.scope_id,
+                )
 
-            # Create new token at target node
-            new_token = token.copy(node_id=target_node_id, scope_id=token.scope_id)
-            await self.state_manager.add_token(
-                instance_id=new_token.instance_id,
-                node_id=new_token.node_id,
-                data=new_token.to_dict(),
-            )
-            await self.state_manager.update_token_state(
-                instance_id=new_token.instance_id,
-                node_id=new_token.node_id,
-                state=TokenState.ACTIVE,
-                scope_id=new_token.scope_id,
-            )
+                # Then remove old token
+                logger.info(f"Removing token {token.id} from {token.node_id}")
+                await self.state_manager.remove_token(
+                    instance_id=token.instance_id, node_id=token.node_id
+                )
+                await pipe.delete(f"tokens:{token.instance_id}")
 
-            # Execute transaction
-            await pipe.execute()
+                # Execute transaction
+                await pipe.execute()
+                logger.info(f"Token movement completed successfully")
 
-        # Handle process completion if moving to end event
-        if target_node_id == "End_1" and instance_manager:
-            await self._handle_process_completion(token, instance_manager)
+            # Handle process completion if moving to end event
+            if target_node_id == "End_1" and instance_manager:
+                logger.info(f"Token reached end event, handling process completion")
+                await self._handle_process_completion(token, instance_manager)
 
-        return new_token
+            return new_token
+        except Exception as e:
+            logger.error(f"Failed to move token: {str(e)}")
+            raise
 
     async def consume_token(self, token: Token) -> None:
         """
@@ -156,27 +179,35 @@ class TokenManager:
         Raises:
             TokenStateError: If token state is invalid
         """
-        # Use Redis transaction for atomic consumption
-        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
-            # Get token state within transaction
-            stored_token = await self.state_manager.get_token(
-                instance_id=token.instance_id, node_id=token.node_id
-            )
-
-            if not stored_token:
-                raise TokenStateError(f"Token not found: {token.id}")
-
-            if stored_token.get("state") != TokenState.ACTIVE.value:
-                raise TokenStateError(
-                    f"Token {token.id} is not active (state: {stored_token.get('state')})"
+        logger.info(f"Consuming token {token.id} at {token.node_id}")
+        try:
+            # Use Redis transaction for atomic consumption
+            async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+                # Get token state within transaction
+                stored_token = await self.state_manager.get_token(
+                    instance_id=token.instance_id, node_id=token.node_id
                 )
 
-            # Remove token atomically
-            await self.state_manager.remove_token(
-                instance_id=token.instance_id, node_id=token.node_id
-            )
-            await pipe.delete(f"tokens:{token.instance_id}")
-            await pipe.execute()
+                if not stored_token:
+                    logger.error(f"Token {token.id} not found for consumption")
+                    raise TokenStateError(f"Token not found: {token.id}")
+
+                if stored_token.get("state") != TokenState.ACTIVE.value:
+                    logger.error(f"Cannot consume inactive token {token.id} (state: {stored_token.get('state')})")
+                    raise TokenStateError(
+                        f"Token {token.id} is not active (state: {stored_token.get('state')})"
+                    )
+
+                # Remove token atomically
+                await self.state_manager.remove_token(
+                    instance_id=token.instance_id, node_id=token.node_id
+                )
+                await pipe.delete(f"tokens:{token.instance_id}")
+                await pipe.execute()
+                logger.info(f"Token {token.id} consumed successfully")
+        except Exception as e:
+            logger.error(f"Failed to consume token: {str(e)}")
+            raise
 
     async def split_token(
         self, token: Token, target_node_ids: List[str]
@@ -194,37 +225,46 @@ class TokenManager:
         Raises:
             TokenStateError: If token state is invalid
         """
-        # Verify token state before operation
-        await self._verify_token_state(token)
+        logger.info(f"Splitting token {token.id} into {len(target_node_ids)} new tokens")
+        
+        try:
+            # Verify token state before operation
+            await self._verify_token_state(token)
 
-        # Use Redis transaction for atomic split
-        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
-            # Remove original token
-            await self.state_manager.remove_token(
-                instance_id=token.instance_id, node_id=token.node_id
-            )
-            await pipe.delete(f"tokens:{token.instance_id}")
-
-            # Create new tokens
-            new_tokens = []
-            for node_id in target_node_ids:
-                new_token = token.copy(node_id=node_id)
-                await self.state_manager.add_token(
-                    instance_id=new_token.instance_id,
-                    node_id=new_token.node_id,
-                    data=new_token.to_dict(),
+            # Use Redis transaction for atomic split
+            async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+                logger.info(f"Removing original token {token.id} from {token.node_id}")
+                # Remove original token
+                await self.state_manager.remove_token(
+                    instance_id=token.instance_id, node_id=token.node_id
                 )
-                await self.state_manager.update_token_state(
-                    instance_id=new_token.instance_id,
-                    node_id=new_token.node_id,
-                    state=TokenState.ACTIVE,
-                )
-                new_tokens.append(new_token)
+                await pipe.delete(f"tokens:{token.instance_id}")
 
-            # Execute transaction
-            await pipe.execute()
+                # Create new tokens
+                new_tokens = []
+                for node_id in target_node_ids:
+                    new_token = token.copy(node_id=node_id)
+                    logger.info(f"Creating new token {new_token.id} at {node_id}")
+                    await self.state_manager.add_token(
+                        instance_id=new_token.instance_id,
+                        node_id=new_token.node_id,
+                        data=new_token.to_dict(),
+                    )
+                    await self.state_manager.update_token_state(
+                        instance_id=new_token.instance_id,
+                        node_id=new_token.node_id,
+                        state=TokenState.ACTIVE,
+                    )
+                    new_tokens.append(new_token)
 
-        return new_tokens
+                # Execute transaction
+                await pipe.execute()
+                logger.info(f"Token split completed successfully, created {len(new_tokens)} new tokens")
+
+            return new_tokens
+        except Exception as e:
+            logger.error(f"Failed to split token: {str(e)}")
+            raise
 
     async def update_token_state(
         self, token: Token, state: TokenState, scope_id: Optional[str] = None
@@ -240,58 +280,83 @@ class TokenManager:
         Raises:
             TokenStateError: If token state is invalid
         """
-        # Verify token exists before update
-        stored_token = await self.state_manager.get_token(
-            instance_id=token.instance_id, node_id=token.node_id
-        )
-        if not stored_token:
-            raise TokenStateError(f"Token not found: {token.id}")
-
-        # Use Redis transaction for atomic update
-        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
-            await self.state_manager.update_token_state(
-                instance_id=token.instance_id,
-                node_id=token.node_id,
-                state=state,
-                scope_id=scope_id or token.scope_id,
+        logger.info(f"Updating token {token.id} state to {state.value}")
+        try:
+            # Verify token exists before update
+            stored_token = await self.state_manager.get_token(
+                instance_id=token.instance_id, node_id=token.node_id
             )
-            await pipe.execute()
+            if not stored_token:
+                logger.error(f"Token {token.id} not found for state update")
+                raise TokenStateError(f"Token not found: {token.id}")
+
+            # Use Redis transaction for atomic update
+            async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+                await self.state_manager.update_token_state(
+                    instance_id=token.instance_id,
+                    node_id=token.node_id,
+                    state=state,
+                    scope_id=scope_id or token.scope_id,
+                )
+                await pipe.execute()
+                logger.info(f"Token {token.id} state updated successfully to {state.value}")
+        except Exception as e:
+            logger.error(f"Failed to update token state: {str(e)}")
+            raise
 
     async def _handle_transaction_end(self, token: Token, instance_manager) -> Token:
         """Handle moving token to transaction end."""
-        # Complete the transaction
-        await instance_manager.complete_transaction(UUID(token.instance_id))
+        logger.info(f"Handling transaction end for token {token.id}")
+        try:
+            # Complete the transaction
+            logger.info(f"Completing transaction for instance {token.instance_id}")
+            await instance_manager.complete_transaction(UUID(token.instance_id))
 
-        # Use Redis transaction for atomic operation
-        async with self.state_manager.redis.pipeline(transaction=True) as pipe:
-            # Remove current token
-            await self.state_manager.remove_token(
-                instance_id=token.instance_id, node_id=token.node_id
-            )
-            await pipe.delete(f"tokens:{token.instance_id}")
+            # Use Redis transaction for atomic operation
+            async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+                logger.info(f"Removing token {token.id} from {token.node_id}")
+                # Remove current token
+                await self.state_manager.remove_token(
+                    instance_id=token.instance_id, node_id=token.node_id
+                )
+                await pipe.delete(f"tokens:{token.instance_id}")
 
-            # Create new token at End_1
-            new_token = token.copy(node_id="End_1")
-            await self.state_manager.add_token(
-                instance_id=new_token.instance_id,
-                node_id=new_token.node_id,
-                data=new_token.to_dict(),
-            )
+                # Create new token at End_1
+                new_token = token.copy(node_id="End_1")
+                logger.info(f"Creating new token {new_token.id} at End_1")
+                await self.state_manager.add_token(
+                    instance_id=new_token.instance_id,
+                    node_id=new_token.node_id,
+                    data=new_token.to_dict(),
+                )
 
-            # Execute transaction
-            await pipe.execute()
+                # Execute transaction
+                await pipe.execute()
+                logger.info(f"Transaction end handling completed successfully")
 
-        # Mark process as completed
-        await self._handle_process_completion(token, instance_manager)
+            # Mark process as completed
+            await self._handle_process_completion(token, instance_manager)
 
-        return new_token
+            return new_token
+        except Exception as e:
+            logger.error(f"Failed to handle transaction end: {str(e)}")
+            raise
 
     async def _handle_process_completion(self, token: Token, instance_manager) -> None:
         """Handle process completion when token reaches end event."""
-        instance = await instance_manager.session.get(
-            ProcessInstance, UUID(token.instance_id)
-        )
-        if instance:
-            instance.status = ProcessStatus.COMPLETED
-            instance.end_time = datetime.now(UTC)
-            await instance_manager.session.commit()
+        logger.info(f"Handling process completion for instance {token.instance_id}")
+        try:
+            instance = await instance_manager.session.get(
+                ProcessInstance, UUID(token.instance_id)
+            )
+            if instance:
+                logger.info(f"Updating instance {token.instance_id} status to COMPLETED")
+                instance.status = ProcessStatus.COMPLETED
+                instance.end_time = datetime.now(UTC)
+                await instance_manager.session.commit()
+                logger.info(f"Process instance {token.instance_id} completed successfully")
+            else:
+                logger.warning(f"Process instance {token.instance_id} not found for completion")
+        except Exception as e:
+            logger.error(f"Failed to handle process completion: {str(e)}")
+            raise

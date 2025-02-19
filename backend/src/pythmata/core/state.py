@@ -9,8 +9,9 @@ from redis.asyncio import Redis
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.config import Settings
 from pythmata.core.types import TokenState
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class StateManager:

@@ -7,8 +7,9 @@ from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @pytest.mark.asyncio
