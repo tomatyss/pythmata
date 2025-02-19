@@ -14,7 +14,6 @@ class Base(DeclarativeBase):
     """Base class for all models."""
 
 
-
 class ProcessStatus(str, Enum):
     """Process instance status."""
 

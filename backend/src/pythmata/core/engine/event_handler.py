@@ -1,6 +1,6 @@
 from typing import Dict
 
-from pythmata.core.engine.token import Token, TokenState
+from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, EventType
 from pythmata.utils.logger import get_logger
@@ -37,17 +37,26 @@ class EventHandler:
                     (
                         flow
                         for flow in process_graph["flows"]
-                        if (flow["id"] if isinstance(flow, dict) else flow.id) == event.outgoing[0]
+                        if (flow["id"] if isinstance(flow, dict) else flow.id)
+                        == event.outgoing[0]
                     ),
                     None,
                 )
                 if flow:
                     if self.token_manager:
-                        target_ref = flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
-                        logger.info(f"Moving token {token.id} to {target_ref} via start event")
+                        target_ref = (
+                            flow["target_ref"]
+                            if isinstance(flow, dict)
+                            else flow.target_ref
+                        )
+                        logger.info(
+                            f"Moving token {token.id} to {target_ref} via start event"
+                        )
                         await self.token_manager.move_token(token, target_ref)
                     else:
-                        logger.error("TokenManager not available for event token movement")
+                        logger.error(
+                            "TokenManager not available for event token movement"
+                        )
                 else:
                     logger.error(f"Flow {event.outgoing[0]} not found in process graph")
         elif event.event_type == EventType.END:
@@ -111,14 +120,19 @@ class EventHandler:
                 (
                     flow
                     for flow in process_graph["flows"]
-                    if (flow["id"] if isinstance(flow, dict) else flow.id) == event.outgoing[0]
+                    if (flow["id"] if isinstance(flow, dict) else flow.id)
+                    == event.outgoing[0]
                 ),
                 None,
             )
             if flow:
                 if self.token_manager:
                     # Move token to next node
-                    target_ref = flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
+                    target_ref = (
+                        flow["target_ref"]
+                        if isinstance(flow, dict)
+                        else flow.target_ref
+                    )
                     logger.info(f"Moving token {token.id} to {target_ref} via event")
                     await self.token_manager.move_token(token, target_ref)
                 else:

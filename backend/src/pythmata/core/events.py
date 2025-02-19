@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 from typing import Any, Callable, Dict, Optional, Set
 
 import aio_pika

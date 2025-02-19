@@ -10,7 +10,6 @@ class MessageTimeoutError(Exception):
     """Raised when a message is not received within the specified timeout period."""
 
 
-
 class MessageEvent(Event):
     """
     Implementation of BPMN Message Event.

@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 from pythmata.core.engine.event_handler import EventHandler
 from pythmata.core.engine.gateway_handler import GatewayHandler
@@ -14,12 +14,12 @@ logger = get_logger(__name__)
 class NodeExecutor:
     """
     Handles execution of process nodes based on their type.
-    
+
     Coordinates between different handlers for:
     - Tasks (including script tasks)
     - Gateways
     - Events
-    
+
     Features:
     - Type-specific node execution
     - Safe state transitions
@@ -77,7 +77,7 @@ class NodeExecutor:
             token: Current process token
             task: Task to execute
             process_graph: Complete process graph
-            
+
         Raises:
             Exception: If task execution fails
         """
@@ -89,17 +89,27 @@ class NodeExecutor:
             # Move token to next node if there are outgoing flows
             if task.outgoing:
                 next_flow = next(
-                    (flow for flow in process_graph["flows"] 
-                     if (flow["id"] if isinstance(flow, dict) else flow.id) == task.outgoing[0]),
-                    None
+                    (
+                        flow
+                        for flow in process_graph["flows"]
+                        if (flow["id"] if isinstance(flow, dict) else flow.id)
+                        == task.outgoing[0]
+                    ),
+                    None,
                 )
                 if next_flow:
-                    target_ref = next_flow["target_ref"] if isinstance(next_flow, dict) else next_flow.target_ref
+                    target_ref = (
+                        next_flow["target_ref"]
+                        if isinstance(next_flow, dict)
+                        else next_flow.target_ref
+                    )
                     logger.info(f"Moving token {token.id} to {target_ref} via task")
                     if self.token_manager:
                         await self.token_manager.move_token(token, target_ref)
                     else:
-                        logger.error("TokenManager not available for task token movement")
+                        logger.error(
+                            "TokenManager not available for task token movement"
+                        )
                 else:
                     logger.error(f"Flow {task.outgoing[0]} not found in process graph")
         except Exception as e:

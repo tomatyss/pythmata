@@ -66,10 +66,12 @@ async def handle_process_started(data: dict) -> None:
             # Create instance manager and executor
             async with db.session() as session:
                 instance_manager = ProcessInstanceManager(session, None, state_manager)
-                executor = ProcessExecutor(state_manager=state_manager, instance_manager=instance_manager)
+                executor = ProcessExecutor(
+                    state_manager=state_manager, instance_manager=instance_manager
+                )
                 # Set executor on instance manager after creation to avoid circular reference
                 instance_manager.executor = executor
-                
+
                 logger.info(f"Starting process execution for instance {instance_id}")
                 await executor.execute_process(instance_id, process_graph)
                 logger.info(f"Process {instance_id} execution completed")

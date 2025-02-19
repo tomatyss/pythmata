@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.token import Token
@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 class ExecutionContextBuilder:
     """
     Builds safe execution contexts for script tasks.
-    
+
     Provides:
     - Controlled access to built-in functions
     - Process variables and token access
@@ -40,9 +40,7 @@ class ExecutionContextBuilder:
             "set_variable": lambda name, value: state_manager.set_variable(
                 instance_id=token.instance_id,
                 name=name,
-                variable=ProcessVariableValue(
-                    type=type(value).__name__, value=value
-                ),
+                variable=ProcessVariableValue(type=type(value).__name__, value=value),
                 scope_id=token.scope_id,
             ),
             # Safe built-ins
@@ -62,7 +60,7 @@ class ExecutionContextBuilder:
 class ScriptExecutor:
     """
     Handles execution of script tasks in a controlled environment.
-    
+
     Features:
     - Safe execution context with limited built-ins
     - Process variable access and modification
@@ -96,8 +94,7 @@ class ScriptExecutor:
 
         # Get process variables for script context
         variables = await self.state_manager.get_variables(
-            instance_id=token.instance_id,
-            scope_id=token.scope_id
+            instance_id=token.instance_id, scope_id=token.scope_id
         )
 
         # Create safe execution context

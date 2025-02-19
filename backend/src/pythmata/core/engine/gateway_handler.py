@@ -59,10 +59,16 @@ class GatewayHandler:
 
         # Find sequence flow with true condition
         for flow in process_graph["flows"]:
-            source_ref = flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
+            source_ref = (
+                flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
+            )
             flow_id = flow["id"] if isinstance(flow, dict) else flow.id
-            condition_expr = flow.get("condition_expression") if isinstance(flow, dict) else getattr(flow, "condition_expression", None)
-            
+            condition_expr = (
+                flow.get("condition_expression")
+                if isinstance(flow, dict)
+                else getattr(flow, "condition_expression", None)
+            )
+
             if source_ref == gateway.id:
                 if not condition_expr:
                     # Store default flow for later if no conditions are true
@@ -89,7 +95,11 @@ class GatewayHandler:
 
         # If no conditions were true, take default flow if it exists
         if default_flow:
-            flow_id = default_flow["id"] if isinstance(default_flow, dict) else default_flow.id
+            flow_id = (
+                default_flow["id"]
+                if isinstance(default_flow, dict)
+                else default_flow.id
+            )
             await self._move_token(token, flow_id)
             return
 
@@ -179,10 +189,16 @@ class GatewayHandler:
         default_flow = None
 
         for flow in process_graph["flows"]:
-            source_ref = flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
+            source_ref = (
+                flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
+            )
             flow_id = flow["id"] if isinstance(flow, dict) else flow.id
-            condition_expr = flow.get("condition_expression") if isinstance(flow, dict) else getattr(flow, "condition_expression", None)
-            
+            condition_expr = (
+                flow.get("condition_expression")
+                if isinstance(flow, dict)
+                else getattr(flow, "condition_expression", None)
+            )
+
             if source_ref == gateway.id:
                 if not condition_expr:
                     default_flow = flow
@@ -207,7 +223,11 @@ class GatewayHandler:
 
         # If no conditions were true, take default flow if it exists
         if not active_paths and default_flow:
-            flow_id = default_flow["id"] if isinstance(default_flow, dict) else default_flow.id
+            flow_id = (
+                default_flow["id"]
+                if isinstance(default_flow, dict)
+                else default_flow.id
+            )
             active_paths.append(flow_id)
 
         if not active_paths:
@@ -242,9 +262,12 @@ class GatewayHandler:
         """Move token using sequence flow."""
         # Find flow in process graph
         flow = next(
-            (flow for flow in self.process_graph["flows"] 
-             if (flow["id"] if isinstance(flow, dict) else flow.id) == flow_id),
-            None
+            (
+                flow
+                for flow in self.process_graph["flows"]
+                if (flow["id"] if isinstance(flow, dict) else flow.id) == flow_id
+            ),
+            None,
         )
         if not flow:
             logger.error(f"Flow {flow_id} not found in process graph")
@@ -252,7 +275,9 @@ class GatewayHandler:
 
         # Use token manager to move token
         if self.token_manager:
-            target_ref = flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
+            target_ref = (
+                flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
+            )
             logger.info(f"Moving token {token.id} to {target_ref} via gateway")
             await self.token_manager.move_token(token, target_ref)
         else:

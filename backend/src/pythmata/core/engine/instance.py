@@ -25,25 +25,20 @@ class ProcessInstanceError(Exception):
     """Base class for process instance errors."""
 
 
-
 class TransactionError(ProcessInstanceError):
     """Raised when transaction operations fail."""
-
 
 
 class InvalidProcessDefinitionError(ProcessInstanceError):
     """Raised when process definition is invalid."""
 
 
-
 class InvalidVariableError(ProcessInstanceError):
     """Raised when variable data is invalid."""
 
 
-
 class InvalidStateTransitionError(ProcessInstanceError):
     """Raised when attempting invalid state transition."""
-
 
 
 class ProcessInstanceManager:

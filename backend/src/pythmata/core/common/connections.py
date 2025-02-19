@@ -66,7 +66,6 @@ class ConnectionError(Exception):
     """Exception raised for connection-related errors."""
 
 
-
 class ConnectionManager(ABC):
     """Base class for managing service connections.
 

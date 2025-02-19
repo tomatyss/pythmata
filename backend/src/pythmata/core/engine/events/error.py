@@ -1,4 +1,3 @@
-
 from pythmata.core.engine.events.boundary import BoundaryEvent
 from pythmata.core.engine.token import Token, TokenState
 

@@ -15,15 +15,12 @@ class ExpressionError(Exception):
     """Base class for expression-related errors."""
 
 
-
 class ExpressionSyntaxError(ExpressionError):
     """Raised when expression syntax is invalid."""
 
 
-
 class ExpressionEvalError(ExpressionError):
     """Raised when expression evaluation fails."""
-
 
 
 class TokenType(Enum):

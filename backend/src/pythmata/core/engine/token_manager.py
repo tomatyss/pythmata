@@ -1,4 +1,3 @@
-import logging
 from datetime import UTC, datetime
 from typing import List, Optional
 from uuid import UUID
@@ -13,7 +12,6 @@ logger = get_logger(__name__)
 
 class TokenStateError(Exception):
     """Raised when token state is invalid for requested operation."""
-
 
 
 class TokenManager:
@@ -60,7 +58,9 @@ class TokenManager:
         Returns:
             The created token
         """
-        logger.info(f"Creating initial token for instance {instance_id} at node {start_event_id}")
+        logger.info(
+            f"Creating initial token for instance {instance_id} at node {start_event_id}"
+        )
         token = Token(instance_id=instance_id, node_id=start_event_id)
 
         # Check if token already exists
@@ -68,7 +68,9 @@ class TokenManager:
             instance_id=instance_id, node_id=start_event_id
         )
         if existing_token:
-            logger.error(f"Token already exists at {start_event_id} for instance {instance_id}")
+            logger.error(
+                f"Token already exists at {start_event_id} for instance {instance_id}"
+            )
             raise TokenStateError(
                 f"Token already exists at {start_event_id} for instance {instance_id}"
             )
@@ -77,7 +79,9 @@ class TokenManager:
             # Create token atomically
             async with self.state_manager.redis.pipeline(transaction=True) as pipe:
                 await self.state_manager.add_token(
-                    instance_id=instance_id, node_id=start_event_id, data=token.to_dict()
+                    instance_id=instance_id,
+                    node_id=start_event_id,
+                    data=token.to_dict(),
                 )
                 await pipe.execute()
             logger.info(f"Initial token {token.id} created successfully")
@@ -107,7 +111,7 @@ class TokenManager:
             TokenStateError: If token state is invalid
         """
         logger.info(f"Moving token {token.id} from {token.node_id} to {target_node_id}")
-        
+
         # Verify token state before operation
         try:
             await self._verify_token_state(token)
@@ -193,7 +197,9 @@ class TokenManager:
                     raise TokenStateError(f"Token not found: {token.id}")
 
                 if stored_token.get("state") != TokenState.ACTIVE.value:
-                    logger.error(f"Cannot consume inactive token {token.id} (state: {stored_token.get('state')})")
+                    logger.error(
+                        f"Cannot consume inactive token {token.id} (state: {stored_token.get('state')})"
+                    )
                     raise TokenStateError(
                         f"Token {token.id} is not active (state: {stored_token.get('state')})"
                     )
@@ -225,8 +231,10 @@ class TokenManager:
         Raises:
             TokenStateError: If token state is invalid
         """
-        logger.info(f"Splitting token {token.id} into {len(target_node_ids)} new tokens")
-        
+        logger.info(
+            f"Splitting token {token.id} into {len(target_node_ids)} new tokens"
+        )
+
         try:
             # Verify token state before operation
             await self._verify_token_state(token)
@@ -259,7 +267,9 @@ class TokenManager:
 
                 # Execute transaction
                 await pipe.execute()
-                logger.info(f"Token split completed successfully, created {len(new_tokens)} new tokens")
+                logger.info(
+                    f"Token split completed successfully, created {len(new_tokens)} new tokens"
+                )
 
             return new_tokens
         except Exception as e:
@@ -299,7 +309,9 @@ class TokenManager:
                     scope_id=scope_id or token.scope_id,
                 )
                 await pipe.execute()
-                logger.info(f"Token {token.id} state updated successfully to {state.value}")
+                logger.info(
+                    f"Token {token.id} state updated successfully to {state.value}"
+                )
         except Exception as e:
             logger.error(f"Failed to update token state: {str(e)}")
             raise
@@ -350,13 +362,19 @@ class TokenManager:
                 ProcessInstance, UUID(token.instance_id)
             )
             if instance:
-                logger.info(f"Updating instance {token.instance_id} status to COMPLETED")
+                logger.info(
+                    f"Updating instance {token.instance_id} status to COMPLETED"
+                )
                 instance.status = ProcessStatus.COMPLETED
                 instance.end_time = datetime.now(UTC)
                 await instance_manager.session.commit()
-                logger.info(f"Process instance {token.instance_id} completed successfully")
+                logger.info(
+                    f"Process instance {token.instance_id} completed successfully"
+                )
             else:
-                logger.warning(f"Process instance {token.instance_id} not found for completion")
+                logger.warning(
+                    f"Process instance {token.instance_id} not found for completion"
+                )
         except Exception as e:
             logger.error(f"Failed to handle process completion: {str(e)}")
             raise

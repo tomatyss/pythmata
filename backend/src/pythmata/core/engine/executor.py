@@ -2,15 +2,15 @@ import asyncio
 from typing import Dict, List, Optional, Union
 
 from pythmata.core.engine.call_activity_manager import CallActivityManager
-from pythmata.core.types import Event, Gateway, Task
 from pythmata.core.engine.instance import ProcessInstanceManager
 from pythmata.core.engine.multi_instance_manager import MultiInstanceManager
 from pythmata.core.engine.node_executor import NodeExecutor
 from pythmata.core.engine.subprocess_manager import SubprocessManager
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.engine.token_manager import TokenManager
-from pythmata.core.engine.validator import ProcessValidator, ProcessGraphValidationError
+from pythmata.core.engine.validator import ProcessValidator
 from pythmata.core.state import StateManager
+from pythmata.core.types import Event, Gateway, Task
 from pythmata.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -63,7 +63,7 @@ def handle_execution_error(func):
 class ProcessExecutor:
     """
     Executes BPMN processes by orchestrating token movement through nodes.
-    
+
     Coordinates between specialized components:
     - NodeExecutor: Handles execution of individual nodes
     - ProcessValidator: Validates process graph structure
@@ -92,7 +92,9 @@ class ProcessExecutor:
         # Initialize specialized components
         self.validator = ProcessValidator()
         self.token_manager = TokenManager(state_manager)  # Create token_manager first
-        self.node_executor = NodeExecutor(state_manager, self.token_manager)  # Pass token_manager to node_executor
+        self.node_executor = NodeExecutor(
+            state_manager, self.token_manager
+        )  # Pass token_manager to node_executor
         self.subprocess_manager = SubprocessManager(state_manager)
         self.call_activity_manager = CallActivityManager(state_manager)
         self.multi_instance_manager = MultiInstanceManager(state_manager)
@@ -236,7 +238,7 @@ class ProcessExecutor:
             ProcessExecutionLimitError: If execution exceeds iteration limit
         """
         logger.info(f"Starting process execution for instance {instance_id}")
-        
+
         # Validate process graph before execution
         logger.info("Validating process graph...")
         self.validator.validate_process_graph(process_graph)
@@ -245,7 +247,9 @@ class ProcessExecutor:
         # Check if we need to create an initial token
         tokens = await self.state_manager.get_token_positions(instance_id)
         if not tokens:
-            logger.info(f"No tokens found, creating initial token for instance {instance_id}")
+            logger.info(
+                f"No tokens found, creating initial token for instance {instance_id}"
+            )
             # Find start event
             start_event = next(
                 (
@@ -278,10 +282,14 @@ class ProcessExecutor:
             active_tokens = [
                 t for t in tokens if t.get("state") == TokenState.ACTIVE.value
             ]
-            logger.info(f"Found {len(active_tokens)} active tokens out of {len(tokens)} total tokens")
-            
+            logger.info(
+                f"Found {len(active_tokens)} active tokens out of {len(tokens)} total tokens"
+            )
+
             if not active_tokens:
-                logger.info(f"No active tokens remaining for instance {instance_id}, process complete")
+                logger.info(
+                    f"No active tokens remaining for instance {instance_id}, process complete"
+                )
                 break
 
             # Execute each active token
@@ -294,9 +302,11 @@ class ProcessExecutor:
                     continue
 
                 # Execute the current node
-                logger.info(f"Processing token {token.id} at node {current_node.id} (type: {type(current_node).__name__})")
+                logger.info(
+                    f"Processing token {token.id} at node {current_node.id} (type: {type(current_node).__name__})"
+                )
                 await self.execute_node(token, current_node, process_graph)
-                
+
                 # Check if token still exists (hasn't been moved by node execution)
                 stored_token = await self.state_manager.get_token(
                     instance_id=token.instance_id, node_id=token.node_id
@@ -307,8 +317,9 @@ class ProcessExecutor:
 
                 # Each node type handler manages its own token movement
                 if isinstance(current_node, (Task, Gateway, Event)):
-                    logger.info(f"{type(current_node).__name__} {current_node.id} handling its own token movement")
-                    pass
+                    logger.info(
+                        f"{type(current_node).__name__} {current_node.id} handling its own token movement"
+                    )
 
             # Small delay to prevent tight loop
             await asyncio.sleep(0.1)

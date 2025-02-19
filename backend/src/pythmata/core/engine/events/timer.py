@@ -14,7 +14,6 @@ class TimerCancelled(Exception):
     """Raised when a timer is cancelled."""
 
 
-
 class TimerEvent(Event):
     """Implementation of BPMN timer events"""
 

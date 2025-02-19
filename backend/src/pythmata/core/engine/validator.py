@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Optional, Set
 
-from pythmata.core.types import Event, EventType, Gateway, Task
+from pythmata.core.types import Event, EventType
 from pythmata.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -9,20 +9,23 @@ logger = get_logger(__name__)
 class ProcessGraphValidationError(Exception):
     """
     Raised when process graph validation fails.
-    
+
     Args:
         message: Description of the validation error
         node_id: Optional ID of the node where validation failed
     """
+
     def __init__(self, message: str, node_id: Optional[str] = None):
-        super().__init__(f"Validation error at node {node_id}: {message}" if node_id else message)
+        super().__init__(
+            f"Validation error at node {node_id}: {message}" if node_id else message
+        )
         self.node_id = node_id
 
 
 class ProcessValidator:
     """
     Validates process graph structure and connectivity.
-    
+
     Handles validation of:
     - Graph structure and required sections
     - Node references and connectivity
@@ -57,9 +60,13 @@ class ProcessValidator:
         # Validate node references in flows
         for flow in process_graph["flows"]:
             # Handle both dictionary flows and object flows
-            source_ref = flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
-            target_ref = flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
-            
+            source_ref = (
+                flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
+            )
+            target_ref = (
+                flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
+            )
+
             if source_ref not in node_ids:
                 raise ProcessGraphValidationError(
                     f"Invalid node reference in flow: {source_ref}"
@@ -94,7 +101,7 @@ class ProcessValidator:
             # Handle both dictionary flows and object flows
             source = flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
             target = flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
-            
+
             if source == target:
                 self_loops.add(source)
             else:
@@ -110,8 +117,7 @@ class ProcessValidator:
         def dfs(node_id: str) -> None:
             if node_id in path and node_id not in self_loops:
                 raise ProcessGraphValidationError(
-                    "Cycle detected in process graph",
-                    node_id=node_id
+                    "Cycle detected in process graph", node_id=node_id
                 )
 
             if node_id in visited:
