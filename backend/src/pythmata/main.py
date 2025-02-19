@@ -19,7 +19,18 @@ logger = get_logger(__name__)
 
 
 async def handle_process_started(data: dict) -> None:
-    """Handle process.started event."""
+    """
+    Handle process.started event by initializing and executing a new process instance.
+    
+    This function follows BPMN lifecycle management best practices:
+    1. Process Definition Loading
+    2. Instance Initialization
+    3. Token Creation and Management
+    4. Process Execution
+    
+    Args:
+        data: Dictionary containing instance_id and definition_id
+    """
     try:
         instance_id = data["instance_id"]
         definition_id = data["definition_id"]
@@ -33,54 +44,72 @@ async def handle_process_started(data: dict) -> None:
         # Connect to state manager only since database is managed by FastAPI lifespan
         await state_manager.connect()
         try:
-            # Get process definition from database
+            # 1. Load Process Definition
             async with db.session() as session:
-                logger.info("Executing database query...")
+                logger.info("Loading process definition...")
                 stmt = select(ProcessDefinitionModel).filter(
                     ProcessDefinitionModel.id == definition_id
                 )
                 result = await session.execute(stmt)
-                definition = result.scalar_one_or_none()  # No await needed here
-                logger.info(f"Definition found: {definition is not None}")
-            if not definition:
-                raise ValueError(f"Process definition {definition_id} not found")
+                definition = await result.scalar_one_or_none()
+                
+                if not definition:
+                    logger.error(f"Process definition {definition_id} not found")
+                    return
+                logger.info(f"Definition loaded successfully: {definition_id}")
 
-            # Parse BPMN XML to process graph
-            parser = BPMNParser()
-            process_graph = parser.parse(definition.bpmn_xml)
-            logger.info("BPMN XML parsed successfully")
+                # 2. Parse and Validate BPMN
+                try:
+                    parser = BPMNParser()
+                    process_graph = parser.parse(definition.bpmn_xml)
+                    logger.info("BPMN XML parsed successfully")
+                except Exception as e:
+                    logger.error(f"Failed to parse BPMN XML: {e}")
+                    return
 
-            # Find start event
-            start_event = next(
-                (
-                    node
-                    for node in process_graph["nodes"]
-                    if hasattr(node, "event_type") and node.event_type == "start"
-                ),
-                None,
-            )
-            if not start_event:
-                raise ValueError("No start event found in process definition")
-            logger.info(f"Found start event: {start_event.id}")
+                # Validate start event existence and type
+                start_event = next(
+                    (
+                        node
+                        for node in process_graph["nodes"]
+                        if hasattr(node, "event_type") and node.event_type == "start"
+                    ),
+                    None,
+                )
+                if not start_event:
+                    logger.error("No start event found in process definition")
+                    return
+                logger.info(f"Validated start event: {start_event.id}")
 
-            # Create instance manager and executor
+            # 3. Initialize Process Instance
             async with db.session() as session:
+                # Create instance manager with proper initialization
                 instance_manager = ProcessInstanceManager(session, None, state_manager)
                 executor = ProcessExecutor(
-                    state_manager=state_manager, instance_manager=instance_manager
+                    state_manager=state_manager,
+                    instance_manager=instance_manager
                 )
-                # Set executor on instance manager after creation to avoid circular reference
                 instance_manager.executor = executor
 
+                # 4. Create and Initialize Token
+                initial_token = await executor.create_initial_token(
+                    instance_id, 
+                    start_event.id
+                )
+                logger.info(f"Created initial token: {initial_token.id} at {start_event.id}")
+
+                # 5. Execute Process
                 logger.info(f"Starting process execution for instance {instance_id}")
                 await executor.execute_process(instance_id, process_graph)
-                logger.info(f"Process {instance_id} execution completed")
+                logger.info(f"Process {instance_id} execution completed successfully")
 
         finally:
             await state_manager.disconnect()
 
     except Exception as e:
         logger.error(f"Error handling process.started event: {e}", exc_info=True)
+        # Re-raise to ensure proper error handling at higher levels
+        raise
 
 
 @asynccontextmanager

@@ -95,12 +95,22 @@ async def test_lifespan_error_handling():
 
 @pytest.mark.asyncio
 async def test_handle_process_started():
-    """Test process.started event handler."""
+    """
+    Test process.started event handler following BPMN lifecycle.
+    
+    This test verifies:
+    1. Process definition loading
+    2. BPMN parsing and validation
+    3. Process instance initialization
+    4. Token creation and management
+    5. Process execution
+    """
+    # Setup test data and mocks
     mock_state_manager = AsyncMock()
     mock_db = AsyncMock()
     mock_session = AsyncMock()
     mock_executor = AsyncMock()
-    mock_definition = AsyncMock()
+    mock_definition = MagicMock()
     mock_parser = MagicMock()
 
     test_data = {
@@ -108,42 +118,61 @@ async def test_handle_process_started():
         "definition_id": "test-definition",
     }
 
-    # Create a regular mock for the definition (since it's a model instance)
-    mock_definition = MagicMock()
+    # Mock process definition
     mock_definition.bpmn_xml = "<xml>test</xml>"
+    mock_definition.id = test_data["definition_id"]
 
-    # Configure mock session with async result
+    # Configure database session
     mock_session = AsyncMock(spec=AsyncSession)
     execute_result = AsyncMock()
     execute_result.scalar_one_or_none = AsyncMock(return_value=mock_definition)
     mock_session.execute = AsyncMock(return_value=execute_result)
 
-    # Create session context manager
+    # Setup session context
     session_ctx = AsyncMock()
     session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
     session_ctx.__aexit__ = AsyncMock()
-
-    # Mock the session method to return the context manager
     mock_db.session = MagicMock(return_value=session_ctx)
     mock_db.is_connected = True
 
-    # Configure select statement
+    # Configure database query
     select_stmt = select(ProcessDefinitionModel).filter(
         ProcessDefinitionModel.id == test_data["definition_id"]
     )
     mock_select = AsyncMock(return_value=select_stmt)
 
-    # Configure parser mock with valid process graph
+    # Setup valid BPMN process graph
     process_graph = {
         "nodes": [
-            Event(id="Start_1", type="event", event_type=EventType.START, outgoing=["Flow_1"]),
-            Event(id="End_1", type="event", event_type=EventType.END, incoming=["Flow_1"])
+            Event(
+                id="Start_1",
+                type="event",
+                event_type=EventType.START,
+                outgoing=["Flow_1"]
+            ),
+            Event(
+                id="End_1",
+                type="event",
+                event_type=EventType.END,
+                incoming=["Flow_1"]
+            )
         ],
         "flows": [
-            {"id": "Flow_1", "source_ref": "Start_1", "target_ref": "End_1"}
+            {
+                "id": "Flow_1",
+                "source_ref": "Start_1",
+                "target_ref": "End_1"
+            }
         ]
     }
     mock_parser.parse.return_value = process_graph
+
+    # Mock initial token
+    mock_initial_token = MagicMock()
+    mock_initial_token.id = "token-1"
+    mock_initial_token.instance_id = test_data["instance_id"]
+    mock_initial_token.node_id = "Start_1"
+    mock_executor.create_initial_token.return_value = mock_initial_token
 
     with (
         patch("pythmata.main.Settings"),
@@ -156,30 +185,41 @@ async def test_handle_process_started():
         # Execute handler
         await handle_process_started(test_data)
 
-        # Verify state manager lifecycle
-        assert mock_state_manager.connect.called
-        assert mock_state_manager.disconnect.called
+        # 1. Verify state manager lifecycle
+        mock_state_manager.connect.assert_called_once()
+        mock_state_manager.disconnect.assert_called_once()
 
-        # Verify process definition retrieval
+        # 2. Verify process definition loading
         mock_session.execute.assert_called_once()
+        mock_parser.parse.assert_called_once_with(mock_definition.bpmn_xml)
 
-        # Verify process execution
-        assert mock_executor.create_initial_token.called
-        assert mock_executor.execute_process.called
-        mock_executor.create_initial_token.assert_called_with(
-            "test-instance", "Start_1"
+        # 3. Verify token creation
+        mock_executor.create_initial_token.assert_called_once_with(
+            test_data["instance_id"], 
+            "Start_1"
         )
 
-        # Verify process graph validation
-        mock_parser.parse.assert_called_once()
+        # 4. Verify process execution
         mock_executor.execute_process.assert_called_once_with(
-            "test-instance", process_graph
+            test_data["instance_id"], 
+            process_graph
         )
+
+        # 5. Verify execution order
+        assert mock_executor.create_initial_token.call_count == 1
+        assert mock_executor.execute_process.call_count == 1
 
 
 @pytest.mark.asyncio
 async def test_handle_process_started_error_cases():
-    """Test error handling in process.started event handler."""
+    """
+    Test error handling in process.started event handler.
+    
+    Tests the following error cases:
+    1. Process definition not found
+    2. Invalid BPMN XML
+    3. Missing start event
+    """
     mock_state_manager = AsyncMock()
     mock_db = AsyncMock()
     mock_session = AsyncMock()
@@ -190,18 +230,15 @@ async def test_handle_process_started_error_cases():
         "definition_id": "test-definition",
     }
 
-    # Configure mock session with async result
+    # Test Case 1: Process definition not found
     mock_session = AsyncMock(spec=AsyncSession)
     execute_result = AsyncMock()
     execute_result.scalar_one_or_none = AsyncMock(return_value=None)
     mock_session.execute = AsyncMock(return_value=execute_result)
 
-    # Create session context manager
     session_ctx = AsyncMock()
     session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
     session_ctx.__aexit__ = AsyncMock()
-
-    # Mock the session method to return the context manager
     mock_db.session = MagicMock(return_value=session_ctx)
     mock_db.is_connected = True
 
@@ -210,6 +247,7 @@ async def test_handle_process_started_error_cases():
     )
     mock_select = AsyncMock(return_value=select_stmt)
 
+    # Test Case 1: Process definition not found
     with (
         patch("pythmata.main.Settings"),
         patch("pythmata.main.StateManager", return_value=mock_state_manager),
@@ -218,17 +256,37 @@ async def test_handle_process_started_error_cases():
         patch("pythmata.main.select", return_value=mock_select),
     ):
         await handle_process_started(test_data)
-        # Should not raise exception but log error
-        assert mock_state_manager.disconnect.called
+        mock_state_manager.disconnect.assert_called_once()
+        mock_parser.parse.assert_not_called()
 
-    # Test case 2: Missing start event
-    mock_definition = AsyncMock()
+    # Test Case 2: Invalid BPMN XML
+    mock_state_manager = AsyncMock()  # Create new mock for each test case
+    mock_definition = MagicMock()
+    mock_definition.bpmn_xml = "<invalid>xml</invalid>"
+    mock_definition.id = test_data["definition_id"]
+    execute_result.scalar_one_or_none = AsyncMock(return_value=mock_definition)
+    mock_parser = MagicMock()  # Create new mock for each test case
+    mock_parser.parse.side_effect = Exception("Invalid BPMN XML")
+
+    with (
+        patch("pythmata.main.Settings"),
+        patch("pythmata.main.StateManager", return_value=mock_state_manager),
+        patch("pythmata.main.get_db", return_value=mock_db),
+        patch("pythmata.main.BPMNParser", return_value=mock_parser),
+        patch("pythmata.main.select", return_value=mock_select),
+    ):
+        await handle_process_started(test_data)
+        mock_state_manager.disconnect.assert_called_once()
+        mock_parser.parse.assert_called_once_with("<invalid>xml</invalid>")
+
+    # Test Case 3: Missing start event
+    mock_state_manager = AsyncMock()  # Create new mock for each test case
+    mock_definition = MagicMock()
     mock_definition.bpmn_xml = "<xml>test</xml>"
-    execute_result = AsyncMock()
-    execute_result.scalar_one_or_none.return_value = mock_definition
-    mock_session.execute.return_value = execute_result
-    # Configure parser mock for error case
-    mock_parser.parse.return_value = {"nodes": [], "flows": []}  # No start event in nodes
+    mock_definition.id = test_data["definition_id"]
+    execute_result.scalar_one_or_none = AsyncMock(return_value=mock_definition)
+    mock_parser = MagicMock()  # Create new mock for each test case
+    mock_parser.parse.return_value = {"nodes": [], "flows": []}  # No start event
 
     with (
         patch("pythmata.main.Settings"),
@@ -238,8 +296,8 @@ async def test_handle_process_started_error_cases():
         patch("pythmata.main.select", return_value=mock_select),
     ):
         await handle_process_started(test_data)
-        # Should not raise exception but log error
-        assert mock_state_manager.disconnect.called
+        mock_state_manager.disconnect.assert_called_once()
+        mock_parser.parse.assert_called_once_with("<xml>test</xml>")
 
 
 @pytest.mark.asyncio
