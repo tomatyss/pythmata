@@ -11,6 +11,8 @@ from pythmata.core.engine.transaction import Transaction
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, EventType
 from pythmata.models.process import (
+    ActivityLog,
+    ActivityType,
     ProcessDefinition,
     ProcessInstance,
     ProcessStatus,
@@ -97,6 +99,36 @@ class ProcessInstanceManager:
 
         return start_event.id
 
+    async def _create_activity_log(
+        self,
+        instance_id: UUID,
+        activity_type: ActivityType,
+        node_id: Optional[str] = None,
+        details: Optional[dict] = None,
+    ) -> ActivityLog:
+        """
+        Create and save an activity log entry.
+
+        Args:
+            instance_id: ID of the process instance
+            activity_type: Type of activity
+            node_id: Optional ID of the node where activity occurred
+            details: Optional additional details about the activity
+
+        Returns:
+            Created ActivityLog
+        """
+        activity = ActivityLog(
+            instance_id=instance_id,
+            activity_type=activity_type,
+            node_id=node_id,
+            details=details,
+            timestamp=datetime.now(UTC),
+        )
+        self.session.add(activity)
+        await self.session.commit()
+        return activity
+
     async def create_instance(
         self,
         process_definition_id: UUID,
@@ -153,6 +185,13 @@ class ProcessInstanceManager:
             start_event_id = self._find_start_event(definition.bpmn_xml)
 
         await self.executor.create_initial_token(str(instance.id), start_event_id)
+
+        # Log instance creation
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_CREATED,
+            details={"definition_id": str(process_definition_id)}
+        )
 
         return instance
 
@@ -249,6 +288,13 @@ class ProcessInstanceManager:
 
         instance.status = ProcessStatus.SUSPENDED
         await self.session.commit()
+
+        # Log suspension
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_SUSPENDED
+        )
+
         return instance
 
     async def resume_instance(self, instance_id: UUID) -> ProcessInstance:
@@ -275,6 +321,13 @@ class ProcessInstanceManager:
 
         instance.status = ProcessStatus.RUNNING
         await self.session.commit()
+
+        # Log resumption
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_RESUMED
+        )
+
         return instance
 
     async def terminate_instance(self, instance_id: UUID) -> ProcessInstance:
@@ -306,6 +359,14 @@ class ProcessInstanceManager:
         instance.status = ProcessStatus.COMPLETED
         instance.end_time = datetime.now(UTC)
         await self.session.commit()
+
+        # Log termination
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_COMPLETED,
+            details={"terminated": True}
+        )
+
         return instance
 
     async def start_transaction(
@@ -383,8 +444,15 @@ class ProcessInstanceManager:
             raise ProcessInstanceError(f"Instance {instance_id} not found")
 
         instance.status = ProcessStatus.ERROR
-        # TODO: Add error message storage
         await self.session.commit()
+
+        # Log error state
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_ERROR,
+            details={"error_message": error_message} if error_message else None
+        )
+
         return instance
 
     async def handle_error(
@@ -492,6 +560,12 @@ class ProcessInstanceManager:
         instance.end_time = datetime.now(UTC)
         await self.session.commit()
 
+        # Log completion
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_COMPLETED
+        )
+
         logger.info(
             f"[Completion] Instance {instance_str} completed successfully")
         return instance
@@ -533,5 +607,12 @@ class ProcessInstanceManager:
         # Update instance status
         instance.status = ProcessStatus.RUNNING
         instance.start_time = datetime.now(UTC)
+
+        # Log instance start
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_STARTED,
+            start_event_id
+        )
 
         return instance
