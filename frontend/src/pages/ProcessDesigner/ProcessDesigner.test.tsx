@@ -16,7 +16,10 @@ vi.mock('@/services/api', () => ({
 
 // Mock react-router-dom
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>(
+      'react-router-dom'
+    );
   return {
     ...actual,
     useNavigate: vi.fn(),
@@ -29,7 +32,7 @@ vi.mock('bpmn-js/lib/Modeler', () => ({
     importXML: vi.fn().mockResolvedValue({}),
     saveXML: vi.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
     destroy: vi.fn(),
-  }))
+  })),
 }));
 
 describe('ProcessDesigner', () => {

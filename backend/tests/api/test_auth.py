@@ -1,4 +1,5 @@
 """Authentication API tests."""
+
 import pytest
 from fastapi import status
 from httpx import AsyncClient
@@ -34,9 +35,9 @@ async def test_role(session):
     return role
 
 
-async def test_register_user(client: AsyncClient):
+async def test_register_user(async_client: AsyncClient):
     """Test user registration."""
-    response = await client.post(
+    response = await async_client.post(
         "/auth/register",
         json={
             "email": "newuser@example.com",
@@ -51,9 +52,9 @@ async def test_register_user(client: AsyncClient):
     assert "hashed_password" not in data
 
 
-async def test_register_duplicate_email(client: AsyncClient, test_user: User):
+async def test_register_duplicate_email(async_client: AsyncClient, test_user: User):
     """Test registration with existing email."""
-    response = await client.post(
+    response = await async_client.post(
         "/auth/register",
         json={
             "email": test_user.email,
@@ -64,9 +65,9 @@ async def test_register_duplicate_email(client: AsyncClient, test_user: User):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-async def test_login_success(client: AsyncClient, test_user: User):
+async def test_login_success(async_client: AsyncClient, test_user: User):
     """Test successful login."""
-    response = await client.post(
+    response = await async_client.post(
         "/auth/login",
         data={
             "username": test_user.email,
@@ -79,9 +80,9 @@ async def test_login_success(client: AsyncClient, test_user: User):
     assert data["token_type"] == "bearer"
 
 
-async def test_login_invalid_credentials(client: AsyncClient, test_user: User):
+async def test_login_invalid_credentials(async_client: AsyncClient, test_user: User):
     """Test login with invalid credentials."""
-    response = await client.post(
+    response = await async_client.post(
         "/auth/login",
         data={
             "username": test_user.email,
@@ -92,11 +93,11 @@ async def test_login_invalid_credentials(client: AsyncClient, test_user: User):
 
 
 async def test_get_current_user(
-    client: AsyncClient, test_user: User, test_role: Role
+    async_client: AsyncClient, session, test_user: User, test_role: Role
 ):
     """Test getting current user info."""
     # First login to get token
-    login_response = await client.post(
+    login_response = await async_client.post(
         "/auth/login",
         data={
             "username": test_user.email,
@@ -107,10 +108,10 @@ async def test_get_current_user(
 
     # Add role to user
     test_user.roles.append(test_role)
-    await client.session.commit()
+    await session.commit()
 
     # Get user info with token
-    response = await client.get(
+    response = await async_client.get(
         "/auth/me",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -122,16 +123,16 @@ async def test_get_current_user(
     assert data["roles"][0]["name"] == test_role.name
 
 
-async def test_get_current_user_no_token(client: AsyncClient):
+async def test_get_current_user_no_token(async_client: AsyncClient):
     """Test getting current user without token."""
-    response = await client.get("/auth/me")
+    response = await async_client.get("/auth/me")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-async def test_logout(client: AsyncClient, test_user: User):
+async def test_logout(async_client: AsyncClient, test_user: User):
     """Test user logout."""
     # First login to get token
-    login_response = await client.post(
+    login_response = await async_client.post(
         "/auth/login",
         data={
             "username": test_user.email,
@@ -141,7 +142,7 @@ async def test_logout(client: AsyncClient, test_user: User):
     token = login_response.json()["access_token"]
 
     # Logout with token
-    response = await client.post(
+    response = await async_client.post(
         "/auth/logout",
         headers={"Authorization": f"Bearer {token}"},
     )

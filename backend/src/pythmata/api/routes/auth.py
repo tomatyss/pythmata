@@ -1,4 +1,5 @@
 """Authentication routes."""
+
 from datetime import timedelta
 from typing import Annotated
 
@@ -27,9 +28,7 @@ async def login(
     session: AsyncSession = Depends(get_session),
 ) -> Token:
     """Login user and return access token."""
-    user = await authenticate_user(
-        session, form_data.username, form_data.password
-    )
+    user = await authenticate_user(session, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -87,7 +86,7 @@ async def read_users_me(
 @router.post("/logout")
 async def logout() -> dict:
     """Logout user.
-    
+
     Note: Since we're using JWTs, we don't actually need to do anything
     server-side. The client should remove the token from storage.
     """

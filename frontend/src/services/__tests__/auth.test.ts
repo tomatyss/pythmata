@@ -4,21 +4,21 @@ const mockPost = vi.hoisted(() => vi.fn());
 const mockGet = vi.hoisted(() => vi.fn());
 
 vi.mock('axios', async () => {
-    const actual = await vi.importActual('axios');
-    return {
-        ...actual,
-        default: {
-            create: vi.fn().mockReturnValue({
-                defaults: {},
-                interceptors: {
-                    request: { use: vi.fn(), eject: vi.fn() },
-                    response: { use: vi.fn(), eject: vi.fn() },
-                },
-                get: mockGet,
-                post: mockPost,
-            }),
+  const actual = await vi.importActual('axios');
+  return {
+    ...actual,
+    default: {
+      create: vi.fn().mockReturnValue({
+        defaults: {},
+        interceptors: {
+          request: { use: vi.fn(), eject: vi.fn() },
+          response: { use: vi.fn(), eject: vi.fn() },
         },
-    };
+        get: mockGet,
+        post: mockPost,
+      }),
+    },
+  };
 });
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -28,127 +28,127 @@ import { AUTH_TOKEN_KEY, ERROR_MESSAGES } from '@/constants';
 import type { User } from '@/types/auth';
 
 describe('AuthService', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        localStorage.clear();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  describe('login', () => {
+    const credentials = {
+      username: 'test@example.com',
+      password: 'password123',
+    };
+
+    it('should store token on successful login', async () => {
+      const mockResponse = {
+        data: { access_token: 'test-token', token_type: 'bearer' },
+      };
+      mockPost.mockResolvedValueOnce(mockResponse);
+
+      await authService.login(credentials);
+
+      expect(mockPost).toHaveBeenCalledWith(
+        '/auth/login',
+        expect.any(FormData)
+      );
+      expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('test-token');
     });
 
-    describe('login', () => {
-        const credentials = {
-            username: 'test@example.com',
-            password: 'password123',
-        };
+    it('should throw error on invalid credentials', async () => {
+      const error = new AxiosError();
+      error.response = { status: 401 } as any;
+      mockPost.mockRejectedValueOnce(error);
 
-        it('should store token on successful login', async () => {
-            const mockResponse = {
-                data: { access_token: 'test-token', token_type: 'bearer' },
-            };
-            mockPost.mockResolvedValueOnce(mockResponse);
+      await expect(authService.login(credentials)).rejects.toThrow(
+        ERROR_MESSAGES.INVALID_CREDENTIALS
+      );
+    });
+  });
 
-            await authService.login(credentials);
+  describe('register', () => {
+    const registerData = {
+      email: 'test@example.com',
+      password: 'password123',
+      full_name: 'Test User',
+    };
 
-            expect(mockPost).toHaveBeenCalledWith(
-                '/auth/login',
-                expect.any(FormData)
-            );
-            expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('test-token');
-        });
+    it('should return user data on successful registration', async () => {
+      const mockUser: User = {
+        id: '1',
+        email: registerData.email,
+        full_name: registerData.full_name,
+        is_active: true,
+        roles: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      mockPost.mockResolvedValueOnce({ data: mockUser });
 
-        it('should throw error on invalid credentials', async () => {
-            const error = new AxiosError();
-            error.response = { status: 401 } as any;
-            mockPost.mockRejectedValueOnce(error);
+      const result = await authService.register(registerData);
 
-            await expect(authService.login(credentials)).rejects.toThrow(
-                ERROR_MESSAGES.INVALID_CREDENTIALS
-            );
-        });
+      expect(mockPost).toHaveBeenCalledWith('/auth/register', registerData);
+      expect(result).toEqual(mockUser);
     });
 
-    describe('register', () => {
-        const registerData = {
-            email: 'test@example.com',
-            password: 'password123',
-            full_name: 'Test User',
-        };
+    it('should throw error on duplicate email', async () => {
+      const error = new AxiosError();
+      error.response = { status: 400 } as any;
+      mockPost.mockRejectedValueOnce(error);
 
-        it('should return user data on successful registration', async () => {
-            const mockUser: User = {
-                id: '1',
-                email: registerData.email,
-                full_name: registerData.full_name,
-                is_active: true,
-                roles: [],
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            };
-            mockPost.mockResolvedValueOnce({ data: mockUser });
+      await expect(authService.register(registerData)).rejects.toThrow(
+        ERROR_MESSAGES.EMAIL_EXISTS
+      );
+    });
+  });
 
-            const result = await authService.register(registerData);
+  describe('getCurrentUser', () => {
+    it('should return current user data', async () => {
+      const mockUser: User = {
+        id: '1',
+        email: 'test@example.com',
+        full_name: 'Test User',
+        is_active: true,
+        roles: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      mockGet.mockResolvedValueOnce({ data: mockUser });
 
-            expect(mockPost).toHaveBeenCalledWith('/auth/register', registerData);
-            expect(result).toEqual(mockUser);
-        });
+      const result = await authService.getCurrentUser();
 
-        it('should throw error on duplicate email', async () => {
-            const error = new AxiosError();
-            error.response = { status: 400 } as any;
-            mockPost.mockRejectedValueOnce(error);
-
-            await expect(authService.register(registerData)).rejects.toThrow(
-                ERROR_MESSAGES.EMAIL_EXISTS
-            );
-        });
+      expect(mockGet).toHaveBeenCalledWith('/auth/me');
+      expect(result).toEqual(mockUser);
     });
 
-    describe('getCurrentUser', () => {
-        it('should return current user data', async () => {
-            const mockUser: User = {
-                id: '1',
-                email: 'test@example.com',
-                full_name: 'Test User',
-                is_active: true,
-                roles: [],
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            };
-            mockGet.mockResolvedValueOnce({ data: mockUser });
+    it('should throw error on unauthorized access', async () => {
+      const error = new AxiosError();
+      error.response = { status: 401 } as any;
+      mockGet.mockRejectedValueOnce(error);
 
-            const result = await authService.getCurrentUser();
+      await expect(authService.getCurrentUser()).rejects.toThrow(
+        ERROR_MESSAGES.UNAUTHORIZED
+      );
+    });
+  });
 
-            expect(mockGet).toHaveBeenCalledWith('/auth/me');
-            expect(result).toEqual(mockUser);
-        });
+  describe('logout', () => {
+    it('should clear token on logout', async () => {
+      localStorage.setItem(AUTH_TOKEN_KEY, 'test-token');
+      mockPost.mockResolvedValueOnce({});
 
-        it('should throw error on unauthorized access', async () => {
-            const error = new AxiosError();
-            error.response = { status: 401 } as any;
-            mockGet.mockRejectedValueOnce(error);
+      await authService.logout();
 
-            await expect(authService.getCurrentUser()).rejects.toThrow(
-                ERROR_MESSAGES.UNAUTHORIZED
-            );
-        });
+      expect(mockPost).toHaveBeenCalledWith('/auth/logout');
+      expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull();
     });
 
-    describe('logout', () => {
-        it('should clear token on logout', async () => {
-            localStorage.setItem(AUTH_TOKEN_KEY, 'test-token');
-            mockPost.mockResolvedValueOnce({});
+    it('should clear token even if request fails', async () => {
+      localStorage.setItem(AUTH_TOKEN_KEY, 'test-token');
+      mockPost.mockRejectedValueOnce(new Error('Request failed'));
 
-            await authService.logout();
+      await expect(authService.logout()).rejects.toThrow('Request failed');
 
-            expect(mockPost).toHaveBeenCalledWith('/auth/logout');
-            expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull();
-        });
-
-        it('should clear token even if request fails', async () => {
-            localStorage.setItem(AUTH_TOKEN_KEY, 'test-token');
-            mockPost.mockRejectedValueOnce(new Error('Request failed'));
-
-            await expect(authService.logout()).rejects.toThrow('Request failed');
-
-            expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull();
-        });
+      expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull();
     });
+  });
 });

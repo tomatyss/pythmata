@@ -1,4 +1,5 @@
 """Authentication and authorization utilities."""
+
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
@@ -30,9 +31,7 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(
-    data: dict, expires_delta: Optional[timedelta] = None
-) -> str:
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a new JWT access token."""
     settings = get_settings()
     to_encode = data.copy()
@@ -53,13 +52,9 @@ def create_access_token(
     return encoded_jwt
 
 
-async def get_user_by_email(
-    session: AsyncSession, email: str
-) -> Optional[User]:
+async def get_user_by_email(session: AsyncSession, email: str) -> Optional[User]:
     """Get a user by email."""
-    result = await session.execute(
-        select(User).where(User.email == email)
-    )
+    result = await session.execute(select(User).where(User.email == email))
     return result.scalar_one_or_none()
 
 
@@ -99,9 +94,7 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    result = await session.execute(
-        select(User).where(User.id == user_id)
-    )
+    result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if user is None:

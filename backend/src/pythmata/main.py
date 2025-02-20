@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
@@ -168,4 +168,6 @@ async def health_check():
 
 # Import and include routers
 app.include_router(auth_router)  # Auth routes don't need prefix
-app.include_router(process_router, prefix="/api", dependencies=[Depends(get_current_active_user)])
+app.include_router(
+    process_router, prefix="/api", dependencies=[Depends(get_current_active_user)]
+)

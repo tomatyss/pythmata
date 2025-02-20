@@ -95,7 +95,9 @@ async def list_instances(
             base_query = base_query.where(and_(*conditions))
 
         # Get total count using subquery as recommended by SQLAlchemy
-        total = await session.scalar(select(func.count()).select_from(base_query.subquery()))
+        total = await session.scalar(
+            select(func.count()).select_from(base_query.subquery())
+        )
 
         # Build data query with inner join to get definition name
         data_query = select(
@@ -332,15 +334,15 @@ async def get_instance_tokens(
         instance = await session.get(ProcessInstanceModel, instance_id)
         if not instance:
             raise HTTPException(status_code=404, detail="Process instance not found")
-        
+
         # Get process definition to get BPMN XML
         definition = await session.get(ProcessDefinitionModel, instance.definition_id)
         if not definition:
             raise HTTPException(status_code=404, detail="Process definition not found")
-        
+
         # Get tokens from Redis
         tokens = await state_manager.get_token_positions(str(instance_id))
-        
+
         # If instance is running but has no tokens, try to recreate initial token
         if instance.status == ProcessStatus.RUNNING and not tokens:
             # Parse BPMN to find start event
@@ -359,15 +361,15 @@ async def get_instance_tokens(
                 await state_manager.add_token(
                     instance_id=str(instance_id),
                     node_id=start_event.id,
-                    data=token.to_dict()
+                    data=token.to_dict(),
                 )
                 await state_manager.update_token_state(
                     instance_id=str(instance_id),
                     node_id=start_event.id,
-                    state=TokenState.ACTIVE
+                    state=TokenState.ACTIVE,
                 )
                 tokens = await state_manager.get_token_positions(str(instance_id))
-        
+
         return {
             "data": [
                 TokenResponse(

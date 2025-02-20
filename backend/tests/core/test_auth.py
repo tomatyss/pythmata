@@ -1,15 +1,18 @@
 """Authentication core tests."""
-import pytest
+
 from datetime import datetime, timedelta
+
+import pytest
 from jose import jwt
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from pythmata.core.auth import (
+    authenticate_user,
     create_access_token,
     get_password_hash,
-    verify_password,
     get_user_by_email,
-    authenticate_user,
+    verify_password,
 )
 from pythmata.core.config import get_settings
 from pythmata.models.user import Role, User

@@ -193,7 +193,7 @@ class StateManager:
         key = f"process:{instance_id}:tokens"
         tokens = await self.redis.lrange(key, 0, -1)
         parsed_tokens = [json.loads(token) for token in tokens]
-        
+
         return [json.loads(token) for token in tokens]
 
     async def add_token(

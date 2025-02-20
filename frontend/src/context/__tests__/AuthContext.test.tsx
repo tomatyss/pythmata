@@ -8,130 +8,132 @@ import type { AuthContextType } from '../auth-utils';
 
 // Mock react-router-dom
 vi.mock('react-router-dom', () => ({
-    useNavigate: vi.fn(),
+  useNavigate: vi.fn(),
 }));
 
 // Mock useAuth hook with proper typing
 const defaultMockAuth: AuthContextType = {
-    user: null,
-    loading: false,
-    error: null,
-    isAuthenticated: false,
-    login: vi.fn(),
-    register: vi.fn(),
-    logout: vi.fn(),
+  user: null,
+  loading: false,
+  error: null,
+  isAuthenticated: false,
+  login: vi.fn(),
+  register: vi.fn(),
+  logout: vi.fn(),
 };
 
 const mockUseAuth = vi.fn(() => defaultMockAuth);
 
 vi.mock('@/hooks/useAuth', () => ({
-    useAuth: () => mockUseAuth(),
+  useAuth: () => mockUseAuth(),
 }));
 
 describe('AuthContext', () => {
-    const mockNavigate = vi.fn();
+  const mockNavigate = vi.fn();
 
-    beforeEach(() => {
-        vi.clearAllMocks();
-        (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
-        mockUseAuth.mockReturnValue(defaultMockAuth);
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    mockUseAuth.mockReturnValue(defaultMockAuth);
+  });
 
-    const TestComponent = () => {
-        const auth = useAuthContext();
-        return (
-            <div>
-                <div data-testid="loading">{auth.loading.toString()}</div>
-                <div data-testid="authenticated">{auth.isAuthenticated.toString()}</div>
-                <div data-testid="user">{auth.user?.email || 'no user'}</div>
-                <div data-testid="error">{auth.error || 'no error'}</div>
-            </div>
-        );
+  const TestComponent = () => {
+    const auth = useAuthContext();
+    return (
+      <div>
+        <div data-testid="loading">{auth.loading.toString()}</div>
+        <div data-testid="authenticated">{auth.isAuthenticated.toString()}</div>
+        <div data-testid="user">{auth.user?.email || 'no user'}</div>
+        <div data-testid="error">{auth.error || 'no error'}</div>
+      </div>
+    );
+  };
+
+  it('should provide auth context to children', () => {
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    expect(screen.getByTestId('loading')).toHaveTextContent('false');
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+    expect(screen.getByTestId('user')).toHaveTextContent('no user');
+    expect(screen.getByTestId('error')).toHaveTextContent('no error');
+  });
+
+  it('should throw error when used outside provider', () => {
+    // Suppress console.error for this test
+    const consoleSpy = vi.spyOn(console, 'error');
+    consoleSpy.mockImplementation(() => {});
+
+    expect(() => render(<TestComponent />)).toThrow(
+      'useAuthContext must be used within an AuthProvider'
+    );
+
+    consoleSpy.mockRestore();
+  });
+
+  it('should update context when user logs in', async () => {
+    const mockUser: User = {
+      id: '1',
+      email: 'test@example.com',
+      full_name: 'Test User',
+      is_active: true,
+      roles: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
-    it('should provide auth context to children', () => {
-        render(
-            <AuthProvider>
-                <TestComponent />
-            </AuthProvider>
-        );
+    const mockAuthWithUser: AuthContextType = {
+      ...defaultMockAuth,
+      user: mockUser,
+      isAuthenticated: true,
+    };
 
-        expect(screen.getByTestId('loading')).toHaveTextContent('false');
-        expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
-        expect(screen.getByTestId('user')).toHaveTextContent('no user');
-        expect(screen.getByTestId('error')).toHaveTextContent('no error');
+    mockUseAuth.mockReturnValue(mockAuthWithUser);
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
+      expect(screen.getByTestId('user')).toHaveTextContent(mockUser.email);
+    });
+  });
+
+  it('should show loading state', () => {
+    mockUseAuth.mockReturnValue({
+      ...defaultMockAuth,
+      loading: true,
     });
 
-    it('should throw error when used outside provider', () => {
-        // Suppress console.error for this test
-        const consoleSpy = vi.spyOn(console, 'error');
-        consoleSpy.mockImplementation(() => {});
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
 
-        expect(() => render(<TestComponent />)).toThrow(
-            'useAuthContext must be used within an AuthProvider'
-        );
+    expect(screen.getByTestId('loading')).toHaveTextContent('true');
+  });
 
-        consoleSpy.mockRestore();
+  it('should show error state', () => {
+    mockUseAuth.mockReturnValue({
+      ...defaultMockAuth,
+      error: 'Authentication failed',
     });
 
-    it('should update context when user logs in', async () => {
-        const mockUser: User = {
-            id: '1',
-            email: 'test@example.com',
-            full_name: 'Test User',
-            is_active: true,
-            roles: [],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        };
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
 
-        const mockAuthWithUser: AuthContextType = {
-            ...defaultMockAuth,
-            user: mockUser,
-            isAuthenticated: true,
-        };
-
-        mockUseAuth.mockReturnValue(mockAuthWithUser);
-
-        render(
-            <AuthProvider>
-                <TestComponent />
-            </AuthProvider>
-        );
-
-        await waitFor(() => {
-            expect(screen.getByTestId('authenticated')).toHaveTextContent('true');
-            expect(screen.getByTestId('user')).toHaveTextContent(mockUser.email);
-        });
-    });
-
-    it('should show loading state', () => {
-        mockUseAuth.mockReturnValue({
-            ...defaultMockAuth,
-            loading: true,
-        });
-
-        render(
-            <AuthProvider>
-                <TestComponent />
-            </AuthProvider>
-        );
-
-        expect(screen.getByTestId('loading')).toHaveTextContent('true');
-    });
-
-    it('should show error state', () => {
-        mockUseAuth.mockReturnValue({
-            ...defaultMockAuth,
-            error: 'Authentication failed',
-        });
-
-        render(
-            <AuthProvider>
-                <TestComponent />
-            </AuthProvider>
-        );
-
-        expect(screen.getByTestId('error')).toHaveTextContent('Authentication failed');
-    });
+    expect(screen.getByTestId('error')).toHaveTextContent(
+      'Authentication failed'
+    );
+  });
 });
