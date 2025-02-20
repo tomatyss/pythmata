@@ -20,4 +20,3 @@ class Event(ABC):
         Returns:
             Updated token with execution results
         """
-        pass

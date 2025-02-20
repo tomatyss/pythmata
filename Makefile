@@ -67,6 +67,8 @@ lint-fix:
 	@echo "Fixing backend linting issues..."
 	cd backend && poetry run black .
 	cd backend && poetry run isort .
+	@echo "Removing unused imports in backend..."
+	cd backend && poetry run autoflake --in-place --remove-all-unused-imports --recursive src/
 
 # Format code
 format:

@@ -19,7 +19,6 @@ class Gateway(ABC):
     @abstractmethod
     async def select_path(self, token: Token, flows: Dict[str, Dict]) -> str:
         """Select outgoing path based on gateway type and conditions."""
-        pass
 
 
 class ExclusiveGateway(Gateway):

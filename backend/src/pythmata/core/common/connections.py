@@ -65,8 +65,6 @@ def ensure_connected(func: Callable[..., T]) -> Callable[..., T]:
 class ConnectionError(Exception):
     """Exception raised for connection-related errors."""
 
-    pass
-
 
 class ConnectionManager(ABC):
     """Base class for managing service connections.
@@ -136,7 +134,6 @@ class ConnectionManager(ABC):
         Raises:
             Exception: If connection fails
         """
-        pass
 
     @abstractmethod
     async def _do_disconnect(self) -> None:
@@ -148,7 +145,6 @@ class ConnectionManager(ABC):
         Raises:
             Exception: If disconnection fails
         """
-        pass
 
     async def __aenter__(self) -> "ConnectionManager":
         """Async context manager entry.

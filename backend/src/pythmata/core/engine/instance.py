@@ -16,6 +16,9 @@ from pythmata.models.process import (
     ProcessStatus,
     Variable,
 )
+from pythmata.utils.logger import get_logger
+logger = get_logger(__name__)
+
 
 if TYPE_CHECKING:
     from pythmata.core.engine.executor import ProcessExecutor
@@ -24,31 +27,21 @@ if TYPE_CHECKING:
 class ProcessInstanceError(Exception):
     """Base class for process instance errors."""
 
-    pass
-
 
 class TransactionError(ProcessInstanceError):
     """Raised when transaction operations fail."""
-
-    pass
 
 
 class InvalidProcessDefinitionError(ProcessInstanceError):
     """Raised when process definition is invalid."""
 
-    pass
-
 
 class InvalidVariableError(ProcessInstanceError):
     """Raised when variable data is invalid."""
 
-    pass
-
 
 class InvalidStateTransitionError(ProcessInstanceError):
     """Raised when attempting invalid state transition."""
-
-    pass
 
 
 class ProcessInstanceManager:
@@ -99,7 +92,8 @@ class ProcessInstanceManager:
         )
 
         if not start_event:
-            raise InvalidProcessDefinitionError("No start event found in BPMN XML")
+            raise InvalidProcessDefinitionError(
+                "No start event found in BPMN XML")
 
         return start_event.id
 
@@ -198,13 +192,17 @@ class ProcessInstanceManager:
 
             # Validate value type matches declared type
             if var_type == "string" and not isinstance(var_value, str):
-                raise InvalidVariableError(f"Value for {name} must be a string")
+                raise InvalidVariableError(
+                    f"Value for {name} must be a string")
             elif var_type == "integer" and not isinstance(var_value, int):
-                raise InvalidVariableError(f"Value for {name} must be an integer")
+                raise InvalidVariableError(
+                    f"Value for {name} must be an integer")
             elif var_type == "boolean" and not isinstance(var_value, bool):
-                raise InvalidVariableError(f"Value for {name} must be a boolean")
+                raise InvalidVariableError(
+                    f"Value for {name} must be a boolean")
             elif var_type == "float" and not isinstance(var_value, (int, float)):
-                raise InvalidVariableError(f"Value for {name} must be a number")
+                raise InvalidVariableError(
+                    f"Value for {name} must be a number")
             elif var_type == "json" and not isinstance(var_value, (dict, list)):
                 raise InvalidVariableError(
                     f"Value for {name} must be a JSON object or array"
@@ -348,7 +346,8 @@ class ProcessInstanceManager:
         """
         instance_str = str(instance_id)
         if instance_str not in self._active_transactions:
-            raise TransactionError(f"Instance {instance_id} has no active transaction")
+            raise TransactionError(
+                f"Instance {instance_id} has no active transaction")
 
         transaction = self._active_transactions[instance_str]
         transaction.complete()
@@ -388,6 +387,46 @@ class ProcessInstanceManager:
         await self.session.commit()
         return instance
 
+    async def handle_error(
+        self, instance_id: str, error: Exception, node_id: Optional[str] = None
+    ) -> None:
+        """
+        Handle process instance errors by setting error state and cleaning up.
+
+        Args:
+            instance_id: ID of the instance where error occurred
+            error: The exception that was raised
+            node_id: Optional ID of the node where error occurred
+        """
+        from pythmata.utils.logger import get_logger
+        logger = get_logger(__name__)
+
+        logger.error(
+            f"Error in process instance {instance_id} at node {node_id}: {str(error)}"
+        )
+
+        try:
+            # Set instance to error state
+            await self.set_error_state(UUID(instance_id), str(error))
+
+            # Clean up any stale Redis state
+            keys = await self.state_manager.redis.keys(f"process:{instance_id}:*")
+            logger.info(f"[ErrorCleanup] Found Redis keys to clean: {keys}")
+
+            # Remove any stale locks
+            lock_key = f"lock:process:{instance_id}"
+            if await self.state_manager.redis.exists(lock_key):
+                logger.info(f"[ErrorCleanup] Removing stale lock: {lock_key}")
+                await self.state_manager.redis.delete(lock_key)
+
+            # Log final state for debugging
+            tokens = await self.state_manager.get_token_positions(instance_id)
+            logger.info(f"[ErrorState] Final token positions: {tokens}")
+
+        except Exception as e:
+            logger.error(f"Error during error handling: {str(e)}")
+            # Don't raise here - we don't want to mask the original error
+
     async def get_instance_variables(
         self, instance_id: UUID, scope_id: Optional[str] = None
     ) -> Dict:
@@ -409,6 +448,53 @@ class ProcessInstanceManager:
         variables = result.scalars().all()
 
         return {var.name: var.value_data for var in variables}
+
+    async def complete_instance(self, instance_id: UUID) -> ProcessInstance:
+        """
+        Complete a process instance.
+
+        Args:
+            instance_id: ID of the instance to complete
+
+        Returns:
+            Updated ProcessInstance
+        """
+
+        instance = await self.session.get(ProcessInstance, instance_id)
+        if not instance:
+            raise ProcessInstanceError(f"Instance {instance_id} not found")
+
+        # Clean up Redis state
+        instance_str = str(instance_id)
+        logger.info(
+            f"[Completion] Cleaning up Redis state for instance {instance_str}")
+
+        # Remove all tokens
+        tokens = await self.state_manager.get_token_positions(instance_str)
+        for token in tokens:
+            logger.debug(f"[Completion] Removing token: {token}")
+            await self.state_manager.remove_token(instance_str, token["node_id"])
+
+        # Remove any locks
+        lock_key = f"lock:process:{instance_str}"
+        if await self.state_manager.redis.exists(lock_key):
+            logger.debug(f"[Completion] Removing lock: {lock_key}")
+            await self.state_manager.redis.delete(lock_key)
+
+        # Remove all Redis keys for this instance
+        keys = await self.state_manager.redis.keys(f"process:{instance_str}:*")
+        if keys:
+            logger.debug(f"[Completion] Removing Redis keys: {keys}")
+            await self.state_manager.redis.delete(*keys)
+
+        # Update instance status
+        instance.status = ProcessStatus.COMPLETED
+        instance.end_time = datetime.now(UTC)
+        await self.session.commit()
+
+        logger.info(
+            f"[Completion] Instance {instance_str} completed successfully")
+        return instance
 
     async def start_instance(
         self,

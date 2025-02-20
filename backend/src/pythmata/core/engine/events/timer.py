@@ -1,5 +1,4 @@
 import asyncio
-import json
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
@@ -13,8 +12,6 @@ __all__ = ["TimerEvent", "TimerBoundaryEvent", "TimerCancelled"]
 
 class TimerCancelled(Exception):
     """Raised when a timer is cancelled."""
-
-    pass
 
 
 class TimerEvent(Event):

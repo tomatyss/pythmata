@@ -13,8 +13,9 @@ class GatewayHandler:
     Handles gateway logic including exclusive, parallel, and inclusive gateways.
     """
 
-    def __init__(self, state_manager: StateManager):
+    def __init__(self, state_manager: StateManager, token_manager=None):
         self.state_manager = state_manager
+        self.token_manager = token_manager
         self.process_graph = None  # Will be set during handle_gateway
 
     async def handle_gateway(
@@ -58,8 +59,18 @@ class GatewayHandler:
 
         # Find sequence flow with true condition
         for flow in process_graph["flows"]:
-            if flow.source_ref == gateway.id:
-                if not flow.condition_expression:
+            source_ref = (
+                flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
+            )
+            flow_id = flow["id"] if isinstance(flow, dict) else flow.id
+            condition_expr = (
+                flow.get("condition_expression")
+                if isinstance(flow, dict)
+                else getattr(flow, "condition_expression", None)
+            )
+
+            if source_ref == gateway.id:
+                if not condition_expr:
                     # Store default flow for later if no conditions are true
                     default_flow = flow
                     continue
@@ -67,24 +78,29 @@ class GatewayHandler:
                 try:
                     # Evaluate condition in restricted environment
                     condition_result = eval(
-                        flow.condition_expression,
+                        condition_expr,
                         {"__builtins__": {}},  # No built-ins
                         context,  # Our safe context
                     )
 
                     if condition_result:
-                        await self._move_token(token, flow.id)
+                        await self._move_token(token, flow_id)
                         return
 
                 except Exception as e:
                     logger.error(
-                        f"Error evaluating condition for flow {flow.id}: {str(e)}"
+                        f"Error evaluating condition for flow {flow_id}: {str(e)}"
                     )
                     raise
 
         # If no conditions were true, take default flow if it exists
         if default_flow:
-            await self._move_token(token, default_flow.id)
+            flow_id = (
+                default_flow["id"]
+                if isinstance(default_flow, dict)
+                else default_flow.id
+            )
+            await self._move_token(token, flow_id)
             return
 
         logger.warning(f"No valid path found at gateway {gateway.id}")
@@ -173,31 +189,46 @@ class GatewayHandler:
         default_flow = None
 
         for flow in process_graph["flows"]:
-            if flow.source_ref == gateway.id:
-                if not flow.condition_expression:
+            source_ref = (
+                flow["source_ref"] if isinstance(flow, dict) else flow.source_ref
+            )
+            flow_id = flow["id"] if isinstance(flow, dict) else flow.id
+            condition_expr = (
+                flow.get("condition_expression")
+                if isinstance(flow, dict)
+                else getattr(flow, "condition_expression", None)
+            )
+
+            if source_ref == gateway.id:
+                if not condition_expr:
                     default_flow = flow
                     continue
 
                 try:
                     # Evaluate condition in restricted environment
                     condition_result = eval(
-                        flow.condition_expression,
+                        condition_expr,
                         {"__builtins__": {}},  # No built-ins
                         context,  # Our safe context
                     )
 
                     if condition_result:
-                        active_paths.append(flow.id)
+                        active_paths.append(flow_id)
 
                 except Exception as e:
                     logger.error(
-                        f"Error evaluating condition for flow {flow.id}: {str(e)}"
+                        f"Error evaluating condition for flow {flow_id}: {str(e)}"
                     )
                     raise
 
         # If no conditions were true, take default flow if it exists
         if not active_paths and default_flow:
-            active_paths.append(default_flow.id)
+            flow_id = (
+                default_flow["id"]
+                if isinstance(default_flow, dict)
+                else default_flow.id
+            )
+            active_paths.append(flow_id)
 
         if not active_paths:
             logger.warning(f"No valid paths found at gateway {gateway.id}")
@@ -231,44 +262,30 @@ class GatewayHandler:
         """Move token using sequence flow."""
         # Find flow in process graph
         flow = next(
-            (flow for flow in self.process_graph["flows"] if flow.id == flow_id), None
+            (
+                flow
+                for flow in self.process_graph["flows"]
+                if (flow["id"] if isinstance(flow, dict) else flow.id) == flow_id
+            ),
+            None,
         )
         if not flow:
             logger.error(f"Flow {flow_id} not found in process graph")
             return
 
-        # Create new token at target node
-        new_token = token.copy(node_id=flow.target_ref)
-        await self.state_manager.add_token(
-            instance_id=new_token.instance_id,
-            node_id=new_token.node_id,
-            data=new_token.to_dict(),
-        )
-
-        # Remove old token
-        await self.state_manager.remove_token(
-            instance_id=token.instance_id, node_id=token.node_id
-        )
-        await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
+        # Use token manager to move token
+        if self.token_manager:
+            target_ref = (
+                flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
+            )
+            logger.info(f"Moving token {token.id} to {target_ref} via gateway")
+            await self.token_manager.move_token(token, target_ref)
+        else:
+            logger.error("TokenManager not available for gateway token movement")
 
     async def _split_token(self, token: Token, target_node_ids: List[str]) -> None:
         """Split token into multiple tokens."""
-        # Remove original token
-        await self.state_manager.remove_token(
-            instance_id=token.instance_id, node_id=token.node_id
-        )
-        await self.state_manager.redis.delete(f"tokens:{token.instance_id}")
-
-        # Create new tokens
-        for node_id in target_node_ids:
-            new_token = token.copy(node_id=node_id)
-            await self.state_manager.add_token(
-                instance_id=new_token.instance_id,
-                node_id=new_token.node_id,
-                data=new_token.to_dict(),
-            )
-            await self.state_manager.update_token_state(
-                instance_id=new_token.instance_id,
-                node_id=new_token.node_id,
-                state=TokenState.ACTIVE,
-            )
+        if self.token_manager:
+            await self.token_manager.split_token(token, target_node_ids)
+        else:
+            logger.error("TokenManager not available for gateway token splitting")

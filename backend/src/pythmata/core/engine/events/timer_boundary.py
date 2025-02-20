@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from pythmata.core.engine.events.timer import TimerCancelled, TimerEvent
 from pythmata.core.engine.token import Token, TokenState
