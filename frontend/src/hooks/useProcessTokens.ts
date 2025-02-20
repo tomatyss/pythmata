@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import apiService from '@/services/api';
 import { Token } from '@/types/process';
 
@@ -19,7 +19,6 @@ export const useProcessTokens = ({
   const [tokens, setTokens] = useState<TokenData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const pollingTimeoutRef = useRef<number | undefined>(undefined);
 
   // Fetch token data
   const fetchTokens = useCallback(async () => {
@@ -55,33 +54,79 @@ export const useProcessTokens = ({
     }
   }, [instanceId]);
 
-  // Setup polling
+  // Reset state when disabled
   useEffect(() => {
     if (!enabled) {
       setTokens([]);
       setLoading(false);
+      setError(null);
+    }
+  }, [enabled]);
+
+  // Setup polling with setInterval
+  useEffect(() => {
+    // Don't setup polling if disabled or no instanceId
+    if (
+      !enabled ||
+      !instanceId ||
+      (Array.isArray(instanceId) && instanceId.length === 0)
+    ) {
       return;
     }
 
-    // Initial fetch
-    fetchTokens();
+    let mounted = true;
 
-    // Setup polling interval
-    const poll = () => {
-      pollingTimeoutRef.current = window.setTimeout(() => {
-        fetchTokens().then(() => poll());
-      }, pollingInterval);
+    const pollTokens = async () => {
+      try {
+        const instanceIds = Array.isArray(instanceId)
+          ? instanceId
+          : [instanceId];
+
+        // Fetch tokens for all instances in parallel
+        const responses = await Promise.all(
+          instanceIds.map((id) => apiService.getInstanceTokens(id))
+        );
+
+        // Only update state if component is still mounted
+        if (mounted) {
+          const allTokens = responses.flatMap((response) =>
+            (response.data ?? []).map(
+              (token): TokenData => ({
+                nodeId: token.nodeId,
+                state: token.state,
+                scopeId: token.scopeId,
+                data: token.data,
+              })
+            )
+          );
+
+          setTokens(allTokens);
+          setError(null);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(
+            err instanceof Error ? err : new Error('Failed to fetch tokens')
+          );
+          console.error('Error fetching tokens:', err);
+          setLoading(false);
+        }
+      }
     };
 
-    poll();
+    // Initial fetch
+    pollTokens();
+
+    // Setup polling interval
+    const intervalId = setInterval(pollTokens, pollingInterval);
 
     // Cleanup
     return () => {
-      if (pollingTimeoutRef.current) {
-        clearTimeout(pollingTimeoutRef.current);
-      }
+      mounted = false;
+      clearInterval(intervalId);
     };
-  }, [enabled, fetchTokens, pollingInterval]);
+  }, [enabled, instanceId, pollingInterval]);
 
   return {
     tokens,

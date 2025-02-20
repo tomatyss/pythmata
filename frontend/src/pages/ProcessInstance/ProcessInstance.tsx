@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '@/services/api';
 import { formatDate } from '@/utils/date';
@@ -56,9 +56,15 @@ const ProcessInstance = () => {
   const [loading, setLoading] = useState(true);
   const [instance, setInstance] = useState<ProcessInstanceDetails | null>(null);
 
+  // Memoize the enabled state to prevent unnecessary hook re-runs
+  const isPollingEnabled = useMemo(
+    () => !!instanceId && instance?.status === 'RUNNING',
+    [instanceId, instance?.status]
+  );
+
   const { tokens } = useProcessTokens({
     instanceId: instanceId || '',
-    enabled: !!instanceId && instance?.status === 'RUNNING',
+    enabled: isPollingEnabled,
     pollingInterval: 2000,
   });
 
