@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Dict, Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from pythmata.models.process import ActivityType
 
@@ -20,7 +20,4 @@ class ActivityLogResponse(BaseModel):
     timestamp: datetime
     created_at: datetime
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
