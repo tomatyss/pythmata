@@ -103,6 +103,59 @@ class StateManager:
         key = f"process:{instance_id}:state"
         await self.redis.set(key, json.dumps(state), ex=ttl)
 
+    async def get_variables(
+        self,
+        instance_id: str,
+        scope_id: Optional[str] = None,
+        check_parent: bool = True,
+    ) -> Dict[str, ProcessVariableValue]:
+        """Get all process variables for an instance and scope.
+
+        Args:
+            instance_id: The process instance ID
+            scope_id: Optional scope ID (e.g., subprocess ID)
+            check_parent: Whether to check parent scope if not found in specified scope
+
+        Returns:
+            Dictionary mapping variable names to their values from specified scope and parent scopes if check_parent is True
+        """
+        key = f"process:{instance_id}:vars"
+        all_vars = await self.redis.hgetall(key)
+        result = {}
+
+        # Process variables based on scope
+        if scope_id:
+            # Get variables in current scope
+            for var_key, value in all_vars.items():
+                if var_key.startswith(f"{scope_id}:"):
+                    name = var_key[len(f"{scope_id}:"):] # Remove scope prefix
+                    data = json.loads(value)
+                    result[name] = ProcessVariableValue.from_storage_format(data)
+
+            # If check_parent is True, traverse up the scope hierarchy
+            if check_parent:
+                scope_parts = scope_id.split("/")
+                while scope_parts:
+                    scope_parts.pop()
+                    parent_scope = "/".join(scope_parts)
+                    
+                    # Add variables from parent scope if not already present
+                    for var_key, value in all_vars.items():
+                        prefix = f"{parent_scope}:" if parent_scope else ""
+                        if var_key.startswith(prefix) and ":" not in var_key[len(prefix):]:
+                            name = var_key[len(prefix):]
+                            if name not in result:
+                                data = json.loads(value)
+                                result[name] = ProcessVariableValue.from_storage_format(data)
+        else:
+            # Get root scope variables
+            for var_key, value in all_vars.items():
+                if ":" not in var_key:  # Only root scope variables
+                    data = json.loads(value)
+                    result[var_key] = ProcessVariableValue.from_storage_format(data)
+
+        return result
+
     async def get_variable(
         self,
         instance_id: str,
