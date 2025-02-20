@@ -38,8 +38,19 @@ async def handle_process_started(data: dict) -> None:
             f"Handling process.started event for instance {instance_id}")
 
         # Get required services
-        settings = Settings()
+        logger.info("[ProcessStarted] Initializing required services")
+        try:
+            settings = Settings()
+            logger.info("[ProcessStarted] Settings initialized successfully")
+        except Exception as e:
+            logger.error(
+                f"[ProcessStarted] Failed to initialize settings: {str(e)}")
+            logger.error(
+                "[ProcessStarted] Please check configuration files and environment variables")
+            raise
+
         state_manager = StateManager(settings)
+        logger.info("[ProcessStarted] State manager initialized")
         db = get_db()
 
         # Connect to state manager only since database is managed by FastAPI lifespan
@@ -54,9 +65,10 @@ async def handle_process_started(data: dict) -> None:
                 logger.debug(f"Executing query: {stmt}")
                 result = await session.execute(stmt)
                 logger.debug(f"Query result type: {type(result)}")
-                
+
                 definition = result.scalar_one_or_none()
-                logger.debug(f"Definition type: {type(definition)}, value: {definition}")
+                logger.debug(
+                    f"Definition type: {type(definition)}, value: {definition}")
 
                 if not definition:
                     logger.error(
@@ -67,10 +79,13 @@ async def handle_process_started(data: dict) -> None:
                 # 2. Parse and Validate BPMN
                 try:
                     parser = BPMNParser()
-                    logger.debug(f"Definition bpmn_xml type: {type(definition.bpmn_xml)}")
-                    logger.debug(f"Definition bpmn_xml value: {definition.bpmn_xml}")
+                    logger.debug(
+                        f"Definition bpmn_xml type: {type(definition.bpmn_xml)}")
+                    logger.debug(
+                        f"Definition bpmn_xml value: {definition.bpmn_xml}")
                     process_graph = parser.parse(definition.bpmn_xml)
-                    logger.debug(f"Process graph after parsing: {process_graph}")
+                    logger.debug(
+                        f"Process graph after parsing: {process_graph}")
                     logger.info("BPMN XML parsed successfully")
                 except Exception as e:
                     logger.error(f"Failed to parse BPMN XML: {e}")
@@ -104,7 +119,8 @@ async def handle_process_started(data: dict) -> None:
                 # 4. Check for existing tokens
                 logger.debug("Checking for existing tokens...")
                 existing_tokens = await state_manager.get_token_positions(instance_id)
-                logger.debug(f"Token check result type: {type(existing_tokens)}, value: {existing_tokens}")
+                logger.debug(
+                    f"Token check result type: {type(existing_tokens)}, value: {existing_tokens}")
 
                 if existing_tokens is not None and len(existing_tokens) > 0:
                     logger.info(
@@ -140,8 +156,18 @@ async def handle_process_started(data: dict) -> None:
 
         # Try to set error state and clean up if possible
         try:
-            settings = Settings()
+            logger.info(
+                "[ErrorCleanup] Attempting to initialize services for cleanup")
+            try:
+                settings = Settings()
+                logger.info("[ErrorCleanup] Settings initialized for cleanup")
+            except Exception as e:
+                logger.error(
+                    f"[ErrorCleanup] Failed to initialize settings for cleanup: {str(e)}")
+                raise
+
             state_manager = StateManager(settings)
+            logger.info("[ErrorCleanup] State manager initialized for cleanup")
             await state_manager.connect()
 
             async with get_db().session() as session:

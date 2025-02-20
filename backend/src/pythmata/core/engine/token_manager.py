@@ -32,18 +32,35 @@ class TokenManager:
         Raises:
             TokenStateError: If token state is invalid
         """
+        logger.info(
+            f"[TokenVerification] Verifying token state for {token.id}")
+        logger.debug(f"[TokenVerification] Token details: {token.to_dict()}")
+
         # Get current token state from storage
         stored_token = await self.state_manager.get_token(
             instance_id=token.instance_id, node_id=token.node_id
         )
+        logger.debug(
+            f"[TokenVerification] Retrieved stored token state: {stored_token}")
 
         if not stored_token:
+            logger.error(
+                f"[TokenVerification] Token {token.id} not found in storage")
             raise TokenStateError(f"Token not found: {token.id}")
 
-        if stored_token.get("state") != TokenState.ACTIVE.value:
+        current_state = stored_token.get("state")
+        logger.info(
+            f"[TokenVerification] Token {token.id} current state: {current_state}")
+
+        if current_state != TokenState.ACTIVE.value:
+            logger.error(
+                f"[TokenVerification] Token {token.id} is in invalid state: {current_state}")
             raise TokenStateError(
-                f"Token {token.id} is not active (state: {stored_token.get('state')})"
+                f"Token {token.id} is not active (state: {current_state})"
             )
+
+        logger.info(
+            f"[TokenVerification] Token {token.id} verification successful")
 
     async def create_initial_token(
         self, instance_id: str, start_event_id: str
@@ -80,16 +97,24 @@ class TokenManager:
             f"[TokenCreation] Created new token object: {token.to_dict()}")
 
         # Check if token already exists
+        logger.info(f"[TokenIdempotency] Checking for existing token at {start_event_id}")
         existing_token = await self.state_manager.get_token(
             instance_id=instance_id, node_id=start_event_id
         )
         if existing_token:
-            logger.error(
-                f"Token already exists at {start_event_id} for instance {instance_id}"
+            logger.info(
+                f"[TokenIdempotency] Token already exists at {start_event_id} for instance {instance_id}, returning existing token"
             )
-            raise TokenStateError(
-                f"Token already exists at {start_event_id} for instance {instance_id}"
+            logger.debug(f"[TokenIdempotency] Existing token details: {existing_token}")
+            # Return existing token instead of raising an error for idempotency
+            return Token(
+                instance_id=instance_id,
+                node_id=start_event_id,
+                token_id=UUID(existing_token["id"]) if existing_token.get("id") else None,
+                data=existing_token.get("data", {}),
+                state=TokenState(existing_token.get("state", "ACTIVE"))
             )
+        logger.info(f"[TokenIdempotency] No existing token found, proceeding with creation")
 
         try:
             # Create token atomically
@@ -178,12 +203,19 @@ class TokenManager:
                     target_node_id = "Transaction_Start"
 
             # Use Redis transaction for atomic move
+            logger.info(
+                f"[RedisTransaction] Starting atomic token move operation for {token.id}")
+            logger.debug(
+                f"[RedisTransaction] Moving from {token.node_id} to {target_node_id}")
+
             async with self.state_manager.redis.pipeline(transaction=True) as pipe:
                 # Create new token at target node first
                 new_token = token.copy(
                     node_id=target_node_id, scope_id=token.scope_id)
                 logger.info(
-                    f"Creating new token {new_token.id} at {target_node_id}")
+                    f"[TokenCreation] Creating new token {new_token.id} at {target_node_id}")
+                logger.debug(
+                    f"[TokenState] New token data: {new_token.to_dict()}")
                 await self.state_manager.add_token(
                     instance_id=new_token.instance_id,
                     node_id=new_token.node_id,
@@ -204,13 +236,20 @@ class TokenManager:
                 await pipe.delete(f"tokens:{token.instance_id}")
 
                 # Execute transaction
+                logger.info(
+                    f"[RedisTransaction] Executing Redis pipeline for token movement")
                 await pipe.execute()
-                logger.info(f"Token movement completed successfully")
+                logger.info(
+                    f"[TokenMovement] Token {token.id} moved to {target_node_id} successfully")
+                logger.debug(
+                    f"[TokenMovement] Final token state: {new_token.to_dict()}")
 
             # Handle process completion if moving to end event
             if target_node_id == "End_1" and instance_manager:
                 logger.info(
-                    f"Token reached end event, handling process completion")
+                    f"[ProcessCompletion] Token {token.id} reached end event, handling completion")
+                logger.debug(
+                    f"[ProcessCompletion] Instance ID: {token.instance_id}")
                 await self._handle_process_completion(token, instance_manager)
 
             return new_token

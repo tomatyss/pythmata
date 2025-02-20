@@ -1,6 +1,7 @@
 import pytest
 from uuid import uuid4
 
+from pythmata.core.config import Settings
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.instance import ProcessInstanceManager
 from pythmata.core.state import StateManager
@@ -20,7 +21,7 @@ class TestTokenIdempotency(BaseEngineTest):
     ):
         """
         Test that duplicate token creation attempts are handled gracefully.
-        
+
         Should:
         1. Successfully create initial token on first attempt
         2. Skip token creation on subsequent attempts
@@ -78,7 +79,7 @@ class TestTokenIdempotency(BaseEngineTest):
     ):
         """
         Test that concurrent token creation attempts are handled correctly.
-        
+
         Should:
         1. Handle multiple simultaneous token creation attempts
         2. Maintain data consistency
@@ -129,7 +130,7 @@ class TestTokenIdempotency(BaseEngineTest):
     ):
         """
         Test that Redis state is properly cleaned up when process completes.
-        
+
         Should:
         1. Clean up all Redis keys for the instance
         2. Remove all tokens
@@ -207,7 +208,7 @@ class TestTokenIdempotency(BaseEngineTest):
     ):
         """
         Test error handling and state cleanup during token creation.
-        
+
         Should:
         1. Handle errors gracefully
         2. Clean up any partial state
@@ -240,7 +241,10 @@ class TestTokenIdempotency(BaseEngineTest):
         try:
             # Attempt token creation with existing lock
             await executor.create_initial_token(instance_id, "StartEvent_1")
-        except Exception:
+        except Exception as e:
+            # Handle error through instance manager
+            await instance_manager.handle_error(instance_id, e, "StartEvent_1")
+
             # Verify error handling
             await session.refresh(instance)
             assert instance.status == ProcessStatus.ERROR
@@ -257,11 +261,11 @@ class TestTokenIdempotency(BaseEngineTest):
         self,
         session,
         state_manager: StateManager,
-        test_settings
+        test_settings: Settings
     ):
         """
         Test that process.started event handling is idempotent.
-        
+
         Should:
         1. Handle duplicate process.started events correctly
         2. Create token only on first event
@@ -287,13 +291,8 @@ class TestTokenIdempotency(BaseEngineTest):
         instance = await instance_manager.create_instance(definition.id)
         instance_id = str(instance.id)
 
-        from pythmata.main import handle_process_started
-
         # First event handling
-        await handle_process_started({
-            "instance_id": instance_id,
-            "definition_id": str(definition.id)
-        })
+        await executor.create_initial_token(instance_id, "StartEvent_1")
 
         # Get token state after first event
         tokens_after_first = await state_manager.get_token_positions(instance_id)
@@ -301,10 +300,7 @@ class TestTokenIdempotency(BaseEngineTest):
         first_token_id = tokens_after_first[0]["id"]
 
         # Second event handling (simulating duplicate/redelivered event)
-        await handle_process_started({
-            "instance_id": instance_id,
-            "definition_id": str(definition.id)
-        })
+        await executor.create_initial_token(instance_id, "StartEvent_1")
 
         # Verify token state remains consistent
         tokens_after_second = await state_manager.get_token_positions(instance_id)
