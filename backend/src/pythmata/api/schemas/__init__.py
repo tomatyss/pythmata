@@ -14,7 +14,6 @@ from .auth import (
 
 from pythmata.api.schemas.base import ApiResponse, PaginatedResponse
 from pythmata.api.schemas.process import (
-
     ProcessDefinitionBase,
     ProcessDefinitionCreate,
     ProcessDefinitionResponse,
@@ -26,9 +25,6 @@ from pythmata.api.schemas.process import (
     ProcessVariableDefinition,
     ProcessVariableValidation,
     ProcessVariableValue,
-    ScriptContent,
-    ScriptResponse,
-    TokenResponse,
 )
 
 
