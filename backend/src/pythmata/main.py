@@ -51,8 +51,12 @@ async def handle_process_started(data: dict) -> None:
                 stmt = select(ProcessDefinitionModel).filter(
                     ProcessDefinitionModel.id == definition_id
                 )
+                logger.debug(f"Executing query: {stmt}")
                 result = await session.execute(stmt)
+                logger.debug(f"Query result type: {type(result)}")
+                
                 definition = result.scalar_one_or_none()
+                logger.debug(f"Definition type: {type(definition)}, value: {definition}")
 
                 if not definition:
                     logger.error(
@@ -63,7 +67,10 @@ async def handle_process_started(data: dict) -> None:
                 # 2. Parse and Validate BPMN
                 try:
                     parser = BPMNParser()
+                    logger.debug(f"Definition bpmn_xml type: {type(definition.bpmn_xml)}")
+                    logger.debug(f"Definition bpmn_xml value: {definition.bpmn_xml}")
                     process_graph = parser.parse(definition.bpmn_xml)
+                    logger.debug(f"Process graph after parsing: {process_graph}")
                     logger.info("BPMN XML parsed successfully")
                 except Exception as e:
                     logger.error(f"Failed to parse BPMN XML: {e}")
@@ -95,18 +102,29 @@ async def handle_process_started(data: dict) -> None:
                 instance_manager.executor = executor
 
                 # 4. Check for existing tokens
+                logger.debug("Checking for existing tokens...")
                 existing_tokens = await state_manager.get_token_positions(instance_id)
-                if existing_tokens:
-                    logger.info(f"Found existing tokens for instance {instance_id}, skipping token creation")
+                logger.debug(f"Token check result type: {type(existing_tokens)}, value: {existing_tokens}")
+
+                if existing_tokens is not None and len(existing_tokens) > 0:
+                    logger.info(
+                        f"Found existing tokens for instance {instance_id}: {existing_tokens}")
+                    logger.debug(
+                        "Skipping token creation due to existing tokens")
                 else:
+                    logger.debug(
+                        "No existing tokens found, creating initial token")
                     # Create initial token only if none exist
                     initial_token = await executor.create_initial_token(
                         instance_id,
                         start_event.id
                     )
-                    logger.info(f"Created initial token: {initial_token.id} at {start_event.id}")
+                    logger.info(
+                        f"Created initial token: {initial_token.id} at {start_event.id}")
 
                 # 5. Execute Process (will use existing tokens if any)
+                logger.debug(
+                    f"Preparing to execute process with graph: {process_graph}")
                 logger.info(
                     f"Starting process execution for instance {instance_id}")
                 await executor.execute_process(instance_id, process_graph)
@@ -117,20 +135,22 @@ async def handle_process_started(data: dict) -> None:
             await state_manager.disconnect()
 
     except Exception as e:
-        logger.error(f"Error handling process.started event: {e}", exc_info=True)
-        
+        logger.error(
+            f"Error handling process.started event: {e}", exc_info=True)
+
         # Try to set error state and clean up if possible
         try:
             settings = Settings()
             state_manager = StateManager(settings)
             await state_manager.connect()
-            
+
             async with get_db().session() as session:
-                instance_manager = ProcessInstanceManager(session, None, state_manager)
+                instance_manager = ProcessInstanceManager(
+                    session, None, state_manager)
                 await instance_manager.handle_error(instance_id, e)
         except Exception as cleanup_error:
             logger.error(f"Error during cleanup: {cleanup_error}")
-        
+
         # Re-raise to ensure proper error handling at higher levels
         raise
 

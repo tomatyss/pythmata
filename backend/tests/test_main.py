@@ -16,7 +16,9 @@ from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 async def test_lifespan():
     """Test application lifespan (startup and shutdown)."""
     mock_event_bus = AsyncMock()
+    # Setup state manager with no existing tokens
     mock_state_manager = AsyncMock()
+    mock_state_manager.get_token_positions = AsyncMock(return_value=None)
     mock_settings = AsyncMock()
     mock_db = AsyncMock()
 
@@ -125,7 +127,7 @@ async def test_handle_process_started():
     # Configure database session
     mock_session = AsyncMock(spec=AsyncSession)
     execute_result = AsyncMock()
-    execute_result.scalar_one_or_none = AsyncMock(return_value=mock_definition)
+    execute_result.scalar_one_or_none = MagicMock(return_value=mock_definition)
     mock_session.execute = AsyncMock(return_value=execute_result)
 
     # Setup session context
@@ -233,7 +235,7 @@ async def test_handle_process_started_error_cases():
     # Test Case 1: Process definition not found
     mock_session = AsyncMock(spec=AsyncSession)
     execute_result = AsyncMock()
-    execute_result.scalar_one_or_none = AsyncMock(return_value=None)
+    execute_result.scalar_one_or_none = MagicMock(return_value=None)
     mock_session.execute = AsyncMock(return_value=execute_result)
 
     session_ctx = AsyncMock()
@@ -260,11 +262,13 @@ async def test_handle_process_started_error_cases():
         mock_parser.parse.assert_not_called()
 
     # Test Case 2: Invalid BPMN XML
-    mock_state_manager = AsyncMock()  # Create new mock for each test case
+    # Create new mock for each test case
+    mock_state_manager = AsyncMock()
+    mock_state_manager.get_token_positions = AsyncMock(return_value=None)
     mock_definition = MagicMock()
     mock_definition.bpmn_xml = "<invalid>xml</invalid>"
     mock_definition.id = test_data["definition_id"]
-    execute_result.scalar_one_or_none = AsyncMock(return_value=mock_definition)
+    execute_result.scalar_one_or_none = MagicMock(return_value=mock_definition)
     mock_parser = MagicMock()  # Create new mock for each test case
     mock_parser.parse.side_effect = Exception("Invalid BPMN XML")
 
@@ -280,11 +284,13 @@ async def test_handle_process_started_error_cases():
         mock_parser.parse.assert_called_once_with("<invalid>xml</invalid>")
 
     # Test Case 3: Missing start event
-    mock_state_manager = AsyncMock()  # Create new mock for each test case
+    # Create new mock for each test case
+    mock_state_manager = AsyncMock()
+    mock_state_manager.get_token_positions = AsyncMock(return_value=None)
     mock_definition = MagicMock()
     mock_definition.bpmn_xml = "<xml>test</xml>"
     mock_definition.id = test_data["definition_id"]
-    execute_result.scalar_one_or_none = AsyncMock(return_value=mock_definition)
+    execute_result.scalar_one_or_none = MagicMock(return_value=mock_definition)
     mock_parser = MagicMock()  # Create new mock for each test case
     mock_parser.parse.return_value = {"nodes": [], "flows": []}  # No start event
 
