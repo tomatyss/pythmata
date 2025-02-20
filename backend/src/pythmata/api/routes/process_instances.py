@@ -1,7 +1,7 @@
 """Process instance API routes."""
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -29,12 +29,10 @@ from pythmata.core.engine.instance import ProcessInstanceError, ProcessInstanceM
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.events import EventBus
 from pythmata.core.types import Event, EventType
-from pythmata.models.process import (
-    ActivityLog,
-    ProcessDefinition as ProcessDefinitionModel,
-    ProcessInstance as ProcessInstanceModel,
-    ProcessStatus,
-)
+from pythmata.models.process import ActivityLog
+from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
+from pythmata.models.process import ProcessInstance as ProcessInstanceModel
+from pythmata.models.process import ProcessStatus
 from pythmata.utils.logger import get_logger
 
 router = APIRouter(prefix="/instances", tags=["instances"])
@@ -160,7 +158,8 @@ async def get_instance(
         # Get instance with definition name
         result = await session.execute(
             select(
-                ProcessInstanceModel, ProcessDefinitionModel.name.label("definition_name")
+                ProcessInstanceModel,
+                ProcessDefinitionModel.name.label("definition_name"),
             )
             .join(
                 ProcessDefinitionModel,
@@ -172,7 +171,7 @@ async def get_instance(
         row = result.one_or_none()
         if not row:
             raise HTTPException(status_code=404, detail="Process instance not found")
-        
+
         instance = row[0]
         instance.definition_name = row[1]
 
