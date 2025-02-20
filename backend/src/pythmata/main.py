@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
 from pythmata.api.routes import router as process_router
+from pythmata.api.routes.auth import router as auth_router
+from pythmata.core.auth import get_current_active_user
 from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.config import Settings
 from pythmata.core.database import get_db, init_db
@@ -165,4 +167,5 @@ async def health_check():
 
 
 # Import and include routers
-app.include_router(process_router, prefix="/api")
+app.include_router(auth_router)  # Auth routes don't need prefix
+app.include_router(process_router, prefix="/api", dependencies=[Depends(get_current_active_user)])
