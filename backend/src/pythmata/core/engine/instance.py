@@ -118,6 +118,16 @@ class ProcessInstanceManager:
         Returns:
             Created ActivityLog
         """
+        logger.info(f"[Transaction] Creating activity log for instance {instance_id}")
+        logger.info(f"[Transaction] Activity type: {activity_type}")
+        
+        # Verify instance exists in database
+        result = await self.session.execute(
+            select(ProcessInstance).where(ProcessInstance.id == instance_id)
+        )
+        instance = result.scalar_one_or_none()
+        logger.info(f"[Transaction] Instance exists in DB: {instance is not None}")
+        
         activity = ActivityLog(
             instance_id=instance_id,
             activity_type=activity_type,
@@ -125,8 +135,8 @@ class ProcessInstanceManager:
             details=details,
             timestamp=datetime.now(UTC),
         )
+        logger.info("[Transaction] Adding activity log to session")
         self.session.add(activity)
-        await self.session.commit()
         return activity
 
     async def create_instance(
@@ -576,22 +586,29 @@ class ProcessInstanceManager:
             InvalidProcessDefinitionError: If process definition is invalid
             InvalidVariableError: If variable data is invalid
         """
+        logger.info(f"[Transaction] Starting instance {instance.id}")
+        
         # Set up variables if provided
         if variables:
+            logger.info("[Transaction] Setting up instance variables")
             await self._setup_variables(instance, variables)
 
         # Find start event if not provided
         if not start_event_id:
+            logger.info("[Transaction] Finding start event from BPMN")
             start_event_id = self._find_start_event(bpmn_xml)
 
         # Initialize process state with start event
+        logger.info(f"[Transaction] Creating initial token at {start_event_id}")
         await self.executor.create_initial_token(str(instance.id), start_event_id)
 
         # Update instance status
+        logger.info("[Transaction] Updating instance status to RUNNING")
         instance.status = ProcessStatus.RUNNING
         instance.start_time = datetime.now(UTC)
 
         # Log instance start
+        logger.info("[Transaction] Creating instance started activity log")
         await self._create_activity_log(
             instance.id, ActivityType.INSTANCE_STARTED, start_event_id
         )

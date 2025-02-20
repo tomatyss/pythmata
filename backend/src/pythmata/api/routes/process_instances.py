@@ -170,6 +170,7 @@ async def get_instance(
         )
         row = result.one_or_none()
         if not row:
+            logger.info(f"[NotFound] Process instance {instance_id} not found")
             raise HTTPException(status_code=404, detail="Process instance not found")
 
         instance = row[0]
@@ -188,6 +189,8 @@ async def get_instance(
         response_data["activities"] = activities
 
         return {"data": response_data}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting instance details: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -205,6 +208,7 @@ async def create_instance(
 ):
     """Create a new process instance."""
     try:
+        logger.info("[Transaction] Starting process instance creation")
         # Verify process definition exists
         result = await session.execute(
             select(ProcessDefinitionModel).filter(
@@ -230,8 +234,11 @@ async def create_instance(
             status=ProcessStatus.RUNNING,
             start_time=datetime.now(timezone.utc),
         )
+        logger.info("[Transaction] Adding instance to session")
         session.add(instance)
-        await session.flush()  # Get the ID without committing
+        logger.info("[Transaction] Committing instance to database")
+        await session.commit()  # Commit immediately to ensure instance exists
+        logger.info(f"[Transaction] Instance committed with ID: {instance.id}")
 
         # Convert variables to storage format
         variables = {}
@@ -242,14 +249,12 @@ async def create_instance(
 
         try:
             # Start process execution
+            logger.info("[Transaction] Starting process execution")
             instance = await instance_manager.start_instance(
                 instance=instance,
                 bpmn_xml=definition.bpmn_xml,
                 variables=variables,
             )
-
-            # Commit the transaction to save the instance
-            await session.commit()
 
             # Publish process.started event with just IDs
             await event_bus.publish(
