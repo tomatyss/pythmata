@@ -21,20 +21,21 @@ logger = get_logger(__name__)
 async def handle_process_started(data: dict) -> None:
     """
     Handle process.started event by initializing and executing a new process instance.
-    
+
     This function follows BPMN lifecycle management best practices:
     1. Process Definition Loading
     2. Instance Initialization
     3. Token Creation and Management
     4. Process Execution
-    
+
     Args:
         data: Dictionary containing instance_id and definition_id
     """
     try:
         instance_id = data["instance_id"]
         definition_id = data["definition_id"]
-        logger.info(f"Handling process.started event for instance {instance_id}")
+        logger.info(
+            f"Handling process.started event for instance {instance_id}")
 
         # Get required services
         settings = Settings()
@@ -51,10 +52,11 @@ async def handle_process_started(data: dict) -> None:
                     ProcessDefinitionModel.id == definition_id
                 )
                 result = await session.execute(stmt)
-                definition = await result.scalar_one_or_none()
-                
+                definition = result.scalar_one_or_none()
+
                 if not definition:
-                    logger.error(f"Process definition {definition_id} not found")
+                    logger.error(
+                        f"Process definition {definition_id} not found")
                     return
                 logger.info(f"Definition loaded successfully: {definition_id}")
 
@@ -84,30 +86,51 @@ async def handle_process_started(data: dict) -> None:
             # 3. Initialize Process Instance
             async with db.session() as session:
                 # Create instance manager with proper initialization
-                instance_manager = ProcessInstanceManager(session, None, state_manager)
+                instance_manager = ProcessInstanceManager(
+                    session, None, state_manager)
                 executor = ProcessExecutor(
                     state_manager=state_manager,
                     instance_manager=instance_manager
                 )
                 instance_manager.executor = executor
 
-                # 4. Create and Initialize Token
-                initial_token = await executor.create_initial_token(
-                    instance_id, 
-                    start_event.id
-                )
-                logger.info(f"Created initial token: {initial_token.id} at {start_event.id}")
+                # 4. Check for existing tokens
+                existing_tokens = await state_manager.get_token_positions(instance_id)
+                if existing_tokens:
+                    logger.info(f"Found existing tokens for instance {instance_id}, skipping token creation")
+                else:
+                    # Create initial token only if none exist
+                    initial_token = await executor.create_initial_token(
+                        instance_id,
+                        start_event.id
+                    )
+                    logger.info(f"Created initial token: {initial_token.id} at {start_event.id}")
 
-                # 5. Execute Process
-                logger.info(f"Starting process execution for instance {instance_id}")
+                # 5. Execute Process (will use existing tokens if any)
+                logger.info(
+                    f"Starting process execution for instance {instance_id}")
                 await executor.execute_process(instance_id, process_graph)
-                logger.info(f"Process {instance_id} execution completed successfully")
+                logger.info(
+                    f"Process {instance_id} execution completed successfully")
 
         finally:
             await state_manager.disconnect()
 
     except Exception as e:
         logger.error(f"Error handling process.started event: {e}", exc_info=True)
+        
+        # Try to set error state and clean up if possible
+        try:
+            settings = Settings()
+            state_manager = StateManager(settings)
+            await state_manager.connect()
+            
+            async with get_db().session() as session:
+                instance_manager = ProcessInstanceManager(session, None, state_manager)
+                await instance_manager.handle_error(instance_id, e)
+        except Exception as cleanup_error:
+            logger.error(f"Error during cleanup: {cleanup_error}")
+        
         # Re-raise to ensure proper error handling at higher levels
         raise
 

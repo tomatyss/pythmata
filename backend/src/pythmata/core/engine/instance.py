@@ -378,6 +378,46 @@ class ProcessInstanceManager:
         await self.session.commit()
         return instance
 
+    async def handle_error(
+        self, instance_id: str, error: Exception, node_id: Optional[str] = None
+    ) -> None:
+        """
+        Handle process instance errors by setting error state and cleaning up.
+
+        Args:
+            instance_id: ID of the instance where error occurred
+            error: The exception that was raised
+            node_id: Optional ID of the node where error occurred
+        """
+        from pythmata.utils.logger import get_logger
+        logger = get_logger(__name__)
+
+        logger.error(
+            f"Error in process instance {instance_id} at node {node_id}: {str(error)}"
+        )
+
+        try:
+            # Set instance to error state
+            await self.set_error_state(UUID(instance_id), str(error))
+
+            # Clean up any stale Redis state
+            keys = await self.state_manager.redis.keys(f"process:{instance_id}:*")
+            logger.info(f"[ErrorCleanup] Found Redis keys to clean: {keys}")
+
+            # Remove any stale locks
+            lock_key = f"lock:process:{instance_id}"
+            if await self.state_manager.redis.exists(lock_key):
+                logger.info(f"[ErrorCleanup] Removing stale lock: {lock_key}")
+                await self.state_manager.redis.delete(lock_key)
+
+            # Log final state for debugging
+            tokens = await self.state_manager.get_token_positions(instance_id)
+            logger.info(f"[ErrorState] Final token positions: {tokens}")
+
+        except Exception as e:
+            logger.error(f"Error during error handling: {str(e)}")
+            # Don't raise here - we don't want to mask the original error
+
     async def get_instance_variables(
         self, instance_id: UUID, scope_id: Optional[str] = None
     ) -> Dict:

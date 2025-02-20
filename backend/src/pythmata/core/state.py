@@ -298,7 +298,8 @@ class StateManager:
         tokens = await self.get_token_positions(instance_id)
 
         # Filter out tokens in the specified scope
-        new_tokens = [token for token in tokens if token.get("scope_id") != scope_id]
+        new_tokens = [token for token in tokens if token.get(
+            "scope_id") != scope_id]
 
         # Replace the token list
         await self.redis.delete(key)
@@ -428,12 +429,14 @@ class StateManager:
         for token in tokens:
             if token["node_id"] == node_id and token.get("scope_id") == scope_id:
                 token["state"] = state.value
-                token["data"]["state"] = state.value  # Update state in data too
+                # Update state in data too
+                token["data"]["state"] = state.value
                 updated = True
                 break
 
         if not updated:
-            raise ValueError(f"No token found at node {node_id} with scope {scope_id}")
+            raise ValueError(
+                f"No token found at node {node_id} with scope {scope_id}")
         # Replace the token list
         await self.redis.delete(key)
         await self.redis.rpush(key, *[json.dumps(token) for token in tokens])

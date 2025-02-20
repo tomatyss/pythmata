@@ -11,10 +11,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
-# Set specific loggers to appropriate levels
-logging.getLogger("uvicorn").setLevel(logging.INFO)
-logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-
 
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance with the given name."""

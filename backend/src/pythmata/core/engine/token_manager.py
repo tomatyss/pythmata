@@ -59,9 +59,25 @@ class TokenManager:
             The created token
         """
         logger.info(
-            f"Creating initial token for instance {instance_id} at node {start_event_id}"
+            f"[TokenCreation] Starting creation of initial token for instance {instance_id} at node {start_event_id}"
         )
+
+        # Log all existing tokens for this instance
+        all_tokens = await self.state_manager.get_token_positions(instance_id)
+        logger.info(
+            f"[TokenState] Current tokens for instance {instance_id}: {len(all_tokens)} tokens"
+        )
+        for t in all_tokens:
+            logger.info(f"[TokenState] Existing token: {t}")
+
+        # Log Redis keys for this instance
+        keys = await self.state_manager.redis.keys(f"process:{instance_id}:*")
+        logger.info(
+            f"[RedisState] Current Redis keys for instance {instance_id}: {keys}")
+
         token = Token(instance_id=instance_id, node_id=start_event_id)
+        logger.info(
+            f"[TokenCreation] Created new token object: {token.to_dict()}")
 
         # Check if token already exists
         existing_token = await self.state_manager.get_token(
@@ -78,13 +94,35 @@ class TokenManager:
         try:
             # Create token atomically
             async with self.state_manager.redis.pipeline(transaction=True) as pipe:
+                logger.info(
+                    f"[RedisTransaction] Starting atomic token creation for {token.id}")
+
+                # Check for any locks
+                lock_key = f"lock:process:{instance_id}"
+                lock_exists = await self.state_manager.redis.exists(lock_key)
+                logger.info(
+                    f"[LockState] Lock status for instance {instance_id}: exists={lock_exists}")
+
                 await self.state_manager.add_token(
                     instance_id=instance_id,
                     node_id=start_event_id,
                     data=token.to_dict(),
                 )
                 await pipe.execute()
-            logger.info(f"Initial token {token.id} created successfully")
+
+                # Verify token was created
+                created_token = await self.state_manager.get_token(
+                    instance_id=instance_id, node_id=start_event_id
+                )
+                logger.info(
+                    f"[TokenVerification] Token creation verification: {created_token is not None}"
+                )
+                if created_token:
+                    logger.info(
+                        f"[TokenVerification] Created token state: {created_token}")
+
+            logger.info(
+                f"[TokenCreation] Initial token {token.id} created successfully")
             return token
         except Exception as e:
             logger.error(f"Failed to create initial token: {str(e)}")
@@ -115,7 +153,8 @@ class TokenManager:
 
         # Acquire instance lock first
         if not await self.state_manager.acquire_lock(token.instance_id):
-            logger.error(f"Failed to acquire lock for instance {token.instance_id}")
+            logger.error(
+                f"Failed to acquire lock for instance {token.instance_id}")
             raise TokenStateError("Failed to acquire instance lock")
 
         try:
@@ -125,7 +164,8 @@ class TokenManager:
             # Handle transaction boundaries if instance manager is provided
             if instance_manager:
                 if target_node_id == "Transaction_End":
-                    logger.info(f"Handling transaction end for token {token.id}")
+                    logger.info(
+                        f"Handling transaction end for token {token.id}")
                     return await self._handle_transaction_end(token, instance_manager)
                 elif target_node_id.startswith("Transaction_") and target_node_id not in [
                     "Transaction_Start",
@@ -195,7 +235,8 @@ class TokenManager:
 
         # Acquire instance lock first
         if not await self.state_manager.acquire_lock(token.instance_id):
-            logger.error(f"Failed to acquire lock for instance {token.instance_id}")
+            logger.error(
+                f"Failed to acquire lock for instance {token.instance_id}")
             raise TokenStateError("Failed to acquire instance lock")
 
         try:
