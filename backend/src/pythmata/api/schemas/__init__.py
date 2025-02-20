@@ -11,9 +11,10 @@ from .auth import (
     UserInDB,
     UserUpdate,
 )
-from .process import (
-    ApiResponse,
-    PaginatedResponse,
+
+from pythmata.api.schemas.base import ApiResponse, PaginatedResponse
+from pythmata.api.schemas.process import (
+
     ProcessDefinitionBase,
     ProcessDefinitionCreate,
     ProcessDefinitionResponse,
@@ -30,6 +31,10 @@ from .process import (
     TokenResponse,
 )
 
+
+from pythmata.api.schemas.script import ScriptContent, ScriptResponse
+from pythmata.api.schemas.token import TokenResponse
+
 __all__ = [
     # Auth schemas
     "Token",
@@ -41,21 +46,24 @@ __all__ = [
     "RoleCreate",
     "RoleUpdate",
     "UserInDB",
+    # Base schemas
+    "ApiResponse",
+    "PaginatedResponse",
     # Process schemas
-    "ProcessVariableValue",
-    "ProcessVariableValidation",
-    "ProcessVariableDefinition",
     "ProcessDefinitionBase",
     "ProcessDefinitionCreate",
-    "ProcessDefinitionUpdate",
     "ProcessDefinitionResponse",
-    "PaginatedResponse",
-    "ApiResponse",
+    "ProcessDefinitionUpdate",
     "ProcessInstanceCreate",
-    "ProcessInstanceResponse",
     "ProcessInstanceFilter",
+    "ProcessInstanceResponse",
     "ProcessStats",
+    "ProcessVariableDefinition",
+    "ProcessVariableValidation",
+    "ProcessVariableValue",
+    # Script schemas
     "ScriptContent",
     "ScriptResponse",
+    # Token schemas
     "TokenResponse",
 ]

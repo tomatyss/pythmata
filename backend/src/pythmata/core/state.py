@@ -1,5 +1,4 @@
 import json
-import logging
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
@@ -9,8 +8,9 @@ from redis.asyncio import Redis
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.config import Settings
 from pythmata.core.types import TokenState
+from pythmata.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class StateManager:
@@ -181,6 +181,25 @@ class StateManager:
         storage_format = variable.to_storage_format()
         await self.redis.hset(key, scope_key, json.dumps(storage_format))
 
+    async def get_token(
+        self, instance_id: str, node_id: str, scope_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Get a specific token from a node.
+
+        Args:
+            instance_id: The process instance ID
+            node_id: The node ID where the token is located
+            scope_id: Optional scope ID to match specific token
+
+        Returns:
+            Token data if found, None otherwise
+        """
+        tokens = await self.get_token_positions(instance_id)
+        for token in tokens:
+            if token["node_id"] == node_id and token.get("scope_id") == scope_id:
+                return token
+        return None
+
     async def get_token_positions(self, instance_id: str) -> List[Dict[str, Any]]:
         """Get current token positions for a process instance.
 
@@ -188,13 +207,22 @@ class StateManager:
             instance_id: The process instance ID
 
         Returns:
-            List of token positions
+            List of token positions with duplicates removed
         """
         key = f"process:{instance_id}:tokens"
         tokens = await self.redis.lrange(key, 0, -1)
-        parsed_tokens = [json.loads(token) for token in tokens]
 
-        return [json.loads(token) for token in tokens]
+        # Parse tokens and remove duplicates by node_id and scope_id
+        seen = set()
+        unique_tokens = []
+        for token in tokens:
+            data = json.loads(token)
+            key = (data["node_id"], data.get("scope_id"))
+            if key not in seen:
+                seen.add(key)
+                unique_tokens.append(data)
+
+        return unique_tokens
 
     async def add_token(
         self, instance_id: str, node_id: str, data: Optional[Dict[str, Any]] = None
@@ -209,31 +237,34 @@ class StateManager:
         key = f"process:{instance_id}:tokens"
         scope_id = data.get("scope_id") if data else None
 
-        # Get existing tokens
-        tokens = await self.get_token_positions(instance_id)
+        # Use Redis transaction to ensure atomic operation
+        async with self.redis.pipeline(transaction=True) as pipe:
+            # Get existing tokens
+            tokens = await self.get_token_positions(instance_id)
 
-        # Remove any existing token at the same node and scope
-        new_tokens = [
-            token
-            for token in tokens
-            if token["node_id"] != node_id or token.get("scope_id") != scope_id
-        ]
+            # Remove any existing token at the same node and scope
+            new_tokens = [
+                token
+                for token in tokens
+                if token["node_id"] != node_id or token.get("scope_id") != scope_id
+            ]
 
-        # Create new token
-        new_token = {
-            "instance_id": instance_id,
-            "node_id": node_id,
-            "state": "ACTIVE",
-            "data": data or {},
-            "id": str(uuid4()),
-            "scope_id": scope_id,
-        }
-        new_tokens.append(new_token)
+            # Create new token
+            new_token = {
+                "instance_id": instance_id,
+                "node_id": node_id,
+                "state": "ACTIVE",
+                "data": data or {},
+                "id": str(uuid4()),
+                "scope_id": scope_id,
+            }
+            new_tokens.append(new_token)
 
-        # Replace token list
-        await self.redis.delete(key)
-        if new_tokens:
-            await self.redis.rpush(key, *[json.dumps(token) for token in new_tokens])
+            # Replace token list atomically
+            await pipe.delete(key)
+            if new_tokens:
+                await pipe.rpush(key, *[json.dumps(token) for token in new_tokens])
+            await pipe.execute()
 
     async def get_scope_tokens(
         self, instance_id: str, scope_id: str
@@ -267,7 +298,8 @@ class StateManager:
         tokens = await self.get_token_positions(instance_id)
 
         # Filter out tokens in the specified scope
-        new_tokens = [token for token in tokens if token.get("scope_id") != scope_id]
+        new_tokens = [token for token in tokens if token.get(
+            "scope_id") != scope_id]
 
         # Replace the token list
         await self.redis.delete(key)
@@ -397,12 +429,14 @@ class StateManager:
         for token in tokens:
             if token["node_id"] == node_id and token.get("scope_id") == scope_id:
                 token["state"] = state.value
-                token["data"]["state"] = state.value  # Update state in data too
+                # Update state in data too
+                token["data"]["state"] = state.value
                 updated = True
                 break
 
         if not updated:
-            raise ValueError(f"No token found at node {node_id} with scope {scope_id}")
+            raise ValueError(
+                f"No token found at node {node_id} with scope {scope_id}")
         # Replace the token list
         await self.redis.delete(key)
         await self.redis.rpush(key, *[json.dumps(token) for token in tokens])

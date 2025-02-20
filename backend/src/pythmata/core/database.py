@@ -125,17 +125,23 @@ class Database(ConnectionManager):
 
     @ensure_connected
     async def drop_tables(self) -> None:
-        """Drop all database tables.
+        """
+        Drop all database tables if they exist.
 
         This method is decorated with @ensure_connected to guarantee
-        a valid connection before execution.
+        a valid connection before execution. It handles the case where
+        tables don't exist gracefully.
         """
         if not self.engine:
             raise RuntimeError("Database engine not initialized")
 
-        async with self.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            logger.info("Database tables dropped")
+        try:
+            async with self.engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+                logger.info("Database tables dropped")
+        except Exception as e:
+            # Log but don't raise if tables don't exist
+            logger.warning(f"Error dropping tables (this is normal for first run): {e}")
 
     async def close(self) -> None:
         """Close database connection.
