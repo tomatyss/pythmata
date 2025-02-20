@@ -1,5 +1,6 @@
-import pytest
 from uuid import uuid4
+
+import pytest
 
 from pythmata.core.config import Settings
 from pythmata.core.engine.executor import ProcessExecutor
@@ -14,10 +15,7 @@ class TestTokenIdempotency(BaseEngineTest):
     """Test cases for token creation idempotency."""
 
     async def test_duplicate_token_creation_handling(
-        self,
-        session,
-        state_manager: StateManager,
-        test_settings
+        self, session, state_manager: StateManager, test_settings
     ):
         """
         Test that duplicate token creation attempts are handled gracefully.
@@ -30,10 +28,7 @@ class TestTokenIdempotency(BaseEngineTest):
         """
         # Create test process definition
         definition = ProcessDefinition(
-            id=uuid4(),
-            name="Test Process",
-            version=1,
-            bpmn_xml=SIMPLE_PROCESS_XML
+            id=uuid4(), name="Test Process", version=1, bpmn_xml=SIMPLE_PROCESS_XML
         )
         session.add(definition)
         await session.commit()
@@ -72,10 +67,7 @@ class TestTokenIdempotency(BaseEngineTest):
         assert instance.status == ProcessStatus.RUNNING
 
     async def test_concurrent_token_creation(
-        self,
-        session,
-        state_manager: StateManager,
-        test_settings
+        self, session, state_manager: StateManager, test_settings
     ):
         """
         Test that concurrent token creation attempts are handled correctly.
@@ -87,10 +79,7 @@ class TestTokenIdempotency(BaseEngineTest):
         """
         # Create test process definition
         definition = ProcessDefinition(
-            id=uuid4(),
-            name="Test Process",
-            version=1,
-            bpmn_xml=SIMPLE_PROCESS_XML
+            id=uuid4(), name="Test Process", version=1, bpmn_xml=SIMPLE_PROCESS_XML
         )
         session.add(definition)
         await session.commit()
@@ -106,9 +95,9 @@ class TestTokenIdempotency(BaseEngineTest):
 
         # Simulate concurrent token creation attempts
         import asyncio
+
         creation_tasks = [
-            executor.create_initial_token(instance_id, "StartEvent_1")
-            for _ in range(5)
+            executor.create_initial_token(instance_id, "StartEvent_1") for _ in range(5)
         ]
         await asyncio.gather(*creation_tasks, return_exceptions=True)
 
@@ -123,10 +112,7 @@ class TestTokenIdempotency(BaseEngineTest):
         assert instance.status == ProcessStatus.RUNNING
 
     async def test_redis_state_cleanup_on_completion(
-        self,
-        session,
-        state_manager: StateManager,
-        test_settings
+        self, session, state_manager: StateManager, test_settings
     ):
         """
         Test that Redis state is properly cleaned up when process completes.
@@ -139,16 +125,10 @@ class TestTokenIdempotency(BaseEngineTest):
         """
         # Create two test process definitions
         definition1 = ProcessDefinition(
-            id=uuid4(),
-            name="Test Process 1",
-            version=1,
-            bpmn_xml=SIMPLE_PROCESS_XML
+            id=uuid4(), name="Test Process 1", version=1, bpmn_xml=SIMPLE_PROCESS_XML
         )
         definition2 = ProcessDefinition(
-            id=uuid4(),
-            name="Test Process 2",
-            version=1,
-            bpmn_xml=SIMPLE_PROCESS_XML
+            id=uuid4(), name="Test Process 2", version=1, bpmn_xml=SIMPLE_PROCESS_XML
         )
         session.add(definition1)
         session.add(definition2)
@@ -201,10 +181,7 @@ class TestTokenIdempotency(BaseEngineTest):
         assert instance2.status == ProcessStatus.RUNNING
 
     async def test_error_handling_and_cleanup(
-        self,
-        session,
-        state_manager: StateManager,
-        test_settings
+        self, session, state_manager: StateManager, test_settings
     ):
         """
         Test error handling and state cleanup during token creation.
@@ -217,10 +194,7 @@ class TestTokenIdempotency(BaseEngineTest):
         """
         # Create test process definition
         definition = ProcessDefinition(
-            id=uuid4(),
-            name="Test Process",
-            version=1,
-            bpmn_xml=SIMPLE_PROCESS_XML
+            id=uuid4(), name="Test Process", version=1, bpmn_xml=SIMPLE_PROCESS_XML
         )
         session.add(definition)
         await session.commit()
@@ -258,10 +232,7 @@ class TestTokenIdempotency(BaseEngineTest):
             assert len(tokens) == 0, "No tokens should exist after error"
 
     async def test_process_started_event_idempotency(
-        self,
-        session,
-        state_manager: StateManager,
-        test_settings: Settings
+        self, session, state_manager: StateManager, test_settings: Settings
     ):
         """
         Test that process.started event handling is idempotent.
@@ -274,10 +245,7 @@ class TestTokenIdempotency(BaseEngineTest):
         """
         # Create test process definition
         definition = ProcessDefinition(
-            id=uuid4(),
-            name="Test Process",
-            version=1,
-            bpmn_xml=SIMPLE_PROCESS_XML
+            id=uuid4(), name="Test Process", version=1, bpmn_xml=SIMPLE_PROCESS_XML
         )
         session.add(definition)
         await session.commit()
@@ -305,7 +273,9 @@ class TestTokenIdempotency(BaseEngineTest):
         # Verify token state remains consistent
         tokens_after_second = await state_manager.get_token_positions(instance_id)
         assert len(tokens_after_second) == 1
-        assert tokens_after_second[0]["id"] == first_token_id, "Token ID should remain the same"
+        assert (
+            tokens_after_second[0]["id"] == first_token_id
+        ), "Token ID should remain the same"
         assert tokens_after_second[0]["node_id"] == "StartEvent_1"
         assert tokens_after_second[0]["state"] == "ACTIVE"
 

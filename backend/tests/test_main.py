@@ -99,7 +99,7 @@ async def test_lifespan_error_handling():
 async def test_handle_process_started():
     """
     Test process.started event handler following BPMN lifecycle.
-    
+
     This test verifies:
     1. Process definition loading
     2. BPMN parsing and validation
@@ -150,22 +150,13 @@ async def test_handle_process_started():
                 id="Start_1",
                 type="event",
                 event_type=EventType.START,
-                outgoing=["Flow_1"]
+                outgoing=["Flow_1"],
             ),
             Event(
-                id="End_1",
-                type="event",
-                event_type=EventType.END,
-                incoming=["Flow_1"]
-            )
+                id="End_1", type="event", event_type=EventType.END, incoming=["Flow_1"]
+            ),
         ],
-        "flows": [
-            {
-                "id": "Flow_1",
-                "source_ref": "Start_1",
-                "target_ref": "End_1"
-            }
-        ]
+        "flows": [{"id": "Flow_1", "source_ref": "Start_1", "target_ref": "End_1"}],
     }
     mock_parser.parse.return_value = process_graph
 
@@ -197,14 +188,12 @@ async def test_handle_process_started():
 
         # 3. Verify token creation
         mock_executor.create_initial_token.assert_called_once_with(
-            test_data["instance_id"], 
-            "Start_1"
+            test_data["instance_id"], "Start_1"
         )
 
         # 4. Verify process execution
         mock_executor.execute_process.assert_called_once_with(
-            test_data["instance_id"], 
-            process_graph
+            test_data["instance_id"], process_graph
         )
 
         # 5. Verify execution order
@@ -216,7 +205,7 @@ async def test_handle_process_started():
 async def test_handle_process_started_error_cases():
     """
     Test error handling in process.started event handler.
-    
+
     Tests the following error cases:
     1. Process definition not found
     2. Invalid BPMN XML

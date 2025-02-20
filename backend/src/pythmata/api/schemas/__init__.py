@@ -1,5 +1,6 @@
 """API schemas package."""
 
+from pythmata.api.schemas.activity import ActivityLogResponse
 from pythmata.api.schemas.base import ApiResponse, PaginatedResponse
 from pythmata.api.schemas.process import (
     ProcessDefinitionBase,
@@ -18,6 +19,8 @@ from pythmata.api.schemas.script import ScriptContent, ScriptResponse
 from pythmata.api.schemas.token import TokenResponse
 
 __all__ = [
+    # Activity schemas
+    "ActivityLogResponse",
     # Base schemas
     "ApiResponse",
     "PaginatedResponse",

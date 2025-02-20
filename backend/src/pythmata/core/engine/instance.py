@@ -11,12 +11,15 @@ from pythmata.core.engine.transaction import Transaction
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, EventType
 from pythmata.models.process import (
+    ActivityLog,
+    ActivityType,
     ProcessDefinition,
     ProcessInstance,
     ProcessStatus,
     Variable,
 )
 from pythmata.utils.logger import get_logger
+
 logger = get_logger(__name__)
 
 
@@ -92,10 +95,49 @@ class ProcessInstanceManager:
         )
 
         if not start_event:
-            raise InvalidProcessDefinitionError(
-                "No start event found in BPMN XML")
+            raise InvalidProcessDefinitionError("No start event found in BPMN XML")
 
         return start_event.id
+
+    async def _create_activity_log(
+        self,
+        instance_id: UUID,
+        activity_type: ActivityType,
+        node_id: Optional[str] = None,
+        details: Optional[dict] = None,
+    ) -> ActivityLog:
+        """
+        Create and save an activity log entry.
+
+        Args:
+            instance_id: ID of the process instance
+            activity_type: Type of activity
+            node_id: Optional ID of the node where activity occurred
+            details: Optional additional details about the activity
+
+        Returns:
+            Created ActivityLog
+        """
+        logger.info(f"[Transaction] Creating activity log for instance {instance_id}")
+        logger.info(f"[Transaction] Activity type: {activity_type}")
+        
+        # Verify instance exists in database
+        result = await self.session.execute(
+            select(ProcessInstance).where(ProcessInstance.id == instance_id)
+        )
+        instance = result.scalar_one_or_none()
+        logger.info(f"[Transaction] Instance exists in DB: {instance is not None}")
+        
+        activity = ActivityLog(
+            instance_id=instance_id,
+            activity_type=activity_type,
+            node_id=node_id,
+            details=details,
+            timestamp=datetime.now(UTC),
+        )
+        logger.info("[Transaction] Adding activity log to session")
+        self.session.add(activity)
+        return activity
 
     async def create_instance(
         self,
@@ -154,6 +196,13 @@ class ProcessInstanceManager:
 
         await self.executor.create_initial_token(str(instance.id), start_event_id)
 
+        # Log instance creation
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_CREATED,
+            details={"definition_id": str(process_definition_id)},
+        )
+
         return instance
 
     async def _setup_variables(
@@ -192,17 +241,13 @@ class ProcessInstanceManager:
 
             # Validate value type matches declared type
             if var_type == "string" and not isinstance(var_value, str):
-                raise InvalidVariableError(
-                    f"Value for {name} must be a string")
+                raise InvalidVariableError(f"Value for {name} must be a string")
             elif var_type == "integer" and not isinstance(var_value, int):
-                raise InvalidVariableError(
-                    f"Value for {name} must be an integer")
+                raise InvalidVariableError(f"Value for {name} must be an integer")
             elif var_type == "boolean" and not isinstance(var_value, bool):
-                raise InvalidVariableError(
-                    f"Value for {name} must be a boolean")
+                raise InvalidVariableError(f"Value for {name} must be a boolean")
             elif var_type == "float" and not isinstance(var_value, (int, float)):
-                raise InvalidVariableError(
-                    f"Value for {name} must be a number")
+                raise InvalidVariableError(f"Value for {name} must be a number")
             elif var_type == "json" and not isinstance(var_value, (dict, list)):
                 raise InvalidVariableError(
                     f"Value for {name} must be a JSON object or array"
@@ -249,6 +294,10 @@ class ProcessInstanceManager:
 
         instance.status = ProcessStatus.SUSPENDED
         await self.session.commit()
+
+        # Log suspension
+        await self._create_activity_log(instance.id, ActivityType.INSTANCE_SUSPENDED)
+
         return instance
 
     async def resume_instance(self, instance_id: UUID) -> ProcessInstance:
@@ -275,6 +324,10 @@ class ProcessInstanceManager:
 
         instance.status = ProcessStatus.RUNNING
         await self.session.commit()
+
+        # Log resumption
+        await self._create_activity_log(instance.id, ActivityType.INSTANCE_RESUMED)
+
         return instance
 
     async def terminate_instance(self, instance_id: UUID) -> ProcessInstance:
@@ -306,6 +359,12 @@ class ProcessInstanceManager:
         instance.status = ProcessStatus.COMPLETED
         instance.end_time = datetime.now(UTC)
         await self.session.commit()
+
+        # Log termination
+        await self._create_activity_log(
+            instance.id, ActivityType.INSTANCE_COMPLETED, details={"terminated": True}
+        )
+
         return instance
 
     async def start_transaction(
@@ -346,8 +405,7 @@ class ProcessInstanceManager:
         """
         instance_str = str(instance_id)
         if instance_str not in self._active_transactions:
-            raise TransactionError(
-                f"Instance {instance_id} has no active transaction")
+            raise TransactionError(f"Instance {instance_id} has no active transaction")
 
         transaction = self._active_transactions[instance_str]
         transaction.complete()
@@ -383,8 +441,15 @@ class ProcessInstanceManager:
             raise ProcessInstanceError(f"Instance {instance_id} not found")
 
         instance.status = ProcessStatus.ERROR
-        # TODO: Add error message storage
         await self.session.commit()
+
+        # Log error state
+        await self._create_activity_log(
+            instance.id,
+            ActivityType.INSTANCE_ERROR,
+            details={"error_message": error_message} if error_message else None,
+        )
+
         return instance
 
     async def handle_error(
@@ -399,6 +464,7 @@ class ProcessInstanceManager:
             node_id: Optional ID of the node where error occurred
         """
         from pythmata.utils.logger import get_logger
+
         logger = get_logger(__name__)
 
         logger.error(
@@ -466,8 +532,7 @@ class ProcessInstanceManager:
 
         # Clean up Redis state
         instance_str = str(instance_id)
-        logger.info(
-            f"[Completion] Cleaning up Redis state for instance {instance_str}")
+        logger.info(f"[Completion] Cleaning up Redis state for instance {instance_str}")
 
         # Remove all tokens
         tokens = await self.state_manager.get_token_positions(instance_str)
@@ -492,8 +557,10 @@ class ProcessInstanceManager:
         instance.end_time = datetime.now(UTC)
         await self.session.commit()
 
-        logger.info(
-            f"[Completion] Instance {instance_str} completed successfully")
+        # Log completion
+        await self._create_activity_log(instance.id, ActivityType.INSTANCE_COMPLETED)
+
+        logger.info(f"[Completion] Instance {instance_str} completed successfully")
         return instance
 
     async def start_instance(
@@ -519,19 +586,31 @@ class ProcessInstanceManager:
             InvalidProcessDefinitionError: If process definition is invalid
             InvalidVariableError: If variable data is invalid
         """
+        logger.info(f"[Transaction] Starting instance {instance.id}")
+        
         # Set up variables if provided
         if variables:
+            logger.info("[Transaction] Setting up instance variables")
             await self._setup_variables(instance, variables)
 
         # Find start event if not provided
         if not start_event_id:
+            logger.info("[Transaction] Finding start event from BPMN")
             start_event_id = self._find_start_event(bpmn_xml)
 
         # Initialize process state with start event
+        logger.info(f"[Transaction] Creating initial token at {start_event_id}")
         await self.executor.create_initial_token(str(instance.id), start_event_id)
 
         # Update instance status
+        logger.info("[Transaction] Updating instance status to RUNNING")
         instance.status = ProcessStatus.RUNNING
         instance.start_time = datetime.now(UTC)
+
+        # Log instance start
+        logger.info("[Transaction] Creating instance started activity log")
+        await self._create_activity_log(
+            instance.id, ActivityType.INSTANCE_STARTED, start_event_id
+        )
 
         return instance

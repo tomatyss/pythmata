@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ApiError } from '@/lib/errors';
 import { convertKeysToCamel, convertKeysToSnake } from '@/utils/case';
 import {
+  ActivityLog,
   ApiResponse,
   PaginatedResponse,
   ProcessDefinition,
@@ -144,6 +145,11 @@ class ApiService {
     id: string
   ): Promise<ApiResponse<ProcessInstance>> {
     const response = await this.client.post(`/instances/${id}/resume`);
+    return response.data;
+  }
+
+  async getInstanceActivities(id: string): Promise<ApiResponse<ActivityLog[]>> {
+    const response = await this.client.get(`/instances/${id}/activities`);
     return response.data;
   }
 

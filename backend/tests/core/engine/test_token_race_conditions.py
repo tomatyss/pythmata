@@ -33,7 +33,7 @@ class TestTokenStateRaceConditions(BaseEngineTest):
         # Verify exactly one move succeeded and one failed with TokenStateError
         success_count = sum(1 for r in results if not isinstance(r, Exception))
         error_count = sum(1 for r in results if isinstance(r, TokenStateError))
-        
+
         assert success_count == 1, "Expected exactly one successful token move"
         assert error_count == 1, "Expected exactly one TokenStateError"
 
@@ -100,14 +100,14 @@ class TestTokenStateRaceConditions(BaseEngineTest):
         # Verify exactly one operation succeeded and one failed with TokenStateError
         success_count = sum(1 for r in results if not isinstance(r, Exception))
         error_count = sum(1 for r in results if isinstance(r, TokenStateError))
-        
+
         assert success_count == 1, "Expected exactly one successful operation"
         assert error_count == 1, "Expected exactly one TokenStateError"
 
         # Verify final token state
         tokens = await self.state_manager.get_token_positions(instance_id)
         active_tokens = [t for t in tokens if t.get("state") == TokenState.ACTIVE.value]
-        
+
         # Should have exactly one token, either at End_1 or consumed
         assert len(active_tokens) <= 1, "Expected at most one active token"
 
