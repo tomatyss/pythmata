@@ -4,8 +4,8 @@ from typing import Optional, Dict, Any
 
 import toml
 from pythmata.utils.logger import get_logger
-from pydantic import AmqpDsn, BaseModel, PostgresDsn, RedisDsn
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AmqpDsn, BaseModel, PostgresDsn, RedisDsn, ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class ServerSettings(BaseModel):
@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     security: SecuritySettings
     process: ProcessSettings
 
-    model_config = SettingsConfigDict(
+    model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         env_nested_delimiter="__",

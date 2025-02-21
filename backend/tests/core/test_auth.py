@@ -1,6 +1,6 @@
 """Authentication core tests."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import pytest
 from jose import jwt
@@ -14,7 +14,6 @@ from pythmata.core.auth import (
     get_user_by_email,
     verify_password,
 )
-from pythmata.core.config import get_settings
 from pythmata.models.user import Role, User
 
 
@@ -28,27 +27,27 @@ def test_password_hashing():
     assert not verify_password("wrongpassword", hashed)
 
 
-def test_create_access_token():
+def test_create_access_token(test_settings):
     """Test JWT token creation."""
-    settings = get_settings()
     data = {"sub": "testuser"}
     expires_delta = timedelta(minutes=15)
 
-    token = create_access_token(data, expires_delta)
+    token = create_access_token(data, test_settings, expires_delta)
 
     # Verify token
     payload = jwt.decode(
         token,
-        settings.security.secret_key,
-        algorithms=[settings.security.algorithm],
+        test_settings.security.secret_key,
+        algorithms=[test_settings.security.algorithm],
     )
 
     assert payload["sub"] == data["sub"]
-    exp = datetime.fromtimestamp(payload["exp"])
-    now = datetime.utcnow()
+    exp = datetime.fromtimestamp(payload["exp"], UTC)
+    now = datetime.now(UTC)
     assert (exp - now).total_seconds() > 0
 
 
+@pytest.mark.asyncio
 async def test_get_user_by_email(session, test_user: User):
     """Test getting user by email."""
     user = await get_user_by_email(session, test_user.email)
@@ -60,6 +59,7 @@ async def test_get_user_by_email(session, test_user: User):
     assert user is None
 
 
+@pytest.mark.asyncio
 async def test_authenticate_user(session, test_user: User):
     """Test user authentication."""
     # Test valid credentials

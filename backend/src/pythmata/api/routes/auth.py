@@ -16,7 +16,7 @@ from pythmata.core.auth import (
     get_password_hash,
     get_user_by_email,
 )
-from pythmata.core.config import get_settings
+from pythmata.core.config import Settings, get_settings
 from pythmata.models.user import User as UserModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -26,6 +26,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(get_settings),
 ) -> Token:
     """Login user and return access token."""
     user = await authenticate_user(session, form_data.username, form_data.password)
@@ -36,12 +37,13 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    settings = get_settings()
     access_token_expires = timedelta(
         minutes=settings.security.access_token_expire_minutes
     )
     access_token = create_access_token(
-        data={"sub": str(user.id)}, expires_delta=access_token_expires
+        data={"sub": str(user.id)},
+        settings=settings,
+        expires_delta=access_token_expires
     )
 
     return Token(access_token=access_token, token_type="bearer")

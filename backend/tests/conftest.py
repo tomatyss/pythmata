@@ -13,6 +13,9 @@ from pytest import Config
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pythmata.core.auth import get_password_hash
+from pythmata.models.user import Role, User
+
 from pythmata.api.dependencies import (
     get_event_bus,
     get_instance_manager,
@@ -59,16 +62,49 @@ def pytest_configure(config: Config) -> None:
     Args:
         config: Pytest configuration object
     """
+    # Ensure test database is set up
     setup_script = Path(__file__).parent.parent / "scripts" / "setup_test_db.py"
     try:
-        subprocess.run([str(setup_script)], check=True)
+        result = subprocess.run([str(setup_script)], check=True, capture_output=True, text=True)
+        if result.stderr:
+            print(f"Test database setup output: {result.stderr}")
     except subprocess.CalledProcessError as e:
-        print(f"Warning: Failed to set up test database: {e}")
+        print(f"Error setting up test database: {e}")
+        print(f"stdout: {e.stdout}")
+        print(f"stderr: {e.stderr}")
+        raise
 
 
 # ============================================================================
 # Core Fixtures
 # ============================================================================
+
+@pytest.fixture
+async def test_user(session):
+    """Create a test user."""
+    user = User(
+        email="test@example.com",
+        hashed_password=get_password_hash("testpassword"),
+        full_name="Test User",
+    )
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+@pytest.fixture
+async def test_role(session):
+    """Create a test role."""
+    role = Role(
+        name="test_role",
+        permissions={"can_read": True, "can_write": False},
+    )
+    session.add(role)
+    await session.commit()
+    await session.refresh(role)
+    return role
+
 
 
 @pytest.fixture
@@ -269,8 +305,10 @@ def app(test_settings: Settings, state_manager, event_bus) -> FastAPI:
         )
         yield instance_manager
 
-    # Override dependencies
-    app.dependency_overrides[get_settings] = lambda: test_settings
+    # Override dependencies with test settings
+    def get_test_settings():
+        return test_settings
+    app.dependency_overrides[get_settings] = get_test_settings
     app.dependency_overrides[get_state_manager] = get_test_state_manager
     app.dependency_overrides[get_session] = get_test_session
     app.dependency_overrides[get_event_bus] = get_test_event_bus
@@ -280,7 +318,7 @@ def app(test_settings: Settings, state_manager, event_bus) -> FastAPI:
 
 
 @pytest.fixture
-async def async_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(app: FastAPI, test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
     """Create an async test client.
 
     Args:
@@ -306,53 +344,67 @@ def test_settings() -> Settings:
 
     db_url = get_db_url(for_asyncpg=False)  # Use SQLAlchemy format
 
-    return Settings(
+    # Create settings with explicit values to avoid validation errors
+    settings = Settings(
         server=ServerSettings(
-            host=os.getenv("SERVER_HOST", DEFAULT_SERVER_HOST),
-            port=int(os.getenv("SERVER_PORT", str(DEFAULT_SERVER_PORT))),
-            debug=os.getenv("DEBUG", str(DEFAULT_DEBUG)).lower() == "true",
+            host=DEFAULT_SERVER_HOST,
+            port=DEFAULT_SERVER_PORT,
+            debug=DEFAULT_DEBUG,
         ),
         database=DatabaseSettings(
             url=db_url,
-            pool_size=int(os.getenv("DB_POOL_SIZE", str(DEFAULT_DB_POOL_SIZE))),
-            max_overflow=int(
-                os.getenv("DB_MAX_OVERFLOW", str(DEFAULT_DB_MAX_OVERFLOW))
-            ),
+            pool_size=DEFAULT_DB_POOL_SIZE,
+            max_overflow=DEFAULT_DB_MAX_OVERFLOW,
         ),
         redis=RedisSettings(
-            url=os.getenv(DEFAULT_REDIS_URL, "redis://localhost:6379/0"),
-            pool_size=int(os.getenv("REDIS_POOL_SIZE", str(DEFAULT_REDIS_POOL_SIZE))),
+            url=DEFAULT_REDIS_URL,
+            pool_size=DEFAULT_REDIS_POOL_SIZE,
         ),
         rabbitmq=RabbitMQSettings(
-            url=os.getenv(DEFAULT_RABBITMQ_URL, "amqp://guest:guest@localhost:5672/"),
-            connection_attempts=int(
-                os.getenv(
-                    "RABBITMQ_CONNECTION_ATTEMPTS",
-                    str(DEFAULT_RABBITMQ_CONNECTION_ATTEMPTS),
-                )
-            ),
-            retry_delay=int(
-                os.getenv("RABBITMQ_RETRY_DELAY", str(DEFAULT_RABBITMQ_RETRY_DELAY))
-            ),
+            url=DEFAULT_RABBITMQ_URL,
+            connection_attempts=DEFAULT_RABBITMQ_CONNECTION_ATTEMPTS,
+            retry_delay=DEFAULT_RABBITMQ_RETRY_DELAY,
         ),
         security=SecuritySettings(
-            secret_key=os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY),
-            algorithm=os.getenv("ALGORITHM", DEFAULT_ALGORITHM),
-            access_token_expire_minutes=int(
-                os.getenv(
-                    "ACCESS_TOKEN_EXPIRE_MINUTES",
-                    str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES),
-                )
-            ),
+            secret_key=DEFAULT_SECRET_KEY,
+            algorithm=DEFAULT_ALGORITHM,
+            access_token_expire_minutes=DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES,
         ),
         process=ProcessSettings(
-            script_timeout=int(
-                os.getenv("SCRIPT_TIMEOUT", str(DEFAULT_SCRIPT_TIMEOUT))
-            ),
-            max_instances=int(os.getenv("MAX_INSTANCES", str(DEFAULT_MAX_INSTANCES))),
-            cleanup_interval=int(
-                os.getenv("CLEANUP_INTERVAL", str(DEFAULT_CLEANUP_INTERVAL))
-            ),
+            script_timeout=DEFAULT_SCRIPT_TIMEOUT,
+            max_instances=DEFAULT_MAX_INSTANCES,
+            cleanup_interval=DEFAULT_CLEANUP_INTERVAL,
         ),
-        _env_file=None,  # Disable environment file loading for tests
     )
+
+    # Override with environment variables if provided
+    if os.getenv("SERVER_HOST"):
+        settings.server.host = os.getenv("SERVER_HOST")
+    if os.getenv("SERVER_PORT"):
+        settings.server.port = int(os.getenv("SERVER_PORT"))
+    if os.getenv("DEBUG"):
+        settings.server.debug = os.getenv("DEBUG").lower() == "true"
+    if os.getenv("DB_POOL_SIZE"):
+        settings.database.pool_size = int(os.getenv("DB_POOL_SIZE"))
+    if os.getenv("DB_MAX_OVERFLOW"):
+        settings.database.max_overflow = int(os.getenv("DB_MAX_OVERFLOW"))
+    if os.getenv("REDIS_POOL_SIZE"):
+        settings.redis.pool_size = int(os.getenv("REDIS_POOL_SIZE"))
+    if os.getenv("RABBITMQ_CONNECTION_ATTEMPTS"):
+        settings.rabbitmq.connection_attempts = int(os.getenv("RABBITMQ_CONNECTION_ATTEMPTS"))
+    if os.getenv("RABBITMQ_RETRY_DELAY"):
+        settings.rabbitmq.retry_delay = int(os.getenv("RABBITMQ_RETRY_DELAY"))
+    if os.getenv("SECRET_KEY"):
+        settings.security.secret_key = os.getenv("SECRET_KEY")
+    if os.getenv("ALGORITHM"):
+        settings.security.algorithm = os.getenv("ALGORITHM")
+    if os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"):
+        settings.security.access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+    if os.getenv("SCRIPT_TIMEOUT"):
+        settings.process.script_timeout = int(os.getenv("SCRIPT_TIMEOUT"))
+    if os.getenv("MAX_INSTANCES"):
+        settings.process.max_instances = int(os.getenv("MAX_INSTANCES"))
+    if os.getenv("CLEANUP_INTERVAL"):
+        settings.process.cleanup_interval = int(os.getenv("CLEANUP_INTERVAL"))
+
+    return settings

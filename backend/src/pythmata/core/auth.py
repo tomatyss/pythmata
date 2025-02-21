@@ -1,6 +1,6 @@
 """Authentication and authorization utilities."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Optional
 from uuid import UUID
 
@@ -11,7 +11,7 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.core.config import get_settings
+from pythmata.core.config import Settings, get_settings
 from pythmata.models.user import User
 
 # Password hashing context
@@ -19,7 +19,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token handling
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
@@ -31,15 +30,18 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    data: dict,
+    settings: Settings,
+    expires_delta: Optional[timedelta] = None
+) -> str:
     """Create a new JWT access token."""
-    settings = get_settings()
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
+        expire = datetime.now(UTC) + timedelta(
             minutes=settings.security.access_token_expire_minutes
         )
 
@@ -73,9 +75,9 @@ async def authenticate_user(
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     session: AsyncSession = Depends(),
+    settings: Settings = Depends(get_settings),
 ) -> User:
     """Get the current authenticated user."""
-    settings = get_settings()
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
