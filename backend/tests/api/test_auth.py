@@ -132,6 +132,7 @@ async def test_get_current_user(
     token = Token.model_validate(login_response.json())
 
     # Add role to user
+    await session.refresh(test_user, ['roles'])
     test_user.roles.append(test_role)
     await session.commit()
 

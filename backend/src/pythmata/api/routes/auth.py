@@ -5,7 +5,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from pythmata.api.dependencies import get_session
 from pythmata.api.schemas.auth import Token, User, UserCreate
@@ -63,18 +65,30 @@ async def register(
             detail="Email already registered",
         )
 
-    # Create new user
-    hashed_password = get_password_hash(user_create.password)
-    db_user = UserModel(
-        email=user_create.email,
-        hashed_password=hashed_password,
-        full_name=user_create.full_name,
-    )
-    session.add(db_user)
+    # Create new user within a transaction
+    async with session.begin_nested():  # Create savepoint
+        hashed_password = get_password_hash(user_create.password)
+        db_user = UserModel(
+            email=user_create.email,
+            hashed_password=hashed_password,
+            full_name=user_create.full_name,
+            roles=[]  # Initialize empty roles list
+        )
+        session.add(db_user)
+        await session.flush()  # Ensure user is created before commit
+        
+    # Commit the outer transaction
     await session.commit()
-    await session.refresh(db_user)
-
-    return db_user
+    
+    # Load the user with relationships
+    stmt = select(UserModel).where(UserModel.id == db_user.id).options(
+        selectinload(UserModel.roles)
+    )
+    result = await session.execute(stmt)
+    db_user = result.scalar_one()
+    
+    # Return through Pydantic model validation
+    return User.model_validate(db_user)
 
 
 @router.get("/me", response_model=User)
