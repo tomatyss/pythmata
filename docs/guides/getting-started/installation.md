@@ -160,14 +160,13 @@ npm install
 ## Next Steps
 
 After successful installation:
-1. Follow the [Getting Started Tutorial](../tutorials/getting-started.md)
-2. Review the [Basic Concepts Guide](../guides/basic-concepts.md)
-3. Explore [Example Workflows](../../examples/basic/)
+1. Review the [Basic Concepts Guide](basic-concepts.md)
+2. Explore [Example Workflows](../../examples/basic/order-process.md)
 
 ## Support
 
 If you encounter any issues:
-1. Check the [Troubleshooting Guide](../troubleshooting/)
+1. Check our GitHub Issues
 2. Search existing GitHub issues
 3. Create a new issue with:
    - Detailed description

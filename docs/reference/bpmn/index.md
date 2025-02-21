@@ -31,7 +31,7 @@ Welcome to the BPMN reference documentation for Pythmata. This section covers al
 
 - [Process Variables](variables.md)
 - [Error Handling](error-handling.md)
-- [Testing Strategies](../testing.md)
+- [Testing Strategies](../../guides/testing.md)
 
 ## Best Practices
 

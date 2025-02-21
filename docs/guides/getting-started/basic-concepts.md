@@ -254,6 +254,5 @@ assert db.is_connected
 
 ## Next Steps
 
-1. Try the [Getting Started Tutorial](../tutorials/getting-started.md)
-2. Explore [Example Workflows](../../examples/basic/)
-3. Learn about [Advanced Features](../../reference/bpmn/advanced-features.md)
+1. Explore [Example Workflows](../../examples/basic/order-process.md)
+2. Learn about [Advanced Features](../../reference/bpmn/advanced-features.md)
