@@ -120,3 +120,14 @@ updatedProcess
 # Operating Systems
 macOS
 WSL
+
+# Error Types
+BusinessError
+TechnicalError
+
+# Languages and Technologies
+javascript
+pydantic
+bpmn
+api
+rabbitmq
