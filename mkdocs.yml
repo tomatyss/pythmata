@@ -51,8 +51,14 @@ nav:
     - Basic:
       - Order Process: examples/basic/order-process.md
   - Reference:
-    - BPMN: reference/bpmn.md
+    - BPMN:
+      - Overview: reference/bpmn/index.md
+      - Variables: reference/bpmn/variables.md
+      - Error Handling: reference/bpmn/error-handling.md
+      - Advanced Features: reference/bpmn/advanced-features.md
     - API: reference/api.md
     - Configuration: reference/configuration.md
     - Security: reference/security.md
     - Performance: reference/performance.md
+  - Guides:
+    - Testing: guides/testing.md
