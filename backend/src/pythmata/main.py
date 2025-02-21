@@ -1,3 +1,5 @@
+"""Main FastAPI application module."""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
 from pythmata.api.routes import router as process_router
+from pythmata.api.websocket.routes import router as websocket_router
 from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.config import Settings
 from pythmata.core.database import get_db, init_db
@@ -242,13 +245,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CORS middleware
+# Add CORS middleware with WebSocket support
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_websockets=True,  # Enable WebSocket support
 )
 
 
@@ -260,3 +264,4 @@ async def health_check():
 
 # Import and include routers
 app.include_router(process_router, prefix="/api")
+app.include_router(websocket_router, prefix="/api/ws")  # Mount WebSocket routes

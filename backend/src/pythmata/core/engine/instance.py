@@ -1,3 +1,5 @@
+"""Process instance management module."""
+
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Dict, Optional
 from uuid import UUID
@@ -6,6 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.schemas import ProcessVariableValue
+from pythmata.api.schemas.websocket import ActivityUpdate, StatusUpdate, VariableUpdate
+from pythmata.api.websocket.manager import manager
 from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.engine.transaction import Transaction
 from pythmata.core.state import StateManager
@@ -64,9 +68,33 @@ class ProcessInstanceManager:
         self.session = session
         self.executor = executor
         self.state_manager = state_manager
-        self._active_transactions: Dict[str, Transaction] = (
-            {}
-        )  # instance_id -> Transaction
+        self._active_transactions: Dict[str, Transaction] = {}  # instance_id -> Transaction
+
+    async def _send_websocket_update(
+        self, instance_id: UUID, message_type: str, details: dict
+    ) -> None:
+        """
+        Send a WebSocket update for a process instance.
+
+        Args:
+            instance_id: ID of the process instance
+            message_type: Type of message (ACTIVITY_COMPLETED, etc.)
+            details: Message details
+        """
+        try:
+            await manager.broadcast_to_instance(
+                instance_id=instance_id,
+                message_type=message_type,
+                data={
+                    "id": str(instance_id),
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "type": message_type,
+                    "details": details,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error sending WebSocket update: {e}")
+            # Don't raise - WebSocket errors shouldn't affect process execution
 
     def _find_start_event(self, bpmn_xml: str) -> str:
         """
@@ -137,73 +165,20 @@ class ProcessInstanceManager:
         )
         logger.info("[Transaction] Adding activity log to session")
         self.session.add(activity)
+
+        # Send WebSocket update for node completion
+        if activity_type == ActivityType.NODE_COMPLETED:
+            await self._send_websocket_update(
+                instance_id=instance_id,
+                message_type="ACTIVITY_COMPLETED",
+                details={
+                    "node_id": node_id,
+                    "activity_type": activity_type,
+                    **(details or {}),
+                },
+            )
+
         return activity
-
-    async def create_instance(
-        self,
-        process_definition_id: UUID,
-        variables: Optional[Dict] = None,
-        start_event_id: Optional[str] = None,
-    ) -> ProcessInstance:
-        """
-        Create and initialize a new process instance.
-
-        Args:
-            process_definition_id: ID of the process definition
-            variables: Optional initial variables
-            start_event_id: Optional specific start event ID
-
-        Returns:
-            Initialized ProcessInstance
-
-        Raises:
-            InvalidProcessDefinitionError: If process definition is invalid
-            InvalidVariableError: If variable data is invalid
-        """
-        # Validate process definition exists
-        definition = await self.session.get(ProcessDefinition, process_definition_id)
-        if not definition:
-            raise InvalidProcessDefinitionError(
-                f"Process definition {process_definition_id} not found"
-            )
-
-        # Create instance
-        instance = ProcessInstance(
-            definition_id=process_definition_id,
-            status=ProcessStatus.RUNNING,
-            start_time=datetime.now(UTC),
-        )
-        self.session.add(instance)
-        await self.session.commit()  # Commit to get instance.id
-
-        # Set up variables if provided
-        if variables:
-            await self._setup_variables(instance, variables)
-            await self.session.commit()  # Commit variables separately
-            # Refresh instance to load variables
-            await self.session.refresh(instance)
-
-        # Get process definition
-        definition = await self.session.get(ProcessDefinition, process_definition_id)
-        if not definition:
-            raise InvalidProcessDefinitionError(
-                f"Process definition {process_definition_id} not found"
-            )
-
-        # Find start event if not provided
-        if not start_event_id:
-            start_event_id = self._find_start_event(definition.bpmn_xml)
-
-        await self.executor.create_initial_token(str(instance.id), start_event_id)
-
-        # Log instance creation
-        await self._create_activity_log(
-            instance.id,
-            ActivityType.INSTANCE_CREATED,
-            details={"definition_id": str(process_definition_id)},
-        )
-
-        return instance
 
     async def _setup_variables(
         self, instance: ProcessInstance, variables: Dict
@@ -270,6 +245,17 @@ class ProcessInstanceManager:
                 variable=ProcessVariableValue(type=var_type, value=var_value),
             )
 
+            # Send WebSocket update for variable change
+            await self._send_websocket_update(
+                instance_id=instance.id,
+                message_type="VARIABLE_UPDATED",
+                details={
+                    "name": name,
+                    "type": var_type,
+                    "value": var_value,
+                },
+            )
+
     async def suspend_instance(self, instance_id: UUID) -> ProcessInstance:
         """
         Suspend a running process instance.
@@ -292,11 +278,22 @@ class ProcessInstanceManager:
                 f"Cannot suspend instance in {instance.status} state"
             )
 
+        old_status = instance.status
         instance.status = ProcessStatus.SUSPENDED
         await self.session.commit()
 
         # Log suspension
         await self._create_activity_log(instance.id, ActivityType.INSTANCE_SUSPENDED)
+
+        # Send WebSocket update for status change
+        await self._send_websocket_update(
+            instance_id=instance.id,
+            message_type="STATUS_CHANGED",
+            details={
+                "old_status": old_status,
+                "new_status": ProcessStatus.SUSPENDED,
+            },
+        )
 
         return instance
 
@@ -322,11 +319,22 @@ class ProcessInstanceManager:
                 f"Cannot resume instance in {instance.status} state"
             )
 
+        old_status = instance.status
         instance.status = ProcessStatus.RUNNING
         await self.session.commit()
 
         # Log resumption
         await self._create_activity_log(instance.id, ActivityType.INSTANCE_RESUMED)
+
+        # Send WebSocket update for status change
+        await self._send_websocket_update(
+            instance_id=instance.id,
+            message_type="STATUS_CHANGED",
+            details={
+                "old_status": old_status,
+                "new_status": ProcessStatus.RUNNING,
+            },
+        )
 
         return instance
 
@@ -351,11 +359,11 @@ class ProcessInstanceManager:
             del self._active_transactions[str(instance_id)]
 
         # Remove all tokens
-        # Remove all tokens one by one since we don't have a bulk remove method
         tokens = await self.state_manager.get_token_positions(str(instance_id))
         for token in tokens:
             await self.state_manager.remove_token(str(instance_id), token["node_id"])
 
+        old_status = instance.status
         instance.status = ProcessStatus.COMPLETED
         instance.end_time = datetime.now(UTC)
         await self.session.commit()
@@ -363,6 +371,17 @@ class ProcessInstanceManager:
         # Log termination
         await self._create_activity_log(
             instance.id, ActivityType.INSTANCE_COMPLETED, details={"terminated": True}
+        )
+
+        # Send WebSocket update for status change
+        await self._send_websocket_update(
+            instance_id=instance.id,
+            message_type="STATUS_CHANGED",
+            details={
+                "old_status": old_status,
+                "new_status": ProcessStatus.COMPLETED,
+                "terminated": True,
+            },
         )
 
         return instance
@@ -440,6 +459,7 @@ class ProcessInstanceManager:
         if not instance:
             raise ProcessInstanceError(f"Instance {instance_id} not found")
 
+        old_status = instance.status
         instance.status = ProcessStatus.ERROR
         await self.session.commit()
 
@@ -448,6 +468,17 @@ class ProcessInstanceManager:
             instance.id,
             ActivityType.INSTANCE_ERROR,
             details={"error_message": error_message} if error_message else None,
+        )
+
+        # Send WebSocket update for status change
+        await self._send_websocket_update(
+            instance_id=instance.id,
+            message_type="STATUS_CHANGED",
+            details={
+                "old_status": old_status,
+                "new_status": ProcessStatus.ERROR,
+                "error_message": error_message,
+            },
         )
 
         return instance
@@ -525,7 +556,6 @@ class ProcessInstanceManager:
         Returns:
             Updated ProcessInstance
         """
-
         instance = await self.session.get(ProcessInstance, instance_id)
         if not instance:
             raise ProcessInstanceError(f"Instance {instance_id} not found")
@@ -553,12 +583,23 @@ class ProcessInstanceManager:
             await self.state_manager.redis.delete(*keys)
 
         # Update instance status
+        old_status = instance.status
         instance.status = ProcessStatus.COMPLETED
         instance.end_time = datetime.now(UTC)
         await self.session.commit()
 
         # Log completion
         await self._create_activity_log(instance.id, ActivityType.INSTANCE_COMPLETED)
+
+        # Send WebSocket update for status change
+        await self._send_websocket_update(
+            instance_id=instance.id,
+            message_type="STATUS_CHANGED",
+            details={
+                "old_status": old_status,
+                "new_status": ProcessStatus.COMPLETED,
+            },
+        )
 
         logger.info(f"[Completion] Instance {instance_str} completed successfully")
         return instance
@@ -604,6 +645,7 @@ class ProcessInstanceManager:
 
         # Update instance status
         logger.info("[Transaction] Updating instance status to RUNNING")
+        old_status = instance.status
         instance.status = ProcessStatus.RUNNING
         instance.start_time = datetime.now(UTC)
 
@@ -611,6 +653,16 @@ class ProcessInstanceManager:
         logger.info("[Transaction] Creating instance started activity log")
         await self._create_activity_log(
             instance.id, ActivityType.INSTANCE_STARTED, start_event_id
+        )
+
+        # Send WebSocket update for status change
+        await self._send_websocket_update(
+            instance_id=instance.id,
+            message_type="STATUS_CHANGED",
+            details={
+                "old_status": old_status,
+                "new_status": ProcessStatus.RUNNING,
+            },
         )
 
         return instance
