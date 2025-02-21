@@ -1,11 +1,12 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 import toml
-from pythmata.utils.logger import get_logger
-from pydantic import AmqpDsn, BaseModel, PostgresDsn, RedisDsn, ConfigDict
+from pydantic import AmqpDsn, BaseModel, ConfigDict, PostgresDsn, RedisDsn
 from pydantic_settings import BaseSettings
+
+from pythmata.utils.logger import get_logger
 
 
 class ServerSettings(BaseModel):
@@ -66,10 +67,10 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         logger.info("[Settings] Initializing application settings")
-        
+
         # Log initial kwargs
         logger.debug(f"[Settings] Initial kwargs: {kwargs}")
-        
+
         # If all required settings are provided, skip TOML loading
         required_settings = [
             "server",
@@ -79,15 +80,19 @@ class Settings(BaseSettings):
             "security",
             "process",
         ]
-        
+
         if all(key in kwargs for key in required_settings):
-            logger.info("[Settings] All required settings provided in kwargs, skipping TOML loading")
+            logger.info(
+                "[Settings] All required settings provided in kwargs, skipping TOML loading"
+            )
             try:
                 super().__init__(**kwargs)
                 logger.info("[Settings] Settings initialized successfully from kwargs")
                 return
             except Exception as e:
-                logger.error(f"[Settings] Validation error with provided kwargs: {str(e)}")
+                logger.error(
+                    f"[Settings] Validation error with provided kwargs: {str(e)}"
+                )
                 raise
 
         # Load config from TOML file if specified
@@ -126,7 +131,9 @@ class Settings(BaseSettings):
             logger.info("[Settings] Settings initialized and validated successfully")
         except Exception as e:
             logger.error(f"[Settings] Settings validation failed: {str(e)}")
-            logger.error("[Settings] Missing or invalid configuration. Ensure all required settings are provided.")
+            logger.error(
+                "[Settings] Missing or invalid configuration. Ensure all required settings are provided."
+            )
             raise
 
 

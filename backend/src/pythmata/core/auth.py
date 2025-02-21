@@ -1,6 +1,6 @@
 """Authentication and authorization utilities."""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 from uuid import UUID
 
@@ -20,6 +20,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 scheme for token handling
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
     return pwd_context.verify(plain_password, hashed_password)
@@ -31,9 +32,7 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    data: dict,
-    settings: Settings,
-    expires_delta: Optional[timedelta] = None
+    data: dict, settings: Settings, expires_delta: Optional[timedelta] = None
 ) -> str:
     """Create a new JWT access token."""
     to_encode = data.copy()

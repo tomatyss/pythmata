@@ -1,17 +1,5 @@
 """API schemas package."""
 
-from .auth import (
-    Role,
-    RoleCreate,
-    RoleUpdate,
-    Token,
-    TokenData,
-    User,
-    UserCreate,
-    UserInDB,
-    UserUpdate,
-)
-
 from pythmata.api.schemas.base import ApiResponse, PaginatedResponse
 from pythmata.api.schemas.process import (
     ProcessDefinitionBase,
@@ -26,10 +14,20 @@ from pythmata.api.schemas.process import (
     ProcessVariableValidation,
     ProcessVariableValue,
 )
-
-
 from pythmata.api.schemas.script import ScriptContent, ScriptResponse
 from pythmata.api.schemas.token import TokenResponse
+
+from .auth import (
+    Role,
+    RoleCreate,
+    RoleUpdate,
+    Token,
+    TokenData,
+    User,
+    UserCreate,
+    UserInDB,
+    UserUpdate,
+)
 
 __all__ = [
     # Auth schemas

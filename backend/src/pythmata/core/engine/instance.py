@@ -17,6 +17,7 @@ from pythmata.models.process import (
     Variable,
 )
 from pythmata.utils.logger import get_logger
+
 logger = get_logger(__name__)
 
 
@@ -92,8 +93,7 @@ class ProcessInstanceManager:
         )
 
         if not start_event:
-            raise InvalidProcessDefinitionError(
-                "No start event found in BPMN XML")
+            raise InvalidProcessDefinitionError("No start event found in BPMN XML")
 
         return start_event.id
 
@@ -192,17 +192,13 @@ class ProcessInstanceManager:
 
             # Validate value type matches declared type
             if var_type == "string" and not isinstance(var_value, str):
-                raise InvalidVariableError(
-                    f"Value for {name} must be a string")
+                raise InvalidVariableError(f"Value for {name} must be a string")
             elif var_type == "integer" and not isinstance(var_value, int):
-                raise InvalidVariableError(
-                    f"Value for {name} must be an integer")
+                raise InvalidVariableError(f"Value for {name} must be an integer")
             elif var_type == "boolean" and not isinstance(var_value, bool):
-                raise InvalidVariableError(
-                    f"Value for {name} must be a boolean")
+                raise InvalidVariableError(f"Value for {name} must be a boolean")
             elif var_type == "float" and not isinstance(var_value, (int, float)):
-                raise InvalidVariableError(
-                    f"Value for {name} must be a number")
+                raise InvalidVariableError(f"Value for {name} must be a number")
             elif var_type == "json" and not isinstance(var_value, (dict, list)):
                 raise InvalidVariableError(
                     f"Value for {name} must be a JSON object or array"
@@ -346,8 +342,7 @@ class ProcessInstanceManager:
         """
         instance_str = str(instance_id)
         if instance_str not in self._active_transactions:
-            raise TransactionError(
-                f"Instance {instance_id} has no active transaction")
+            raise TransactionError(f"Instance {instance_id} has no active transaction")
 
         transaction = self._active_transactions[instance_str]
         transaction.complete()
@@ -399,6 +394,7 @@ class ProcessInstanceManager:
             node_id: Optional ID of the node where error occurred
         """
         from pythmata.utils.logger import get_logger
+
         logger = get_logger(__name__)
 
         logger.error(
@@ -466,8 +462,7 @@ class ProcessInstanceManager:
 
         # Clean up Redis state
         instance_str = str(instance_id)
-        logger.info(
-            f"[Completion] Cleaning up Redis state for instance {instance_str}")
+        logger.info(f"[Completion] Cleaning up Redis state for instance {instance_str}")
 
         # Remove all tokens
         tokens = await self.state_manager.get_token_positions(instance_str)
@@ -492,8 +487,7 @@ class ProcessInstanceManager:
         instance.end_time = datetime.now(UTC)
         await self.session.commit()
 
-        logger.info(
-            f"[Completion] Instance {instance_str} completed successfully")
+        logger.info(f"[Completion] Instance {instance_str} completed successfully")
         return instance
 
     async def start_instance(

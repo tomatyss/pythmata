@@ -4,7 +4,8 @@ import pytest
 from fastapi import status
 from httpx import AsyncClient
 
-from pythmata.api.schemas.auth import Token, User as UserSchema
+from pythmata.api.schemas.auth import Token
+from pythmata.api.schemas.auth import User as UserSchema
 from pythmata.core.auth import get_password_hash
 from pythmata.models.user import Role, User
 
@@ -44,18 +45,20 @@ async def test_register_user(async_client: AsyncClient):
         "password": "Password123!",
         "full_name": "New User",
     }
-    
+
     response = await async_client.post(
         "/auth/register",
         json=user_data,
     )
-    
+
     # Check status code
-    assert response.status_code == status.HTTP_201_CREATED, "Registration should succeed"
-    
+    assert (
+        response.status_code == status.HTTP_201_CREATED
+    ), "Registration should succeed"
+
     # Validate response against schema
     user = UserSchema.model_validate(response.json())
-    
+
     # Verify user data
     assert user.email == user_data["email"], "Email should match"
     assert user.full_name == user_data["full_name"], "Full name should match"
@@ -63,7 +66,7 @@ async def test_register_user(async_client: AsyncClient):
     assert isinstance(user.roles, list), "Roles should be a list"
     assert len(user.roles) == 0, "New user should have no roles"
     assert "hashed_password" not in response.json(), "Password should not be exposed"
-    
+
     # Verify timestamps and ID
     assert user.id is not None, "User should have an ID"
     assert user.created_at is not None, "Created timestamp should be set"
@@ -93,10 +96,10 @@ async def test_login_success(async_client: AsyncClient, test_user: User):
         },
     )
     assert response.status_code == status.HTTP_200_OK, "Login should succeed"
-    
+
     # Validate response against schema
     token = Token.model_validate(response.json())
-    
+
     # Verify token data
     assert token.access_token, "Access token should be present"
     assert token.token_type == "bearer", "Token type should be bearer"
@@ -138,10 +141,10 @@ async def test_get_current_user(
         headers={"Authorization": f"Bearer {token.access_token}"},
     )
     assert response.status_code == status.HTTP_200_OK, "Should get user info"
-    
+
     # Validate response against schema
     user = UserSchema.model_validate(response.json())
-    
+
     # Verify user data
     assert user.email == test_user.email, "Email should match"
     assert user.full_name == test_user.full_name, "Full name should match"

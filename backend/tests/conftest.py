@@ -13,15 +13,13 @@ from pytest import Config
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.core.auth import get_password_hash
-from pythmata.models.user import Role, User
-
 from pythmata.api.dependencies import (
     get_event_bus,
     get_instance_manager,
     get_session,
     get_state_manager,
 )
+from pythmata.core.auth import get_password_hash
 from pythmata.core.config import (
     DatabaseSettings,
     ProcessSettings,
@@ -36,6 +34,7 @@ from pythmata.core.database import get_db, init_db
 from pythmata.core.engine.expressions import ExpressionEvaluator
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
+from pythmata.models.user import Role, User
 from tests.core.testing.constants import (
     DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES,
     DEFAULT_ALGORITHM,
@@ -65,7 +64,9 @@ def pytest_configure(config: Config) -> None:
     # Ensure test database is set up
     setup_script = Path(__file__).parent.parent / "scripts" / "setup_test_db.py"
     try:
-        result = subprocess.run([str(setup_script)], check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            [str(setup_script)], check=True, capture_output=True, text=True
+        )
         if result.stderr:
             print(f"Test database setup output: {result.stderr}")
     except subprocess.CalledProcessError as e:
@@ -78,6 +79,7 @@ def pytest_configure(config: Config) -> None:
 # ============================================================================
 # Core Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 async def test_user(session):
@@ -104,7 +106,6 @@ async def test_role(session):
     await session.commit()
     await session.refresh(role)
     return role
-
 
 
 @pytest.fixture
@@ -308,6 +309,7 @@ def app(test_settings: Settings, state_manager, event_bus) -> FastAPI:
     # Override dependencies with test settings
     def get_test_settings():
         return test_settings
+
     app.dependency_overrides[get_settings] = get_test_settings
     app.dependency_overrides[get_state_manager] = get_test_state_manager
     app.dependency_overrides[get_session] = get_test_session
@@ -318,7 +320,9 @@ def app(test_settings: Settings, state_manager, event_bus) -> FastAPI:
 
 
 @pytest.fixture
-async def async_client(app: FastAPI, test_settings: Settings) -> AsyncGenerator[AsyncClient, None]:
+async def async_client(
+    app: FastAPI, test_settings: Settings
+) -> AsyncGenerator[AsyncClient, None]:
     """Create an async test client.
 
     Args:
@@ -391,7 +395,9 @@ def test_settings() -> Settings:
     if os.getenv("REDIS_POOL_SIZE"):
         settings.redis.pool_size = int(os.getenv("REDIS_POOL_SIZE"))
     if os.getenv("RABBITMQ_CONNECTION_ATTEMPTS"):
-        settings.rabbitmq.connection_attempts = int(os.getenv("RABBITMQ_CONNECTION_ATTEMPTS"))
+        settings.rabbitmq.connection_attempts = int(
+            os.getenv("RABBITMQ_CONNECTION_ATTEMPTS")
+        )
     if os.getenv("RABBITMQ_RETRY_DELAY"):
         settings.rabbitmq.retry_delay = int(os.getenv("RABBITMQ_RETRY_DELAY"))
     if os.getenv("SECRET_KEY"):
@@ -399,7 +405,9 @@ def test_settings() -> Settings:
     if os.getenv("ALGORITHM"):
         settings.security.algorithm = os.getenv("ALGORITHM")
     if os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"):
-        settings.security.access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+        settings.security.access_token_expire_minutes = int(
+            os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
+        )
     if os.getenv("SCRIPT_TIMEOUT"):
         settings.process.script_timeout = int(os.getenv("SCRIPT_TIMEOUT"))
     if os.getenv("MAX_INSTANCES"):

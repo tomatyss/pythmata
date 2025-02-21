@@ -36,8 +36,7 @@ async def handle_process_started(data: dict) -> None:
     try:
         instance_id = data["instance_id"]
         definition_id = data["definition_id"]
-        logger.info(
-            f"Handling process.started event for instance {instance_id}")
+        logger.info(f"Handling process.started event for instance {instance_id}")
 
         # Get required services
         logger.info("[ProcessStarted] Initializing required services")
@@ -45,10 +44,10 @@ async def handle_process_started(data: dict) -> None:
             settings = Settings()
             logger.info("[ProcessStarted] Settings initialized successfully")
         except Exception as e:
+            logger.error(f"[ProcessStarted] Failed to initialize settings: {str(e)}")
             logger.error(
-                f"[ProcessStarted] Failed to initialize settings: {str(e)}")
-            logger.error(
-                "[ProcessStarted] Please check configuration files and environment variables")
+                "[ProcessStarted] Please check configuration files and environment variables"
+            )
             raise
 
         state_manager = StateManager(settings)
@@ -70,11 +69,11 @@ async def handle_process_started(data: dict) -> None:
 
                 definition = result.scalar_one_or_none()
                 logger.debug(
-                    f"Definition type: {type(definition)}, value: {definition}")
+                    f"Definition type: {type(definition)}, value: {definition}"
+                )
 
                 if not definition:
-                    logger.error(
-                        f"Process definition {definition_id} not found")
+                    logger.error(f"Process definition {definition_id} not found")
                     return
                 logger.info(f"Definition loaded successfully: {definition_id}")
 
@@ -82,12 +81,11 @@ async def handle_process_started(data: dict) -> None:
                 try:
                     parser = BPMNParser()
                     logger.debug(
-                        f"Definition bpmn_xml type: {type(definition.bpmn_xml)}")
-                    logger.debug(
-                        f"Definition bpmn_xml value: {definition.bpmn_xml}")
+                        f"Definition bpmn_xml type: {type(definition.bpmn_xml)}"
+                    )
+                    logger.debug(f"Definition bpmn_xml value: {definition.bpmn_xml}")
                     process_graph = parser.parse(definition.bpmn_xml)
-                    logger.debug(
-                        f"Process graph after parsing: {process_graph}")
+                    logger.debug(f"Process graph after parsing: {process_graph}")
                     logger.info("BPMN XML parsed successfully")
                 except Exception as e:
                     logger.error(f"Failed to parse BPMN XML: {e}")
@@ -110,11 +108,9 @@ async def handle_process_started(data: dict) -> None:
             # 3. Initialize Process Instance
             async with db.session() as session:
                 # Create instance manager with proper initialization
-                instance_manager = ProcessInstanceManager(
-                    session, None, state_manager)
+                instance_manager = ProcessInstanceManager(session, None, state_manager)
                 executor = ProcessExecutor(
-                    state_manager=state_manager,
-                    instance_manager=instance_manager
+                    state_manager=state_manager, instance_manager=instance_manager
                 )
                 instance_manager.executor = executor
 
@@ -122,50 +118,48 @@ async def handle_process_started(data: dict) -> None:
                 logger.debug("Checking for existing tokens...")
                 existing_tokens = await state_manager.get_token_positions(instance_id)
                 logger.debug(
-                    f"Token check result type: {type(existing_tokens)}, value: {existing_tokens}")
+                    f"Token check result type: {type(existing_tokens)}, value: {existing_tokens}"
+                )
 
                 if existing_tokens is not None and len(existing_tokens) > 0:
                     logger.info(
-                        f"Found existing tokens for instance {instance_id}: {existing_tokens}")
-                    logger.debug(
-                        "Skipping token creation due to existing tokens")
+                        f"Found existing tokens for instance {instance_id}: {existing_tokens}"
+                    )
+                    logger.debug("Skipping token creation due to existing tokens")
                 else:
-                    logger.debug(
-                        "No existing tokens found, creating initial token")
+                    logger.debug("No existing tokens found, creating initial token")
                     # Create initial token only if none exist
                     initial_token = await executor.create_initial_token(
-                        instance_id,
-                        start_event.id
+                        instance_id, start_event.id
                     )
                     logger.info(
-                        f"Created initial token: {initial_token.id} at {start_event.id}")
+                        f"Created initial token: {initial_token.id} at {start_event.id}"
+                    )
 
                 # 5. Execute Process (will use existing tokens if any)
                 logger.debug(
-                    f"Preparing to execute process with graph: {process_graph}")
-                logger.info(
-                    f"Starting process execution for instance {instance_id}")
+                    f"Preparing to execute process with graph: {process_graph}"
+                )
+                logger.info(f"Starting process execution for instance {instance_id}")
                 await executor.execute_process(instance_id, process_graph)
-                logger.info(
-                    f"Process {instance_id} execution completed successfully")
+                logger.info(f"Process {instance_id} execution completed successfully")
 
         finally:
             await state_manager.disconnect()
 
     except Exception as e:
-        logger.error(
-            f"Error handling process.started event: {e}", exc_info=True)
+        logger.error(f"Error handling process.started event: {e}", exc_info=True)
 
         # Try to set error state and clean up if possible
         try:
-            logger.info(
-                "[ErrorCleanup] Attempting to initialize services for cleanup")
+            logger.info("[ErrorCleanup] Attempting to initialize services for cleanup")
             try:
                 settings = Settings()
                 logger.info("[ErrorCleanup] Settings initialized for cleanup")
             except Exception as e:
                 logger.error(
-                    f"[ErrorCleanup] Failed to initialize settings for cleanup: {str(e)}")
+                    f"[ErrorCleanup] Failed to initialize settings for cleanup: {str(e)}"
+                )
                 raise
 
             state_manager = StateManager(settings)
@@ -173,8 +167,7 @@ async def handle_process_started(data: dict) -> None:
             await state_manager.connect()
 
             async with get_db().session() as session:
-                instance_manager = ProcessInstanceManager(
-                    session, None, state_manager)
+                instance_manager = ProcessInstanceManager(session, None, state_manager)
                 await instance_manager.handle_error(instance_id, e)
         except Exception as cleanup_error:
             logger.error(f"Error during cleanup: {cleanup_error}")

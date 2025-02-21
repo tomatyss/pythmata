@@ -84,27 +84,31 @@ class ProcessValidator:
     def _validate_event_nodes(self, process_graph: Dict) -> None:
         """
         Validate presence and configuration of event nodes.
-        
+
         Checks:
         - Presence of exactly one start event
         - Presence of at least one end event
         - Valid event configurations
         """
         start_events = [
-            node for node in process_graph["nodes"]
+            node
+            for node in process_graph["nodes"]
             if isinstance(node, Event) and node.event_type == EventType.START
         ]
-        
+
         if not start_events:
             raise ProcessGraphValidationError("No start event found in process graph")
         if len(start_events) > 1:
-            raise ProcessGraphValidationError("Multiple start events found in process graph")
-        
+            raise ProcessGraphValidationError(
+                "Multiple start events found in process graph"
+            )
+
         end_events = [
-            node for node in process_graph["nodes"]
+            node
+            for node in process_graph["nodes"]
             if isinstance(node, Event) and node.event_type == EventType.END
         ]
-        
+
         if not end_events:
             raise ProcessGraphValidationError("No end event found in process graph")
 

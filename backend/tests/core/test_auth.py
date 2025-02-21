@@ -1,6 +1,6 @@
 """Authentication core tests."""
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from jose import jwt
