@@ -22,6 +22,7 @@
     ]
   },
   "dependencies": {
+    "@bpmn-io/properties-panel": "^3.26.3",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.5",
@@ -31,6 +32,8 @@
     "@tanstack/react-query": "^5.66.3",
     "axios": "^1.7.9",
     "bpmn-js": "^18.2.0",
+    "bpmn-js-properties-panel": "^5.32.1",
+    "camunda-bpmn-moddle": "^7.0.1",
     "date-fns": "^2.30.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "react": "^19.0.0",
