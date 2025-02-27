@@ -37,8 +37,23 @@ declare module 'bpmn-js' {
     warnings: Array<Error>;
   }
 
+  export interface BpmnJSOptions {
+    container?: HTMLElement;
+    propertiesPanel?: {
+      parent: HTMLElement;
+    };
+
+    additionalModules?: unknown[];
+    moddleExtensions?: {
+      [key: string]: unknown;
+    };
+    keyboard?: {
+      bindTo: Document;
+    };
+  }
+
   export default class BpmnJS {
-    constructor(options?: { container?: HTMLElement });
+    constructor(options?: BpmnJSOptions);
 
     importXML(xml: string): Promise<ImportXMLResult>;
     destroy(): void;

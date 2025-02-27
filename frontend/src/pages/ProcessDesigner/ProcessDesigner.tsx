@@ -24,11 +24,22 @@ import BpmnModeler from 'bpmn-js/lib/Modeler';
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 
+// Import properties panel and Camunda moddle descriptor
+import {
+  BpmnPropertiesPanelModule,
+  BpmnPropertiesProviderModule,
+  CamundaPlatformPropertiesProviderModule,
+} from 'bpmn-js-properties-panel';
+import '@bpmn-io/properties-panel/dist/assets/properties-panel.css';
+import camundaModdleDescriptor from 'camunda-bpmn-moddle/resources/camunda';
+
 // Default empty BPMN diagram
 const emptyBpmn = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   id="Definitions_1"
                   targetNamespace="http://bpmn.io/schema/bpmn">
   <bpmn:process id="Process_1" isExecutable="true">
@@ -47,6 +58,7 @@ const ProcessDesigner = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
+  const propertiesPanelRef = useRef<HTMLDivElement>(null);
   const modelerRef = useRef<BpmnModeler | null>(null);
   const [loading, setLoading] = useState(true);
   const [processName, setProcessName] = useState('');
@@ -87,11 +99,24 @@ const ProcessDesigner = () => {
 
     const initializeModeler = async () => {
       try {
-        if (!containerRef.current) return;
+        if (!containerRef.current || !propertiesPanelRef.current) return;
 
+        // Use type assertion to bypass TypeScript error
         modelerRef.current = new BpmnModeler({
           container: containerRef.current as HTMLElement,
-        });
+          propertiesPanel: {
+            parent: propertiesPanelRef.current as HTMLElement,
+          },
+          additionalModules: [
+            BpmnPropertiesPanelModule,
+            BpmnPropertiesProviderModule,
+            CamundaPlatformPropertiesProviderModule,
+          ],
+          moddleExtensions: {
+            camunda: camundaModdleDescriptor,
+          },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
 
         await modelerRef.current.importXML(bpmnXml);
       } catch (error) {
@@ -224,23 +249,44 @@ const ProcessDesigner = () => {
         </Toolbar>
       </AppBar>
 
-      <Paper
-        sx={{
-          flexGrow: 1,
-          position: 'relative',
-          bgcolor: '#fff',
-          overflow: 'hidden',
-          mr: 'var(--palette-width)', // Space for palette
-        }}
-      >
-        <div
-          ref={containerRef}
-          style={{
-            width: '100%',
-            height: '100%',
+      <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+        {/* BPMN Canvas */}
+        <Paper
+          sx={{
+            flexGrow: 1,
+            position: 'relative',
+            bgcolor: '#fff',
+            overflow: 'hidden',
           }}
-        />
-      </Paper>
+        >
+          <div
+            ref={containerRef}
+            style={{
+              width: '100%',
+              height: '100%',
+            }}
+          />
+        </Paper>
+
+        {/* Properties Panel */}
+        <Box
+          sx={{
+            width: '300px',
+            borderLeft: '1px solid #ddd',
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            ref={propertiesPanelRef}
+            style={{
+              height: '100%',
+              overflow: 'auto',
+            }}
+          />
+        </Box>
+      </Box>
 
       <Drawer
         anchor="right"
