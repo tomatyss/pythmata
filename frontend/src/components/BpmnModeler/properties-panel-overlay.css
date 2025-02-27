@@ -1,0 +1,46 @@
+/* Custom CSS to position the BPMN properties panel on the right side as an overlay */
+.bjs-properties-panel {
+  position: absolute !important;
+  right: 20px !important;
+  left: auto !important;
+  top: 20px !important;
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  background-color: #f8f8f8;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  width: 300px;
+}
+
+/* Style the properties panel header to match the palette */
+.bjs-properties-panel .bio-properties-panel-header {
+  background-color: #f8f8f8;
+  border-bottom: 1px solid #ccc;
+  padding: 7px 10px;
+}
+
+/* Style the properties panel groups */
+.bjs-properties-panel .bio-properties-panel-group {
+  margin-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Ensure the properties panel is visible */
+.bjs-properties-panel.open {
+  display: block !important;
+}
+
+/* Target the container with our custom class */
+.bpmn-container-with-overlay-panels .bjs-properties-panel {
+  right: 20px !important;
+  left: auto !important;
+  top: 20px !important;
+}
+
+/* Override any inline styles that might be applied */
+.bjs-properties-panel[style*="left"] {
+  left: auto !important;
+  right: 20px !important;
+}

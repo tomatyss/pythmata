@@ -35,8 +35,9 @@ import camundaModdleDescriptor from 'camunda-bpmn-moddle/resources/camunda';
 
 // Import palette module for configuration
 
-// Import custom CSS to position palette on the left
+// Import custom CSS to position palette on the left and properties panel as overlay
 import '@/components/BpmnModeler/palette-left.css';
+import '@/components/BpmnModeler/properties-panel-overlay.css';
 
 // Default empty BPMN diagram
 const emptyBpmn = `<?xml version="1.0" encoding="UTF-8"?>
@@ -127,10 +128,11 @@ const ProcessDesigner = () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
 
-        // Apply a class to the container to help with CSS targeting
+        // Apply classes to the container to help with CSS targeting
         if (containerRef.current) {
           containerRef.current.classList.add(
-            'bpmn-container-with-left-palette'
+            'bpmn-container-with-left-palette',
+            'bpmn-container-with-overlay-panels'
           );
         }
 
@@ -296,7 +298,7 @@ const ProcessDesigner = () => {
       </AppBar>
 
       <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-        {/* BPMN Canvas */}
+        {/* BPMN Canvas with overlaid Properties Panel */}
         <Paper
           sx={{
             flexGrow: 1,
@@ -310,28 +312,21 @@ const ProcessDesigner = () => {
             style={{
               width: '100%',
               height: '100%',
+              position: 'relative',
             }}
-          />
+          >
+            {/* Properties Panel as overlay */}
+            <div
+              ref={propertiesPanelRef}
+              style={{
+                position: 'absolute',
+                right: '20px',
+                top: '20px',
+                zIndex: 100,
+              }}
+            />
+          </div>
         </Paper>
-
-        {/* Properties Panel */}
-        <Box
-          sx={{
-            width: '300px',
-            borderLeft: '1px solid #ddd',
-            overflow: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            ref={propertiesPanelRef}
-            style={{
-              height: '100%',
-              overflow: 'auto',
-            }}
-          />
-        </Box>
       </Box>
 
       <Drawer
