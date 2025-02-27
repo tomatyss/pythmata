@@ -33,6 +33,11 @@ import {
 import '@bpmn-io/properties-panel/dist/assets/properties-panel.css';
 import camundaModdleDescriptor from 'camunda-bpmn-moddle/resources/camunda';
 
+// Import palette module for configuration
+
+// Import custom CSS to position palette on the left
+import '@/components/BpmnModeler/palette-left.css';
+
 // Default empty BPMN diagram
 const emptyBpmn = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -115,10 +120,51 @@ const ProcessDesigner = () => {
           moddleExtensions: {
             camunda: camundaModdleDescriptor,
           },
+          // Configure palette to appear on the left side
+          palette: {
+            open: true,
+          },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
 
+        // Apply a class to the container to help with CSS targeting
+        if (containerRef.current) {
+          containerRef.current.classList.add(
+            'bpmn-container-with-left-palette'
+          );
+        }
+
         await modelerRef.current.importXML(bpmnXml);
+
+        // After the modeler is initialized, force the palette to the left side
+        setTimeout(() => {
+          const paletteElement = document.querySelector('.djs-palette');
+          if (paletteElement) {
+            (paletteElement as HTMLElement).style.left = '20px';
+            (paletteElement as HTMLElement).style.right = 'auto';
+          }
+
+          // Set up a MutationObserver to ensure the palette stays on the left
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach(() => {
+              const palette = document.querySelector('.djs-palette');
+              if (palette) {
+                (palette as HTMLElement).style.left = '20px';
+                (palette as HTMLElement).style.right = 'auto';
+              }
+            });
+          });
+
+          // Start observing the container for changes
+          if (containerRef.current) {
+            observer.observe(containerRef.current, {
+              childList: true,
+              subtree: true,
+              attributes: true,
+              attributeFilter: ['style'],
+            });
+          }
+        }, 100);
       } catch (error) {
         console.error('Failed to initialize modeler:', error);
         setError(
