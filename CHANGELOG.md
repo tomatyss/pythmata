@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - None
 
 ### Fixed
-- None
+- Activity logs not showing in UI by committing logs to database and passing instance_manager to token movement methods
 
 ### Security
 - None
