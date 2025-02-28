@@ -137,6 +137,8 @@ class ProcessInstanceManager:
         )
         logger.info("[Transaction] Adding activity log to session")
         self.session.add(activity)
+        logger.info("[Transaction] Committing activity log to database")
+        await self.session.commit()
         return activity
 
     async def create_instance(

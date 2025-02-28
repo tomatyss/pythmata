@@ -26,19 +26,21 @@ class NodeExecutor:
     - Error handling and logging
     """
 
-    def __init__(self, state_manager: StateManager, token_manager=None):
+    def __init__(self, state_manager: StateManager, token_manager=None, instance_manager=None):
         """
         Initialize node executor with required handlers.
 
         Args:
             state_manager: Manager for process state
             token_manager: Optional token manager for token operations
+            instance_manager: Optional instance manager for activity logging
         """
         self.state_manager = state_manager
         self.token_manager = token_manager
+        self.instance_manager = instance_manager
         self.script_executor = ScriptExecutor(state_manager)
-        self.gateway_handler = GatewayHandler(state_manager, token_manager)
-        self.event_handler = EventHandler(state_manager, token_manager)
+        self.gateway_handler = GatewayHandler(state_manager, token_manager, instance_manager)
+        self.event_handler = EventHandler(state_manager, token_manager, instance_manager)
 
     async def execute_node(
         self, token: Token, node: Union[Task, Gateway, Event], process_graph: Dict
@@ -105,7 +107,7 @@ class NodeExecutor:
                     )
                     logger.info(f"Moving token {token.id} to {target_ref} via task")
                     if self.token_manager:
-                        await self.token_manager.move_token(token, target_ref)
+                        await self.token_manager.move_token(token, target_ref, self.instance_manager)
                     else:
                         logger.error(
                             "TokenManager not available for task token movement"

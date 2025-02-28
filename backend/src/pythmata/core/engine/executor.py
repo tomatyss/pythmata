@@ -93,8 +93,8 @@ class ProcessExecutor:
         self.validator = ProcessValidator()
         self.token_manager = TokenManager(state_manager)  # Create token_manager first
         self.node_executor = NodeExecutor(
-            state_manager, self.token_manager
-        )  # Pass token_manager to node_executor
+            state_manager, self.token_manager, instance_manager
+        )  # Pass token_manager and instance_manager to node_executor
         self.subprocess_manager = SubprocessManager(state_manager)
         self.call_activity_manager = CallActivityManager(state_manager)
         self.multi_instance_manager = MultiInstanceManager(state_manager)
@@ -127,7 +127,7 @@ class ProcessExecutor:
         self, token: Token, target_node_ids: List[str]
     ) -> List[Token]:
         """Split a token into multiple tokens."""
-        return await self.token_manager.split_token(token, target_node_ids)
+        return await self.token_manager.split_token(token, target_node_ids, self.instance_manager)
 
     @handle_execution_error
     async def enter_subprocess(self, token: Token, subprocess_id: str) -> Token:
