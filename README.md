@@ -10,7 +10,6 @@ A Python-based BPMN workflow engine with a modern React frontend.
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791.svg)](https://www.postgresql.org/)
 [![Documentation](https://img.shields.io/badge/docs-MkDocs-blue.svg)](https://www.mkdocs.org/)
 
-<a href="https://www.buymeacoffee.com/tomatyss" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 > **⚠️ DISCLAIMER: Work in Progress**  
 > This project is under active development and has not reached a stable release yet.  
@@ -277,3 +276,5 @@ pythmata/
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+<a href="https://www.buymeacoffee.com/tomatyss" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
