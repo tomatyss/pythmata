@@ -14,5 +14,5 @@
 
 /* Add some spacing to the container to accommodate the palette */
 .bpmn-container-with-left-palette {
-  padding-left: 100px;
+  padding-left: 0; /* Removed the 100px padding that was creating the extra space */
 }
