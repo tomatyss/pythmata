@@ -13,7 +13,9 @@ class GatewayHandler:
     Handles gateway logic including exclusive, parallel, and inclusive gateways.
     """
 
-    def __init__(self, state_manager: StateManager, token_manager=None, instance_manager=None):
+    def __init__(
+        self, state_manager: StateManager, token_manager=None, instance_manager=None
+    ):
         self.state_manager = state_manager
         self.token_manager = token_manager
         self.instance_manager = instance_manager
@@ -280,13 +282,17 @@ class GatewayHandler:
                 flow["target_ref"] if isinstance(flow, dict) else flow.target_ref
             )
             logger.info(f"Moving token {token.id} to {target_ref} via gateway")
-            await self.token_manager.move_token(token, target_ref, self.instance_manager)
+            await self.token_manager.move_token(
+                token, target_ref, self.instance_manager
+            )
         else:
             logger.error("TokenManager not available for gateway token movement")
 
     async def _split_token(self, token: Token, target_node_ids: List[str]) -> None:
         """Split token into multiple tokens."""
         if self.token_manager:
-            await self.token_manager.split_token(token, target_node_ids, self.instance_manager)
+            await self.token_manager.split_token(
+                token, target_node_ids, self.instance_manager
+            )
         else:
             logger.error("TokenManager not available for gateway token splitting")

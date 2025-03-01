@@ -5,6 +5,7 @@ Welcome to the BPMN reference documentation for Pythmata. This section covers al
 ## Core Concepts
 
 - [Variables](variables.md)
+- [Service Tasks](service-tasks.md)
 - [Error Handling](error-handling.md)
 - [Advanced Features](advanced-features.md)
 
@@ -30,6 +31,7 @@ Welcome to the BPMN reference documentation for Pythmata. This section covers al
 ## Implementation Details
 
 - [Process Variables](variables.md)
+- [Service Tasks](service-tasks.md)
 - [Error Handling](error-handling.md)
 - [Testing Strategies](../../guides/testing.md)
 

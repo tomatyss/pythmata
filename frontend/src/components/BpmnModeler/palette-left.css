@@ -1,37 +1,5 @@
-/* Custom CSS to position the BPMN palette on the left side */
+/* Position the palette on the left side */
 .djs-palette {
   left: 20px !important;
   right: auto !important;
-  top: 20px !important;
-}
-
-/* Additional styles to ensure the palette appears correctly on the left */
-.djs-palette-entries {
-  overflow-y: auto;
-}
-
-/* Ensure the palette is visible and has proper z-index */
-.djs-palette.open {
-  display: block !important;
-  z-index: 100;
-}
-
-/* Make sure the palette doesn't get hidden */
-.djs-container .djs-palette {
-  position: absolute !important;
-  left: 20px !important;
-  right: auto !important;
-}
-
-/* Target the container with our custom class */
-.bpmn-container-with-left-palette .djs-palette {
-  left: 20px !important;
-  right: auto !important;
-  top: 20px !important;
-}
-
-/* Override any inline styles that might be applied */
-.djs-palette[style*="right"] {
-  right: auto !important;
-  left: 20px !important;
 }

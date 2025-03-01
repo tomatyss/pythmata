@@ -196,7 +196,9 @@ class TokenManager:
 
             # Create activity log for node completion if instance manager is provided
             if instance_manager:
-                logger.info(f"[ActivityLog] Creating NODE_COMPLETED log for {token.node_id}")
+                logger.info(
+                    f"[ActivityLog] Creating NODE_COMPLETED log for {token.node_id}"
+                )
                 await instance_manager._create_activity_log(
                     UUID(token.instance_id),
                     ActivityType.NODE_COMPLETED,
@@ -268,7 +270,9 @@ class TokenManager:
 
             # Create activity log for node entry if instance manager is provided
             if instance_manager:
-                logger.info(f"[ActivityLog] Creating NODE_ENTERED log for {target_node_id}")
+                logger.info(
+                    f"[ActivityLog] Creating NODE_ENTERED log for {target_node_id}"
+                )
                 await instance_manager._create_activity_log(
                     UUID(token.instance_id),
                     ActivityType.NODE_ENTERED,
@@ -369,7 +373,9 @@ class TokenManager:
 
             # Create activity log for node completion if instance manager is provided
             if instance_manager:
-                logger.info(f"[ActivityLog] Creating NODE_COMPLETED log for {token.node_id}")
+                logger.info(
+                    f"[ActivityLog] Creating NODE_COMPLETED log for {token.node_id}"
+                )
                 await instance_manager._create_activity_log(
                     UUID(token.instance_id),
                     ActivityType.NODE_COMPLETED,
@@ -411,7 +417,9 @@ class TokenManager:
             # Create activity logs for node entries if instance manager is provided
             if instance_manager:
                 for node_id in target_node_ids:
-                    logger.info(f"[ActivityLog] Creating NODE_ENTERED log for {node_id}")
+                    logger.info(
+                        f"[ActivityLog] Creating NODE_ENTERED log for {node_id}"
+                    )
                     await instance_manager._create_activity_log(
                         UUID(token.instance_id),
                         ActivityType.NODE_ENTERED,

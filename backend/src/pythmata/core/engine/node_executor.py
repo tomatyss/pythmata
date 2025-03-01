@@ -3,6 +3,7 @@ from typing import Dict, Union
 from pythmata.core.engine.event_handler import EventHandler
 from pythmata.core.engine.gateway_handler import GatewayHandler
 from pythmata.core.engine.script_executor import ScriptExecutor
+from pythmata.core.engine.service_executor import ServiceTaskExecutor
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
 from pythmata.core.types import Event, Gateway, Task
@@ -26,7 +27,9 @@ class NodeExecutor:
     - Error handling and logging
     """
 
-    def __init__(self, state_manager: StateManager, token_manager=None, instance_manager=None):
+    def __init__(
+        self, state_manager: StateManager, token_manager=None, instance_manager=None
+    ):
         """
         Initialize node executor with required handlers.
 
@@ -39,8 +42,16 @@ class NodeExecutor:
         self.token_manager = token_manager
         self.instance_manager = instance_manager
         self.script_executor = ScriptExecutor(state_manager)
-        self.gateway_handler = GatewayHandler(state_manager, token_manager, instance_manager)
-        self.event_handler = EventHandler(state_manager, token_manager, instance_manager)
+        self.service_executor = ServiceTaskExecutor(state_manager)
+        self.gateway_handler = GatewayHandler(
+            state_manager, token_manager, instance_manager
+        )
+        self.event_handler = EventHandler(
+            state_manager, token_manager, instance_manager
+        )
+
+        # Log available service tasks
+        logger.info("Node executor initialized with service task executor")
 
     async def execute_node(
         self, token: Token, node: Union[Task, Gateway, Event], process_graph: Dict
@@ -84,8 +95,14 @@ class NodeExecutor:
             Exception: If task execution fails
         """
         try:
+            # Check if this is a service task
+            if task.type == "serviceTask":
+                logger.info(f"Executing service task {task.id}")
+                await self.service_executor.execute_service_task(
+                    token, task, self.instance_manager
+                )
             # Execute script if present
-            if task.script:
+            elif task.script:
                 await self.script_executor.execute_script(token, task)
 
             # Move token to next node if there are outgoing flows
@@ -107,7 +124,9 @@ class NodeExecutor:
                     )
                     logger.info(f"Moving token {token.id} to {target_ref} via task")
                     if self.token_manager:
-                        await self.token_manager.move_token(token, target_ref, self.instance_manager)
+                        await self.token_manager.move_token(
+                            token, target_ref, self.instance_manager
+                        )
                     else:
                         logger.error(
                             "TokenManager not available for task token movement"

@@ -31,8 +31,10 @@ class ElementBuilder(ABC):
 
     def _get_flows(self) -> tuple[List[str], List[str]]:
         """Get incoming and outgoing flows."""
-        incoming = [e.text for e in self.element.findall("bpmn:incoming", self.ns)]
-        outgoing = [e.text for e in self.element.findall("bpmn:outgoing", self.ns)]
+        incoming = [e.text for e in self.element.findall(
+            "bpmn:incoming", self.ns)]
+        outgoing = [e.text for e in self.element.findall(
+            "bpmn:outgoing", self.ns)]
         return incoming, outgoing
 
 
@@ -52,6 +54,7 @@ class TaskBuilder(ElementBuilder):
 
         ext_elem = self.element.find("bpmn:extensionElements", self.ns)
         if ext_elem is not None:
+            # Parse taskConfig for script tasks
             config = ext_elem.find(".//pythmata:taskConfig", self.ns)
             if config is not None:
                 script_elem = config.find(".//pythmata:script", self.ns)
@@ -74,6 +77,29 @@ class TaskBuilder(ElementBuilder):
                     ".//pythmata:outputVariables/pythmata:variable", self.ns
                 ):
                     output_vars[var.get("name")] = var.get("type")
+
+            # Parse serviceTaskConfig for service tasks
+            service_config = ext_elem.find(
+                ".//pythmata:serviceTaskConfig", self.ns)
+            if service_config is not None:
+                task_name = service_config.get("taskName")
+                if task_name:
+                    service_task_config = {
+                        "task_name": task_name,
+                        "properties": {}
+                    }
+
+                    # Extract properties
+                    props_elem = service_config.find(
+                        ".//pythmata:properties", self.ns)
+                    if props_elem is not None:
+                        for prop in props_elem.findall(".//pythmata:property", self.ns):
+                            name = prop.get("name")
+                            value = prop.get("value")
+                            if name:
+                                service_task_config["properties"][name] = value
+
+                    extensions["serviceTaskConfig"] = service_task_config
 
         return extensions, script, input_vars, output_vars
 
@@ -143,7 +169,8 @@ class SubProcessBuilder(ElementBuilder):
     def _parse_multi_instance(self) -> Dict[str, str]:
         """Parse multi-instance characteristics."""
         multi_instance = {}
-        mi_elem = self.element.find("bpmn:multiInstanceLoopCharacteristics", self.ns)
+        mi_elem = self.element.find(
+            "bpmn:multiInstanceLoopCharacteristics", self.ns)
         if mi_elem is not None:
             cardinality = mi_elem.find("bpmn:loopCardinality", self.ns)
             if cardinality is not None:
@@ -201,7 +228,8 @@ class BuilderFactory:
             return GatewayBuilder(element, ns)
         elif "subprocess" in tag:
             if parser is None:
-                raise ValueError("Parser instance required for subprocess parsing")
+                raise ValueError(
+                    "Parser instance required for subprocess parsing")
             return SubProcessBuilder(element, ns, parser)
         else:
             raise ValueError(f"Unsupported element type: {tag}")
