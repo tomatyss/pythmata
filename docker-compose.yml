@@ -5,9 +5,15 @@ services:
       dockerfile: Dockerfile
     environment:
       - CONFIG_FILE=/app/config/development.toml
+      - PYTHMATA_PLUGIN_DIR=/app/plugins
+      - PYTHMATA_INSTALL_PLUGIN_DEPS=true
     volumes:
       - ./backend:/app
       - ./config:/app/config
+      - ./plugins:/app/plugins
+    # Make scripts executable after container starts
+    command: >
+      bash -c "chmod +x /app/scripts/*.sh && /app/scripts/start.sh"
     ports:
       - "8000:8000"
     depends_on:

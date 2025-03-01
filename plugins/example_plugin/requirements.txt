@@ -1,0 +1,7 @@
+# Example plugin dependencies
+requests>=2.28.0
+pyyaml>=6.0
+# For a real notification service, you might include:
+# twilio>=7.0.0  # For SMS
+# slackclient>=2.9.0  # For Slack
+# jinja2>=3.0.0  # For templating
