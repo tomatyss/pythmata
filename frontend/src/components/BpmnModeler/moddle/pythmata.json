@@ -7,8 +7,32 @@
   },
   "types": [
     {
-      "name": "ServiceTaskConfig",
+      "name": "ElementConfig",
       "superClass": ["Element"],
+      "properties": [
+        {
+          "name": "displayName",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "documentation",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "inputs",
+          "type": "Properties"
+        },
+        {
+          "name": "outputs",
+          "type": "Properties"
+        }
+      ]
+    },
+    {
+      "name": "ServiceTaskConfig",
+      "superClass": ["ElementConfig"],
       "properties": [
         {
           "name": "taskName",
