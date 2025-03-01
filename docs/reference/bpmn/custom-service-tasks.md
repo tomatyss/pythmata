@@ -1,64 +1,75 @@
-# Service Tasks
+# Creating Custom Service Tasks
 
-Service tasks in Pythmata allow you to extend the BPMN engine with custom functionality that can be executed when a token reaches a service task node in a BPMN diagram.
+This guide explains how to create custom service tasks for Pythmata using the plugin system.
 
-## Built-in Service Tasks
+## Plugin System Overview
 
-Pythmata comes with several built-in service tasks:
+Pythmata's plugin system allows you to extend the workflow engine with custom service tasks without modifying the core codebase. Plugins are discovered and loaded automatically at startup from the configured plugin directory.
 
-### HTTP Service Task
+## Plugin Structure
 
-The HTTP service task allows processes to make HTTP requests to external services and APIs.
+A plugin is a Python package with the following structure:
 
-**Properties:**
-- `url`: URL to send the request to (required)
-- `method`: HTTP method to use (GET, POST, PUT, DELETE)
-- `headers`: HTTP headers as JSON object
-- `body`: Request body as JSON
-- `timeout`: Request timeout in seconds
-- `output_mapping`: Mapping of response fields to process variables
+```
+my_plugin/
+├── __init__.py          # Plugin initialization and registration
+├── requirements.txt     # Optional dependencies
+└── my_task.py           # Service task implementation
+```
 
-### Logger Service Task
+## Creating a Custom Service Task
 
-The Logger service task allows processes to log messages at different levels during execution.
+### Step 1: Create the Plugin Directory
 
-**Properties:**
-- `level`: Log level (info, warning, error, debug)
-- `message`: Message to log (required)
-- `include_variables`: Whether to include process variables in the log
-- `variable_filter`: Comma-separated list of variable names to include
+Create a directory for your plugin in the `plugins` directory:
 
-## Creating Custom Service Tasks
+```bash
+mkdir -p plugins/my_plugin
+```
 
-Pythmata provides a plugin system that allows you to create custom service tasks without modifying the core codebase. For detailed instructions on creating custom service tasks using the plugin system, see [Custom Service Tasks](custom-service-tasks.md).
+### Step 2: Implement the Service Task
 
-The plugin system offers several advantages:
-
-- **Separation of concerns**: Keep your custom service tasks separate from the core codebase
-- **Easy deployment**: Simply place your plugins in the `plugins` directory
-- **Dependency management**: Specify dependencies in a `requirements.txt` file
-- **Automatic discovery**: Plugins are automatically discovered and loaded at startup
-
-## Quick Example
-
-Here's a quick example of a custom service task implemented as a plugin:
+Create a Python file (e.g., `my_task.py`) with your service task implementation:
 
 ```python
-# plugins/my_plugin/my_task.py
 from typing import Any, Dict, List
 from pythmata.core.services.base import ServiceTask
 
 class MyCustomServiceTask(ServiceTask):
+    """
+    Custom service task that does something useful.
+    
+    Provide a clear description of what your service task does.
+    """
+    
     @property
     def name(self) -> str:
-        return "my_custom_task"
+        """
+        Get the unique name of the service task.
+        
+        Returns:
+            str: Unique identifier for this service task type
+        """
+        return "my_custom_task"  # This is the name that will be used in BPMN diagrams
     
     @property
     def description(self) -> str:
-        return "This is my custom service task"
+        """
+        Get a human-readable description of what the service task does.
+        
+        Returns:
+            str: Description of the service task's purpose and behavior
+        """
+        return "This is my custom service task that does something useful"
     
     @property
     def properties(self) -> List[Dict[str, Any]]:
+        """
+        Get the list of configurable properties for this service task.
+        
+        Returns:
+            List[Dict[str, Any]]: List of property definitions
+        """
         return [
             {
                 "name": "param1",
@@ -66,29 +77,130 @@ class MyCustomServiceTask(ServiceTask):
                 "type": "string",
                 "required": True,
                 "description": "First parameter description",
-            }
+            },
+            {
+                "name": "param2",
+                "label": "Parameter 2",
+                "type": "number",
+                "required": False,
+                "default": 42,
+                "description": "Second parameter description",
+            },
+            # Add more properties as needed
         ]
     
     async def execute(
         self, context: Dict[str, Any], properties: Dict[str, Any]
     ) -> Dict[str, Any]:
-        # Your implementation here
-        return {"status": "success"}
+        """
+        Execute the service task with the given context and properties.
+        
+        Args:
+            context: Execution context containing token, variables, etc.
+            properties: Configuration properties for this execution
+            
+        Returns:
+            Dict[str, Any]: Result of the execution
+            
+        Raises:
+            Exception: If execution fails
+        """
+        # Access properties
+        param1 = properties.get("param1")
+        param2 = properties.get("param2", 42)  # Use default if not provided
+        
+        # Access process variables
+        variables = context.get("variables", {})
+        
+        # Access token information
+        token = context.get("token")
+        instance_id = token.instance_id if token else None
+        
+        # Your custom logic here
+        result = {
+            "status": "success",
+            "message": f"Executed with param1={param1}, param2={param2}",
+            # Add more result data as needed
+        }
+        
+        return result
 ```
 
+### Step 3: Register the Service Task
+
+Create an `__init__.py` file in your plugin directory to register the service task:
+
 ```python
-# plugins/my_plugin/__init__.py
+"""
+My custom plugin for Pythmata.
+
+This plugin provides custom service tasks for specific use cases.
+"""
+
 from pythmata.core.services.registry import get_service_task_registry
 from .my_task import MyCustomServiceTask
 
 # Register the service task
 registry = get_service_task_registry()
 registry.register(MyCustomServiceTask)
+
+# You can register multiple service tasks if needed
 ```
 
-For a complete example, see the `example_plugin` in the `plugins` directory.
+### Step 4: Specify Dependencies (Optional)
 
-## Example: Creating an Email Service Task
+If your service task requires additional Python packages, create a `requirements.txt` file:
+
+```
+# requirements.txt
+requests>=2.28.0
+pyyaml>=6.0
+```
+
+## Installing the Plugin
+
+### Option 1: Local Development
+
+1. Place your plugin directory in the `plugins` directory of your Pythmata project:
+
+```bash
+cp -r my_plugin /path/to/pythmata/plugins/
+```
+
+2. Start Pythmata with Docker Compose:
+
+```bash
+docker-compose up
+```
+
+### Option 2: Custom Docker Image
+
+Create a custom Docker image that includes your plugins:
+
+```dockerfile
+FROM pythmata:latest
+
+# Copy your plugins
+COPY ./my_plugins /app/plugins/
+
+# Install plugin dependencies
+RUN for plugin_dir in /app/plugins/*/; do \
+      if [ -f "${plugin_dir}requirements.txt" ]; then \
+        pip install -r "${plugin_dir}requirements.txt"; \
+      fi \
+    done
+```
+
+## Using Custom Service Tasks in BPMN
+
+Once your plugin is loaded, you can use your custom service task in BPMN diagrams:
+
+1. Add a service task to your diagram
+2. Configure the service task with the appropriate properties:
+   - Set the `taskName` property to the name of your registered service task (e.g., `my_custom_task`)
+   - Configure the task-specific properties as needed
+
+## Example: Email Service Task
 
 Here's a complete example of a service task that sends emails:
 
@@ -247,14 +359,32 @@ class EmailServiceTask(ServiceTask):
             }
 ```
 
-## Using Service Tasks in BPMN Diagrams
+## Troubleshooting
 
-To use a service task in your BPMN diagram:
+### Plugin Not Loading
 
-1. Add a service task to your diagram
-2. Configure the service task with the appropriate properties:
-   - Set the `taskName` property to the name of your registered service task
-   - Configure the task-specific properties as needed
+If your plugin is not being loaded:
+
+1. Check the logs for any errors during plugin discovery
+2. Verify that your plugin directory structure is correct
+3. Ensure that the `__init__.py` file correctly registers your service task
+4. Check that the plugin directory is correctly mounted in Docker
+
+### Service Task Not Appearing
+
+If your service task is not appearing in the list of available tasks:
+
+1. Check that the service task is properly registered in the `__init__.py` file
+2. Verify that the service task class correctly inherits from `ServiceTask`
+3. Ensure that the `name` property returns a unique identifier
+
+### Dependency Issues
+
+If your plugin has dependency issues:
+
+1. Check that all required packages are listed in `requirements.txt`
+2. Verify that the dependencies are being installed correctly
+3. Check for version conflicts with the core application dependencies
 
 ## Best Practices
 

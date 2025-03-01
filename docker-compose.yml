@@ -5,9 +5,12 @@ services:
       dockerfile: Dockerfile
     environment:
       - CONFIG_FILE=/app/config/development.toml
+      - PYTHMATA_PLUGIN_DIR=/app/plugins
+      - PYTHMATA_INSTALL_PLUGIN_DEPS=true
     volumes:
       - ./backend:/app
       - ./config:/app/config
+      - ./plugins:/app/plugins
     ports:
       - "8000:8000"
     depends_on:

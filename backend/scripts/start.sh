@@ -8,6 +8,12 @@ while ! nc -z postgres 5432; do
 done
 echo "PostgreSQL started"
 
+# Install plugin dependencies if enabled
+if [ "$PYTHMATA_INSTALL_PLUGIN_DEPS" = "true" ]; then
+  echo "Installing plugin dependencies..."
+  /app/scripts/install_plugin_deps.sh
+fi
+
 # Run migrations
 echo "Running database migrations..."
 poetry run alembic upgrade head

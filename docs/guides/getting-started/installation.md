@@ -108,6 +108,44 @@ This will start:
 - Redis on localhost:6379
 - RabbitMQ on localhost:5672 (Management: 15672)
 
+## Extending with Plugins
+
+Pythmata supports a plugin system that allows you to extend the workflow engine with custom service tasks.
+
+### Creating a Plugin
+
+1. Create a directory for your plugin in the `plugins` directory:
+```bash
+mkdir -p plugins/my_plugin
+```
+
+2. Create the necessary files:
+```bash
+# Service task implementation
+touch plugins/my_plugin/my_task.py
+
+# Plugin initialization
+touch plugins/my_plugin/__init__.py
+
+# Optional dependencies
+touch plugins/my_plugin/requirements.txt
+```
+
+3. Implement your service task and register it in the `__init__.py` file.
+
+For detailed instructions, see the [Custom Service Tasks](../../reference/bpmn/custom-service-tasks.md) documentation.
+
+### Using Plugins with Docker
+
+When using Docker, plugins are automatically discovered and loaded from the `plugins` directory. The plugin directory is mounted as a volume in the Docker container:
+
+```yaml
+volumes:
+  - ./plugins:/app/plugins
+```
+
+Plugin dependencies are automatically installed at startup if the `PYTHMATA_INSTALL_PLUGIN_DEPS` environment variable is set to `true`.
+
 ## Verification
 
 1. Check service health:

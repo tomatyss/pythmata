@@ -84,6 +84,13 @@ The project uses a modern containerized architecture with:
 - **Variable Access**: Scripts can access and modify process variables
 - **External Integration**: Ability to interact with external systems
 
+### Plugin System
+
+- **Custom Service Tasks**: Extend the engine with custom service tasks
+- **Plugin Discovery**: Automatic discovery and loading of plugins
+- **Dependency Management**: Plugin-specific dependency management
+- **Isolation**: Keep custom code separate from the core engine
+
 ### Event System
 
 - **BPMN Events**: Implementation of start, intermediate, and end events
