@@ -2,6 +2,21 @@
 
 A Python-based BPMN workflow engine with a modern React frontend.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.8-009688.svg)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/react-19.0.0-61DAFB.svg)](https://reactjs.org/)
+[![Version](https://img.shields.io/badge/version-0.1.0-brightgreen.svg)](https://github.com/yourusername/pythmata)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791.svg)](https://www.postgresql.org/)
+[![Documentation](https://img.shields.io/badge/docs-MkDocs-blue.svg)](https://www.mkdocs.org/)
+
+<a href="https://www.buymeacoffee.com/tomatyss" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+> **⚠️ DISCLAIMER: Work in Progress**  
+> This project is under active development and has not reached a stable release yet.  
+> APIs, features, and functionality may change without notice.  
+> Not recommended for production use at this time.
+
 ## Overview
 
 Pythmata is a workflow engine that implements the Business Process Model and Notation (BPMN) standard. It allows users to design, deploy, and execute business processes using a visual BPMN modeler, while providing powerful scripting capabilities for task automation.
