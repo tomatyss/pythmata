@@ -19,19 +19,78 @@ import {
   ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import VariableDefinitionsPanel from '@/components/shared/VariableDefinitionsPanel/VariableDefinitionsPanel';
+import ServiceTaskPanel from '@/components/shared/ServiceTaskPanel/ServiceTaskPanel';
 import { ProcessVariableDefinition } from '@/types/process';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 import 'bpmn-js/dist/assets/diagram-js.css';
+
+// Define types for BPMN elements and properties
+interface BusinessObject {
+  extensionElements?: {
+    values: ExtensionElement[];
+  };
+}
+
+interface BpmnElement {
+  id: string;
+  type: string;
+  businessObject: BusinessObject;
+}
+
+// Define types for extension elements
+interface ExtensionElement {
+  $type: string;
+  taskName?: string;
+  properties?: {
+    values: PropertyValue[];
+  };
+}
+
+interface PropertyValue {
+  name: string;
+  value: string;
+}
+
+// Define types for the modeler modules
+interface ElementRegistry {
+  get(id: string): BpmnElement;
+}
+
+interface Modeling {
+  updateProperties(
+    element: BpmnElement,
+    properties: Record<string, unknown>
+  ): void;
+}
+
+interface Moddle {
+  create<T>(type: string, properties?: Record<string, unknown>): T;
+}
+
+// Used in the eventBus.on callback
+
+interface EventBus {
+  on<T = unknown>(event: string, callback: (event: T) => void): void;
+}
+
+// Define a mapping of module names to their types
+interface ModuleTypeMap {
+  elementRegistry: ElementRegistry;
+  modeling: Modeling;
+  moddle: Moddle;
+  eventBus: EventBus;
+}
+
+// Define a type for the modeler with the methods we need
+type ModelerModule = keyof ModuleTypeMap;
+
+type ExtendedBpmnModeler = BpmnModeler & {
+  get<T extends ModelerModule>(name: T): ModuleTypeMap[T];
+};
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 
-// Import properties panel and Camunda moddle descriptor
-import {
-  BpmnPropertiesPanelModule,
-  BpmnPropertiesProviderModule,
-  CamundaPlatformPropertiesProviderModule,
-} from 'bpmn-js-properties-panel';
-import '@bpmn-io/properties-panel/dist/assets/properties-panel.css';
-import camundaModdleDescriptor from 'camunda-bpmn-moddle/resources/camunda';
+// Import pythmata moddle extension for service tasks
+import pythmataModdleDescriptor from '@/components/BpmnModeler/moddle/pythmata.json';
 
 // Import palette module for configuration
 
@@ -44,7 +103,7 @@ const emptyBpmn = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   id="Definitions_1"
                   targetNamespace="http://bpmn.io/schema/bpmn">
@@ -65,13 +124,15 @@ const ProcessDesigner = () => {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const propertiesPanelRef = useRef<HTMLDivElement>(null);
-  const modelerRef = useRef<BpmnModeler | null>(null);
+  const modelerRef = useRef<ExtendedBpmnModeler | null>(null);
   const [loading, setLoading] = useState(true);
   const [processName, setProcessName] = useState('');
   const [bpmnXml, setBpmnXml] = useState(emptyBpmn);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [variablesDrawerOpen, setVariablesDrawerOpen] = useState(false);
+  const [serviceTaskDrawerOpen, setServiceTaskDrawerOpen] = useState(false);
+  const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [variableDefinitions, setVariableDefinitions] = useState<
     ProcessVariableDefinition[]
   >([]);
@@ -107,26 +168,29 @@ const ProcessDesigner = () => {
       try {
         if (!containerRef.current || !propertiesPanelRef.current) return;
 
-        // Use type assertion to bypass TypeScript error
+        // Define a more complete type for BpmnModeler options
+        interface BpmnModelerOptions {
+          container: HTMLElement;
+          moddleExtensions?: Record<string, unknown>;
+          palette?: {
+            open: boolean;
+          };
+          keyboard?: {
+            bindTo: Document;
+          };
+        }
+
+        // Use type assertion to tell TypeScript to trust us about the type
         modelerRef.current = new BpmnModeler({
           container: containerRef.current as HTMLElement,
-          propertiesPanel: {
-            parent: propertiesPanelRef.current as HTMLElement,
-          },
-          additionalModules: [
-            BpmnPropertiesPanelModule,
-            BpmnPropertiesProviderModule,
-            CamundaPlatformPropertiesProviderModule,
-          ],
           moddleExtensions: {
-            camunda: camundaModdleDescriptor,
+            pythmata: pythmataModdleDescriptor,
           },
           // Configure palette to appear on the left side
           palette: {
             open: true,
           },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any);
+        } as BpmnModelerOptions) as ExtendedBpmnModeler;
 
         // Apply classes to the container to help with CSS targeting
         if (containerRef.current) {
@@ -137,6 +201,28 @@ const ProcessDesigner = () => {
         }
 
         await modelerRef.current.importXML(bpmnXml);
+
+        // Add event listener for element selection
+        if (modelerRef.current) {
+          const eventBus = modelerRef.current.get('eventBus');
+          eventBus.on(
+            'selection.changed',
+            (e: { newSelection: Array<{ id: string; type: string }> }) => {
+              const selection = e.newSelection;
+              if (selection.length === 1) {
+                const element = selection[0];
+                if (element && element.type === 'bpmn:ServiceTask') {
+                  setSelectedElement(element.id);
+                  setServiceTaskDrawerOpen(true);
+                } else {
+                  setServiceTaskDrawerOpen(false);
+                }
+              } else {
+                setServiceTaskDrawerOpen(false);
+              }
+            }
+          );
+        }
 
         // After the modeler is initialized, force the palette to the left side
         setTimeout(() => {
@@ -272,8 +358,8 @@ const ProcessDesigner = () => {
           />
           <IconButton
             color="primary"
-            onClick={() => setDrawerOpen(true)}
-            title="Process Settings"
+            onClick={() => setVariablesDrawerOpen(true)}
+            title="Process Variables"
           >
             <SettingsIcon />
           </IconButton>
@@ -329,10 +415,11 @@ const ProcessDesigner = () => {
         </Paper>
       </Box>
 
+      {/* Variables Drawer */}
       <Drawer
         anchor="right"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        open={variablesDrawerOpen}
+        onClose={() => setVariablesDrawerOpen(false)}
         sx={{
           '& .MuiDrawer-paper': {
             width: '400px',
@@ -344,6 +431,27 @@ const ProcessDesigner = () => {
           variables={variableDefinitions}
           onChange={setVariableDefinitions}
         />
+      </Drawer>
+
+      {/* Service Task Drawer */}
+      <Drawer
+        anchor="right"
+        open={serviceTaskDrawerOpen}
+        onClose={() => setServiceTaskDrawerOpen(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: '400px',
+            p: 0,
+          },
+        }}
+      >
+        {selectedElement && modelerRef.current && (
+          <ServiceTaskPanel
+            elementId={selectedElement}
+            modeler={modelerRef.current}
+            onClose={() => setServiceTaskDrawerOpen(false)}
+          />
+        )}
       </Drawer>
     </Box>
   );

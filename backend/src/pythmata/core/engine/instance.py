@@ -120,14 +120,14 @@ class ProcessInstanceManager:
         """
         logger.info(f"[Transaction] Creating activity log for instance {instance_id}")
         logger.info(f"[Transaction] Activity type: {activity_type}")
-        
+
         # Verify instance exists in database
         result = await self.session.execute(
             select(ProcessInstance).where(ProcessInstance.id == instance_id)
         )
         instance = result.scalar_one_or_none()
         logger.info(f"[Transaction] Instance exists in DB: {instance is not None}")
-        
+
         activity = ActivityLog(
             instance_id=instance_id,
             activity_type=activity_type,
@@ -589,7 +589,7 @@ class ProcessInstanceManager:
             InvalidVariableError: If variable data is invalid
         """
         logger.info(f"[Transaction] Starting instance {instance.id}")
-        
+
         # Set up variables if provided
         if variables:
             logger.info("[Transaction] Setting up instance variables")

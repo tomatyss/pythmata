@@ -1,8 +1,10 @@
 """Tests for the state management functionality."""
 
 import pytest
+
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.state import StateManager
+
 
 @pytest.fixture(autouse=True)
 async def clear_redis(state_manager: StateManager):
@@ -54,11 +56,17 @@ class TestStateManager:
         scope_var = ProcessVariableValue(type="boolean", value=True)
 
         await state_manager.set_variable(instance_id, "root_var", root_var)
-        await state_manager.set_variable(instance_id, "parent_var", parent_var, parent_scope)
-        await state_manager.set_variable(instance_id, "scope_var", scope_var, scope_path)
+        await state_manager.set_variable(
+            instance_id, "parent_var", parent_var, parent_scope
+        )
+        await state_manager.set_variable(
+            instance_id, "scope_var", scope_var, scope_path
+        )
 
         # Test getting variables at scope level with parent checking
-        result = await state_manager.get_variables(instance_id, scope_path, check_parent=True)
+        result = await state_manager.get_variables(
+            instance_id, scope_path, check_parent=True
+        )
 
         # Verify results include variables from all levels
         assert len(result) == 3
@@ -67,7 +75,9 @@ class TestStateManager:
         assert result["scope_var"].value is True
 
         # Test getting variables at scope level without parent checking
-        result = await state_manager.get_variables(instance_id, scope_path, check_parent=False)
+        result = await state_manager.get_variables(
+            instance_id, scope_path, check_parent=False
+        )
 
         # Verify results only include variables from specified scope
         assert len(result) == 1
@@ -93,8 +103,12 @@ class TestStateManager:
         await state_manager.set_variable(instance_id, "var", var2, scope2)
 
         # Get variables from each scope
-        result1 = await state_manager.get_variables(instance_id, scope1, check_parent=False)
-        result2 = await state_manager.get_variables(instance_id, scope2, check_parent=False)
+        result1 = await state_manager.get_variables(
+            instance_id, scope1, check_parent=False
+        )
+        result2 = await state_manager.get_variables(
+            instance_id, scope2, check_parent=False
+        )
 
         # Verify scope isolation
         assert len(result1) == 1
@@ -109,9 +123,8 @@ class TestStateManager:
             "list_var": ProcessVariableValue(type="json", value=[1, 2, 3]),
             "dict_var": ProcessVariableValue(type="json", value={"key": "value"}),
             "nested": ProcessVariableValue(
-                type="json",
-                value={"list": [1, 2], "dict": {"nested": "value"}}
-            )
+                type="json", value={"list": [1, 2], "dict": {"nested": "value"}}
+            ),
         }
 
         # Set variables
@@ -125,5 +138,4 @@ class TestStateManager:
         assert len(result) == 3
         assert result["list_var"].value == [1, 2, 3]
         assert result["dict_var"].value == {"key": "value"}
-        assert result["nested"].value == {
-            "list": [1, 2], "dict": {"nested": "value"}}
+        assert result["nested"].value == {"list": [1, 2], "dict": {"nested": "value"}}

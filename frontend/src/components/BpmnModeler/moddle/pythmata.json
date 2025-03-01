@@ -1,0 +1,50 @@
+{
+  "name": "Pythmata",
+  "uri": "http://pythmata.org/schema/1.0/bpmn",
+  "prefix": "pythmata",
+  "xml": {
+    "tagAlias": "lowerCase"
+  },
+  "types": [
+    {
+      "name": "ServiceTaskConfig",
+      "superClass": ["Element"],
+      "properties": [
+        {
+          "name": "taskName",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "properties",
+          "type": "Properties"
+        }
+      ]
+    },
+    {
+      "name": "Properties",
+      "properties": [
+        {
+          "name": "values",
+          "isMany": true,
+          "type": "Property"
+        }
+      ]
+    },
+    {
+      "name": "Property",
+      "properties": [
+        {
+          "name": "name",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "value",
+          "isAttr": true,
+          "type": "String"
+        }
+      ]
+    }
+  ]
+}

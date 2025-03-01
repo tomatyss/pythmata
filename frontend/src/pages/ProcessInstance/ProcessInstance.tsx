@@ -27,6 +27,7 @@ import {
   CheckCircle as CompletedIcon,
   ArrowForward as NodeIcon,
   Add as CreateIcon,
+  Settings as ServiceIcon,
 } from '@mui/icons-material';
 
 interface ProcessVariable {
@@ -276,6 +277,16 @@ const ProcessInstance = () => {
                           ActivityType.INSTANCE_ERROR && (
                           <ErrorIcon color="error" />
                         )}
+                        {activity.activityType ===
+                          ActivityType.SERVICE_TASK_EXECUTED && (
+                          <ServiceIcon
+                            color={
+                              activity.details?.status === 'ERROR'
+                                ? 'error'
+                                : 'success'
+                            }
+                          />
+                        )}
                         <Typography>
                           {activity.activityType
                             .split('_')
@@ -297,14 +308,48 @@ const ProcessInstance = () => {
                             <br />
                           </>
                         )}
-                        {activity.details && (
-                          <>
-                            <Typography component="span" variant="body2">
-                              Details: {JSON.stringify(activity.details)}
-                            </Typography>
-                            <br />
-                          </>
-                        )}
+
+                        {/* Service Task Executed details */}
+                        {activity.activityType ===
+                          ActivityType.SERVICE_TASK_EXECUTED &&
+                          activity.details && (
+                            <>
+                              <Typography component="span" variant="body2">
+                                Service: {String(activity.details.service_task)}
+                              </Typography>
+                              <br />
+                              {activity.details.status === 'ERROR' ? (
+                                <Typography
+                                  component="span"
+                                  variant="body2"
+                                  color="error"
+                                >
+                                  Error: {String(activity.details.error)}
+                                </Typography>
+                              ) : (
+                                <Typography component="span" variant="body2">
+                                  Result:{' '}
+                                  {JSON.stringify(
+                                    activity.details.result || {}
+                                  )}
+                                </Typography>
+                              )}
+                              <br />
+                            </>
+                          )}
+
+                        {/* Other activity details */}
+                        {activity.activityType !==
+                          ActivityType.SERVICE_TASK_EXECUTED &&
+                          activity.details && (
+                            <>
+                              <Typography component="span" variant="body2">
+                                Details: {JSON.stringify(activity.details)}
+                              </Typography>
+                              <br />
+                            </>
+                          )}
+
                         <Typography
                           component="span"
                           variant="body2"

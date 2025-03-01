@@ -11,6 +11,7 @@ from pythmata.core.database import get_db, init_db
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.instance import ProcessInstanceManager
 from pythmata.core.events import EventBus
+from pythmata.core.services import get_service_task_registry
 from pythmata.core.state import StateManager
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.utils.logger import get_logger
@@ -205,6 +206,11 @@ async def lifespan(app: FastAPI):
         queue_name="process_execution",
     )
     logger.info("Subscribed to process.started events")
+
+    # Log registered service tasks
+    registry = get_service_task_registry()
+    tasks = registry.list_tasks()
+    logger.info(f"Registered service tasks: {[task['name'] for task in tasks]}")
 
     yield
 

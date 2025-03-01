@@ -127,7 +127,9 @@ class ProcessExecutor:
         self, token: Token, target_node_ids: List[str]
     ) -> List[Token]:
         """Split a token into multiple tokens."""
-        return await self.token_manager.split_token(token, target_node_ids, self.instance_manager)
+        return await self.token_manager.split_token(
+            token, target_node_ids, self.instance_manager
+        )
 
     @handle_execution_error
     async def enter_subprocess(self, token: Token, subprocess_id: str) -> Token:

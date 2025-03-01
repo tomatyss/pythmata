@@ -15,6 +15,21 @@ import {
   UpdateScriptRequest,
 } from '@/types/process';
 
+// Define a type for service tasks
+interface ServiceTask {
+  name: string;
+  description: string;
+  properties: Array<{
+    name: string;
+    label: string;
+    type: string;
+    required: boolean;
+    default?: unknown;
+    options?: string[];
+    description?: string;
+  }>;
+}
+
 class ApiService {
   private client: AxiosInstance;
 
@@ -201,6 +216,26 @@ class ApiService {
   async getProcessStats(): Promise<ApiResponse<ProcessStats>> {
     const response = await this.client.get('/stats');
     return response.data;
+  }
+
+  // Service Tasks
+  async getServiceTasks(): Promise<ApiResponse<ServiceTask[]>> {
+    try {
+      const response = await this.client.get('/services/tasks');
+
+      // Ensure the response is properly formatted
+      if (Array.isArray(response.data)) {
+        return { data: response.data };
+      } else if (response.data && Array.isArray(response.data.data)) {
+        return response.data;
+      } else {
+        console.error('Invalid service tasks response format:', response.data);
+        return { data: [] };
+      }
+    } catch (error) {
+      console.error('Error fetching service tasks:', error);
+      throw error;
+    }
   }
 }
 

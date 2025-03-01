@@ -13,7 +13,9 @@ class EventHandler:
     Handles event-related operations including event processing and subprocess triggering.
     """
 
-    def __init__(self, state_manager: StateManager, token_manager=None, instance_manager=None):
+    def __init__(
+        self, state_manager: StateManager, token_manager=None, instance_manager=None
+    ):
         self.state_manager = state_manager
         self.token_manager = token_manager
         self.instance_manager = instance_manager
@@ -53,7 +55,9 @@ class EventHandler:
                         logger.info(
                             f"Moving token {token.id} to {target_ref} via start event"
                         )
-                        await self.token_manager.move_token(token, target_ref, self.instance_manager)
+                        await self.token_manager.move_token(
+                            token, target_ref, self.instance_manager
+                        )
                     else:
                         logger.error(
                             "TokenManager not available for event token movement"
@@ -135,7 +139,9 @@ class EventHandler:
                         else flow.target_ref
                     )
                     logger.info(f"Moving token {token.id} to {target_ref} via event")
-                    await self.token_manager.move_token(token, target_ref, self.instance_manager)
+                    await self.token_manager.move_token(
+                        token, target_ref, self.instance_manager
+                    )
                 else:
                     logger.error("TokenManager not available for event token movement")
             else:
