@@ -18,6 +18,10 @@ import apiService from '@/services/api';
  * 
  * A custom properties panel for service tasks that allows configuring
  * the service task type and its properties.
+ * 
+ * @param {Object} props - Component props
+ * @param {Object} props.element - The BPMN element
+ * @param {Object} props.modeler - The BPMN modeler instance
  */
 const ServiceTaskPropertiesPanel = ({ element, modeler }) => {
   const [serviceTasks, setServiceTasks] = useState([]);
@@ -31,7 +35,7 @@ const ServiceTaskPropertiesPanel = ({ element, modeler }) => {
     const fetchServiceTasks = async () => {
       try {
         setLoading(true);
-        const response = await apiService.get('/services/tasks');
+        const response = await apiService.getServiceTasks();
         setServiceTasks(response.data);
         setError(null);
       } catch (error) {
@@ -127,10 +131,27 @@ const ServiceTaskPropertiesPanel = ({ element, modeler }) => {
       extensionElements = moddle.create('bpmn:ExtensionElements', { values: [] });
     }
     
-    // Remove existing service task config
-    extensionElements.values = extensionElements.values.filter(
-      ext => ext.$type !== 'pythmata:ServiceTaskConfig'
+    // Find existing service task config
+    let serviceTaskConfig = extensionElements.values.find(
+      ext => ext.$type === 'pythmata:ServiceTaskConfig'
     );
+    
+    // Get existing values to preserve
+    let documentation = '';
+    let inputs = null;
+    let outputs = null;
+    
+    if (serviceTaskConfig) {
+      // Preserve existing values
+      documentation = serviceTaskConfig.documentation || '';
+      inputs = serviceTaskConfig.inputs;
+      outputs = serviceTaskConfig.outputs;
+      
+      // Remove existing service task config
+      extensionElements.values = extensionElements.values.filter(
+        ext => ext.$type !== 'pythmata:ServiceTaskConfig'
+      );
+    }
     
     // Create new service task config
     const propertyElements = Object.entries(props).map(([key, value]) => {
@@ -144,9 +165,13 @@ const ServiceTaskPropertiesPanel = ({ element, modeler }) => {
       values: propertyElements,
     });
     
-    const serviceTaskConfig = moddle.create('pythmata:ServiceTaskConfig', {
+    // Create new service task config with preserved values
+    serviceTaskConfig = moddle.create('pythmata:ServiceTaskConfig', {
       taskName: taskName,
       properties: propertiesElement,
+      documentation: documentation,
+      inputs: inputs,
+      outputs: outputs
     });
     
     extensionElements.values.push(serviceTaskConfig);
@@ -177,10 +202,6 @@ const ServiceTaskPropertiesPanel = ({ element, modeler }) => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
-        Service Task Configuration
-      </Typography>
-      
       <FormControl fullWidth sx={{ mb: 2 }}>
         <InputLabel>Service Task Type</InputLabel>
         <Select

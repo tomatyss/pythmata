@@ -19,7 +19,7 @@ import {
   ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import VariableDefinitionsPanel from '@/components/shared/VariableDefinitionsPanel/VariableDefinitionsPanel';
-import ServiceTaskPanel from '@/components/shared/ServiceTaskPanel/ServiceTaskPanel';
+import ElementPanel from '@/components/shared/ElementPanel';
 import { ProcessVariableDefinition } from '@/types/process';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 import 'bpmn-js/dist/assets/diagram-js.css';
@@ -131,7 +131,7 @@ const ProcessDesigner = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [variablesDrawerOpen, setVariablesDrawerOpen] = useState(false);
-  const [serviceTaskDrawerOpen, setServiceTaskDrawerOpen] = useState(false);
+  const [elementDrawerOpen, setElementDrawerOpen] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [variableDefinitions, setVariableDefinitions] = useState<
     ProcessVariableDefinition[]
@@ -205,20 +205,31 @@ const ProcessDesigner = () => {
         // Add event listener for element selection
         if (modelerRef.current) {
           const eventBus = modelerRef.current.get('eventBus');
+          // Listen for element selection
           eventBus.on(
             'selection.changed',
             (e: { newSelection: Array<{ id: string; type: string }> }) => {
               const selection = e.newSelection;
               if (selection.length === 1) {
                 const element = selection[0];
-                if (element && element.type === 'bpmn:ServiceTask') {
+                if (element) {
                   setSelectedElement(element.id);
-                  setServiceTaskDrawerOpen(true);
                 } else {
-                  setServiceTaskDrawerOpen(false);
+                  setElementDrawerOpen(false);
                 }
               } else {
-                setServiceTaskDrawerOpen(false);
+                setElementDrawerOpen(false);
+              }
+            }
+          );
+
+          // Listen for element double-click to open properties panel
+          eventBus.on(
+            'element.dblclick',
+            (e: { element: { id: string; type: string } }) => {
+              if (e.element) {
+                setSelectedElement(e.element.id);
+                setElementDrawerOpen(true);
               }
             }
           );
@@ -433,11 +444,11 @@ const ProcessDesigner = () => {
         />
       </Drawer>
 
-      {/* Service Task Drawer */}
+      {/* Element Properties Drawer */}
       <Drawer
         anchor="right"
-        open={serviceTaskDrawerOpen}
-        onClose={() => setServiceTaskDrawerOpen(false)}
+        open={elementDrawerOpen}
+        onClose={() => setElementDrawerOpen(false)}
         sx={{
           '& .MuiDrawer-paper': {
             width: '400px',
@@ -446,10 +457,10 @@ const ProcessDesigner = () => {
         }}
       >
         {selectedElement && modelerRef.current && (
-          <ServiceTaskPanel
+          <ElementPanel
             elementId={selectedElement}
             modeler={modelerRef.current}
-            onClose={() => setServiceTaskDrawerOpen(false)}
+            onClose={() => setElementDrawerOpen(false)}
           />
         )}
       </Drawer>

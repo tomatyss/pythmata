@@ -1,6 +1,6 @@
-import ServiceTaskPropertiesProvider from './ServiceTaskPropertiesProvider';
+import ElementPropertiesProvider from './ElementPropertiesProvider';
 
 export default {
   __init__: ['propertiesProvider'],
-  propertiesProvider: ['type', ServiceTaskPropertiesProvider]
+  propertiesProvider: ['type', ElementPropertiesProvider]
 };
