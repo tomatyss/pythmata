@@ -52,6 +52,7 @@ class TaskBuilder(ElementBuilder):
 
         ext_elem = self.element.find("bpmn:extensionElements", self.ns)
         if ext_elem is not None:
+            # Parse taskConfig for script tasks
             config = ext_elem.find(".//pythmata:taskConfig", self.ns)
             if config is not None:
                 script_elem = config.find(".//pythmata:script", self.ns)
@@ -74,6 +75,27 @@ class TaskBuilder(ElementBuilder):
                     ".//pythmata:outputVariables/pythmata:variable", self.ns
                 ):
                     output_vars[var.get("name")] = var.get("type")
+            
+            # Parse serviceTaskConfig for service tasks
+            service_config = ext_elem.find(".//pythmata:serviceTaskConfig", self.ns)
+            if service_config is not None:
+                task_name = service_config.get("taskName")
+                if task_name:
+                    service_task_config = {
+                        "task_name": task_name,
+                        "properties": {}
+                    }
+                    
+                    # Extract properties
+                    props_elem = service_config.find(".//pythmata:properties", self.ns)
+                    if props_elem is not None:
+                        for prop in props_elem.findall(".//pythmata:property", self.ns):
+                            name = prop.get("name")
+                            value = prop.get("value")
+                            if name:
+                                service_task_config["properties"][name] = value
+                    
+                    extensions["serviceTaskConfig"] = service_task_config
 
         return extensions, script, input_vars, output_vars
 
