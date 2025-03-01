@@ -66,7 +66,8 @@ interface ModuleTypeMap {
 // Define a type for the modeler with the methods we need
 type ModelerModule = keyof ModuleTypeMap;
 
-type ExtendedBpmnModeler = BpmnModeler & {
+// Export this type for use in tests
+export type ExtendedBpmnModeler = BpmnModeler & {
   get<T extends ModelerModule>(name: T): ModuleTypeMap[T];
 };
 
@@ -368,7 +369,7 @@ const ServiceTaskPanel: React.FC<ServiceTaskPanelProps> = ({
         }}
       >
         <Typography variant="h6">Service Task Configuration</Typography>
-        <IconButton onClick={onClose}>
+        <IconButton onClick={onClose} aria-label="close">
           <CloseIcon />
         </IconButton>
       </Box>
@@ -380,8 +381,10 @@ const ServiceTaskPanel: React.FC<ServiceTaskPanelProps> = ({
       )}
 
       <FormControl fullWidth sx={{ mb: 2 }}>
-        <InputLabel>Service Task Type</InputLabel>
+        <InputLabel id="service-task-type-label">Service Task Type</InputLabel>
         <Select
+          labelId="service-task-type-label"
+          id="service-task-type"
           value={selectedTask}
           onChange={handleTaskChange}
           label="Service Task Type"
@@ -413,8 +416,12 @@ const ServiceTaskPanel: React.FC<ServiceTaskPanelProps> = ({
               <Grid item xs={12} key={prop.name}>
                 {prop.type === 'boolean' ? (
                   <FormControl fullWidth>
-                    <InputLabel>{prop.label || prop.name}</InputLabel>
+                    <InputLabel id={`${prop.name}-label`}>
+                      {prop.label || prop.name}
+                    </InputLabel>
                     <Select
+                      labelId={`${prop.name}-label`}
+                      id={prop.name}
                       value={properties[prop.name] || false}
                       onChange={(e) =>
                         handlePropertyChange(prop.name, e.target.value)
@@ -446,8 +453,12 @@ const ServiceTaskPanel: React.FC<ServiceTaskPanelProps> = ({
                   />
                 ) : prop.options ? (
                   <FormControl fullWidth>
-                    <InputLabel>{prop.label || prop.name}</InputLabel>
+                    <InputLabel id={`${prop.name}-label`}>
+                      {prop.label || prop.name}
+                    </InputLabel>
                     <Select
+                      labelId={`${prop.name}-label`}
+                      id={prop.name}
                       value={properties[prop.name] || ''}
                       onChange={(e) =>
                         handlePropertyChange(prop.name, e.target.value)
@@ -481,7 +492,12 @@ const ServiceTaskPanel: React.FC<ServiceTaskPanelProps> = ({
           </Grid>
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="contained" onClick={handleSave} disabled={saving}>
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={saving}
+              data-testid="save-service-task"
+            >
               {saving ? 'Saving...' : 'Save'}
             </Button>
           </Box>

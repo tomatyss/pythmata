@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import '@testing-library/jest-dom';
-import ServiceTaskPanel from './ServiceTaskPanel';
+import ServiceTaskPanel, { ExtendedBpmnModeler } from './ServiceTaskPanel';
 import apiService from '@/services/api';
 
 // Mock the API service
@@ -100,7 +100,11 @@ const mockModeler = {
     }
     return null;
   }),
-};
+  // Add required BpmnModeler properties to satisfy TypeScript
+  importXML: vi.fn(),
+  saveXML: vi.fn(),
+  destroy: vi.fn(),
+} as unknown as ExtendedBpmnModeler;
 
 describe('ServiceTaskPanel', () => {
   beforeEach(() => {
@@ -139,7 +143,10 @@ describe('ServiceTaskPanel', () => {
 
     // Check that the service task selector is rendered
     expect(screen.getByLabelText('Service Task Type')).toBeInTheDocument();
-    expect(screen.getByText('None')).toBeInTheDocument();
+    // The select is initially empty, so we check for the presence of the select element
+    expect(
+      screen.getByRole('combobox', { name: 'Service Task Type' })
+    ).toBeInTheDocument();
   });
 
   it('displays task properties when a task is selected', async () => {
@@ -218,11 +225,58 @@ describe('ServiceTaskPanel', () => {
   });
 
   it('saves service task configuration when save button is clicked', async () => {
+    // Create a more detailed mock for the modeler
+    const updatePropertiesMock = vi.fn();
+    const elementRegistryMock = {
+      get: vi.fn().mockReturnValue({
+        id: 'test-element',
+        businessObject: {
+          extensionElements: {
+            values: [],
+          },
+        },
+      }),
+    };
+
+    const modelingMock = {
+      updateProperties: updatePropertiesMock,
+    };
+
+    const mddleMock = {
+      create: vi.fn().mockImplementation((type) => {
+        if (type === 'bpmn:ExtensionElements') {
+          return { values: [] };
+        }
+        if (type === 'pythmata:Properties') {
+          return { values: [] };
+        }
+        if (type === 'pythmata:Property') {
+          return { name: 'test', value: 'test' };
+        }
+        if (type === 'pythmata:ServiceTaskConfig') {
+          return { taskName: 'test', properties: { values: [] } };
+        }
+        return {};
+      }),
+    };
+
+    const customMockModeler = {
+      get: vi.fn().mockImplementation((module) => {
+        if (module === 'elementRegistry') return elementRegistryMock;
+        if (module === 'modeling') return modelingMock;
+        if (module === 'moddle') return mddleMock;
+        return null;
+      }),
+      importXML: vi.fn(),
+      saveXML: vi.fn(),
+      destroy: vi.fn(),
+    } as unknown as ExtendedBpmnModeler;
+
     const onCloseMock = vi.fn();
     render(
       <ServiceTaskPanel
         elementId="test-element"
-        modeler={mockModeler}
+        modeler={customMockModeler}
         onClose={onCloseMock}
       />
     );
@@ -242,23 +296,25 @@ describe('ServiceTaskPanel', () => {
     fireEvent.click(screen.getByText('http'));
 
     // Find the URL input and fill it
+    // Wait for the URL input to appear
+    await waitFor(() => {
+      expect(screen.getByLabelText('URL')).toBeInTheDocument();
+    });
+
+    // Find the URL input by label
     const urlInput = screen.getByLabelText('URL');
     fireEvent.change(urlInput, { target: { value: 'https://example.com' } });
 
-    // Find the save button
-    const saveButton = screen.getByRole('button', { name: /save/i });
+    // Find the save button using data-testid
+    const saveButton = screen.getByTestId('save-service-task');
 
     // Click the save button
     fireEvent.click(saveButton);
 
-    // Wait for the save operation to complete
+    // Wait for both the onClose to be called and updateProperties to be called
     await waitFor(() => {
-      // Check that onClose was called
       expect(onCloseMock).toHaveBeenCalled();
+      expect(updatePropertiesMock).toHaveBeenCalled();
     });
-
-    // Check that the modeling.updateProperties was called
-    const modeling = mockModeler.get('modeling');
-    expect(modeling.updateProperties).toHaveBeenCalled();
   });
 });
