@@ -1,6 +1,6 @@
 """Tests for the service task executor."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 
@@ -32,7 +32,7 @@ class MockServiceTask(ServiceTask):
             }
         ]
 
-    async def execute(self, properties: dict, variables: dict) -> dict:
+    async def execute(self, context: dict, properties: dict) -> dict:
         return {"result": f"Executed with {properties.get('test_prop', 'no value')}"}
 
 
@@ -53,7 +53,7 @@ async def test_execute_service_task(mock_registry, state_manager):
 
     # Create a mock token and task
     token = MagicMock()
-    token.instance_id = "test-instance"
+    token.instance_id = "12345678-1234-5678-1234-567812345678"  # Valid UUID format
     token.scope_id = None
 
     task = MagicMock()
@@ -66,11 +66,13 @@ async def test_execute_service_task(mock_registry, state_manager):
     }
 
     # Mock the state_manager.get_variables method to return our test variables
-    state_manager.get_variables = MagicMock(return_value={"var1": "value1"})
+    async def mock_get_variables(*args, **kwargs):
+        return {"var1": "value1"}
+    state_manager.get_variables = mock_get_variables
 
     # Create a mock instance manager
     instance_manager = MagicMock()
-    instance_manager._create_activity_log = MagicMock()
+    instance_manager._create_activity_log = AsyncMock()
 
     # Execute the service task
     await executor.execute_service_task(token, task, instance_manager)
@@ -95,7 +97,7 @@ async def test_execute_nonexistent_task(mock_registry, state_manager):
 
     # Create a mock token and task
     token = MagicMock()
-    token.instance_id = "test-instance"
+    token.instance_id = "12345678-1234-5678-1234-567812345678"  # Valid UUID format
     token.scope_id = None
 
     task = MagicMock()
@@ -108,11 +110,13 @@ async def test_execute_nonexistent_task(mock_registry, state_manager):
     }
 
     # Mock the state_manager.get_variables method to return our test variables
-    state_manager.get_variables = MagicMock(return_value={"var1": "value1"})
+    async def mock_get_variables(*args, **kwargs):
+        return {"var1": "value1"}
+    state_manager.get_variables = mock_get_variables
 
     # Create a mock instance manager
     instance_manager = MagicMock()
-    instance_manager._create_activity_log = MagicMock()
+    instance_manager._create_activity_log = AsyncMock()
 
     # Execute the service task and expect an error
     with pytest.raises(ValueError) as excinfo:
@@ -129,7 +133,7 @@ async def test_execute_task_with_error(mock_registry, state_manager):
 
     # Create a mock token and task
     token = MagicMock()
-    token.instance_id = "test-instance"
+    token.instance_id = "12345678-1234-5678-1234-567812345678"  # Valid UUID format
     token.scope_id = None
 
     task = MagicMock()
@@ -142,11 +146,13 @@ async def test_execute_task_with_error(mock_registry, state_manager):
     }
 
     # Mock the state_manager.get_variables method to return our test variables
-    state_manager.get_variables = MagicMock(return_value={"var1": "value1"})
+    async def mock_get_variables(*args, **kwargs):
+        return {"var1": "value1"}
+    state_manager.get_variables = mock_get_variables
 
     # Create a mock instance manager
     instance_manager = MagicMock()
-    instance_manager._create_activity_log = MagicMock()
+    instance_manager._create_activity_log = AsyncMock()
 
     # Mock the execute method to raise an exception
     with patch.object(MockServiceTask, "execute", side_effect=Exception("Test error")):
@@ -179,7 +185,7 @@ async def test_execute_task_with_missing_required_property(
 
     # Create a mock token and task
     token = MagicMock()
-    token.instance_id = "test-instance"
+    token.instance_id = "12345678-1234-5678-1234-567812345678"  # Valid UUID format
     token.scope_id = None
 
     task = MagicMock()
@@ -192,11 +198,13 @@ async def test_execute_task_with_missing_required_property(
     }
 
     # Mock the state_manager.get_variables method to return our test variables
-    state_manager.get_variables = MagicMock(return_value={"var1": "value1"})
+    async def mock_get_variables(*args, **kwargs):
+        return {"var1": "value1"}
+    state_manager.get_variables = mock_get_variables
 
     # Create a mock instance manager
     instance_manager = MagicMock()
-    instance_manager._create_activity_log = MagicMock()
+    instance_manager._create_activity_log = AsyncMock()
 
     # Execute the service task
     await executor.execute_service_task(token, task, instance_manager)
