@@ -11,6 +11,9 @@ services:
       - ./backend:/app
       - ./config:/app/config
       - ./plugins:/app/plugins
+    # Make scripts executable after container starts
+    command: >
+      bash -c "chmod +x /app/scripts/*.sh && /app/scripts/start.sh"
     ports:
       - "8000:8000"
     depends_on:
