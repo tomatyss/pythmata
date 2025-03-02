@@ -84,9 +84,19 @@ class BPMNParser:
         incoming = [e.text for e in elem.findall("bpmn:incoming", self.ns)]
         outgoing = [e.text for e in elem.findall("bpmn:outgoing", self.ns)]
 
-        # Check for event definitions
+        # Check for event definitions - look for both *Definition and *EventDefinition patterns
         definitions = elem.findall("./bpmn:*Definition", self.ns)
-        event_definition = definitions[0].tag.split("}")[-1] if definitions else None
+        if not definitions:
+            definitions = elem.findall("./bpmn:*EventDefinition", self.ns)
+        
+        event_definition = None
+        if definitions:
+            tag = definitions[0].tag.split("}")[-1]
+            # Convert timerEventDefinition to timer, messageEventDefinition to message, etc.
+            if tag.endswith("EventDefinition"):
+                event_definition = tag[:-14].lower()  # Remove "EventDefinition" suffix
+            else:
+                event_definition = tag
 
         return Event(
             id=elem.get("id"),

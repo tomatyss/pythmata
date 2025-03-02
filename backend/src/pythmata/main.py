@@ -217,6 +217,18 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Subscribed to process.started events")
 
+    # Initialize and start timer scheduler
+    from pythmata.core.engine.events.timer_scheduler import TimerScheduler
+    app.state.timer_scheduler = TimerScheduler(app.state.state_manager, app.state.event_bus)
+    
+    # Recover timer state from previous run if needed
+    await app.state.timer_scheduler.recover_from_crash()
+    logger.info("Timer state recovered from previous run")
+    
+    # Start the timer scheduler
+    await app.state.timer_scheduler.start()
+    logger.info("Timer scheduler started")
+
     # Log registered service tasks
     registry = get_service_task_registry()
     tasks = registry.list_tasks()
@@ -228,6 +240,16 @@ async def lifespan(app: FastAPI):
     errors = []
 
     logger.info("Shutting down services...")
+    
+    # Stop timer scheduler
+    try:
+        logger.info("Stopping timer scheduler...")
+        await app.state.timer_scheduler.stop()
+        logger.info("Timer scheduler stopped successfully")
+    except Exception as e:
+        logger.error(f"Error stopping timer scheduler: {e}")
+        errors.append(e)
+
     try:
         logger.info("Disconnecting database...")
         await db.disconnect()

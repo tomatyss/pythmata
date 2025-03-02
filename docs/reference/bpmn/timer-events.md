@@ -2,6 +2,16 @@
 
 Timer events allow you to control the flow of your process based on time. This guide explains how to configure and use timer events in Pythmata.
 
+## Timer Scheduler
+
+Pythmata includes a robust timer scheduler that automatically triggers timer events based on their configuration. The timer scheduler has the following features:
+
+- **Persistent Storage**: Timer state is stored in Redis, ensuring timers survive application restarts
+- **Efficient Scheduling**: Uses APScheduler for efficient timer management
+- **Fault Tolerance**: Automatically recovers timer state after system crashes
+- **Distributed Execution**: Supports running in a distributed environment
+- **Automatic Detection**: Automatically detects and schedules timers from process definitions
+
 ## Types of Timer Events
 
 Pythmata supports three types of timer events:

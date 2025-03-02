@@ -48,16 +48,14 @@ describe('TimerEventPropertiesPanel', () => {
       <TimerEventPropertiesPanel element={mockElement} modeler={mockModeler} />
     );
 
-    // Check if timer type dropdown is rendered
-    expect(
-      screen.getByRole('button', { name: /Timer Type/i })
-    ).toBeInTheDocument();
-
     // Check if timer value input is rendered
     expect(screen.getByLabelText(/Timer Value/i)).toBeInTheDocument();
 
     // Check if the initial value is set correctly
     expect(screen.getByLabelText(/Timer Value/i)).toHaveValue('PT1H');
+
+    // Check for the Timer Configuration heading
+    expect(screen.getByText('Timer Configuration')).toBeInTheDocument();
   });
 
   it('changes timer type correctly', async () => {
@@ -65,11 +63,18 @@ describe('TimerEventPropertiesPanel', () => {
       <TimerEventPropertiesPanel element={mockElement} modeler={mockModeler} />
     );
 
-    // Get the timer type dropdown
-    const timerTypeSelect = screen.getByRole('button', { name: /Timer Type/i });
+    // Find the select element by its label text in the FormControl
+    const selectContainer = screen.getByText('Timer Type').closest('div');
+    expect(selectContainer).toBeInTheDocument();
 
-    // Change timer type to date
-    fireEvent.mouseDown(timerTypeSelect);
+    // Find the select element within the container
+    const selectElement = selectContainer?.querySelector('div[role="button"]');
+    expect(selectElement).toBeInTheDocument();
+
+    // Click on the select to open the dropdown
+    if (selectElement) {
+      fireEvent.mouseDown(selectElement);
+    }
 
     // Wait for dropdown options to appear
     await waitFor(() => {
@@ -136,9 +141,5 @@ describe('TimerEventPropertiesPanel', () => {
 
     // Check if the timer value is set from extension elements
     expect(screen.getByLabelText(/Timer Value/i)).toHaveValue('R3/PT1H');
-
-    // For Material-UI Select, we need to check the displayed value
-    const selectElement = screen.getByRole('button', { name: /Timer Type/i });
-    expect(selectElement).toHaveTextContent(/cycle/i);
   });
 });

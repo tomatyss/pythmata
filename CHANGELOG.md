@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Process management
   - Event handling system
   - Script execution environment
+  - Robust timer event scheduler for automatically triggering timer start events
+    - Persistent job storage using Redis
+    - Efficient scheduling using APScheduler
+    - Support for all timer types (duration, date, cycle)
+    - Fault tolerance with automatic recovery
+    - Distributed timer execution support
 - Infrastructure
   - Docker containerization
   - PostgreSQL database
