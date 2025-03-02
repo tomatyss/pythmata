@@ -24,7 +24,7 @@ app.include_router(router)
 async def process_definition(session: AsyncSession) -> str:
     """Create a test process definition and return its ID."""
     from pythmata.models.process import ProcessDefinition
-    
+
     # Create a process definition
     definition = ProcessDefinition(
         name="Test Process",
@@ -35,7 +35,7 @@ async def process_definition(session: AsyncSession) -> str:
     session.add(definition)
     await session.commit()
     await session.refresh(definition)
-    
+
     return definition
 
 
@@ -54,7 +54,9 @@ async def chat_session(session: AsyncSession, process_definition) -> ChatSession
 
 
 @pytest.fixture
-async def chat_messages(session: AsyncSession, chat_session: ChatSession) -> list[ChatMessage]:
+async def chat_messages(
+    session: AsyncSession, chat_session: ChatSession
+) -> list[ChatMessage]:
     """Create test chat messages."""
     messages = [
         ChatMessage(
@@ -82,7 +84,7 @@ async def chat_messages(session: AsyncSession, chat_session: ChatSession) -> lis
 def mock_llm_response():
     """Mock response from the LLM service."""
     return {
-        "content": "I've analyzed your process and here's my suggestion: ```xml\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\">\n  <bpmn:process id=\"Process_1\">\n    <bpmn:startEvent id=\"StartEvent_1\" />\n  </bpmn:process>\n</bpmn:definitions>\n```",
+        "content": 'I\'ve analyzed your process and here\'s my suggestion: ```xml\n<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">\n  <bpmn:process id="Process_1">\n    <bpmn:startEvent id="StartEvent_1" />\n  </bpmn:process>\n</bpmn:definitions>\n```',
         "model": "anthropic:claude-3-7-sonnet-latest",
         "finish_reason": "stop",
         "usage": {"total_tokens": 150},
@@ -120,7 +122,9 @@ async def test_chat_completion_new_session(
 
     # Verify session was created
     result = await session.execute(
-        select(ChatSession).where(ChatSession.process_definition_id == process_definition.id)
+        select(ChatSession).where(
+            ChatSession.process_definition_id == process_definition.id
+        )
     )
     db_session = result.scalars().first()
     assert db_session is not None
@@ -181,7 +185,7 @@ async def test_chat_completion_with_xml_extraction(
     """Test XML extraction from LLM response."""
     # Setup mock with XML in response
     mock_chat_completion.return_value = {
-        "content": "Here's the BPMN XML you requested:\n\n```xml\n<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\">\n  <bpmn:process id=\"Process_1\">\n    <bpmn:startEvent id=\"StartEvent_1\" />\n    <bpmn:task id=\"Task_1\" name=\"New Task\" />\n  </bpmn:process>\n</bpmn:definitions>\n```\n\nThis XML defines a simple process with a start event and a task.",
+        "content": 'Here\'s the BPMN XML you requested:\n\n```xml\n<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">\n  <bpmn:process id="Process_1">\n    <bpmn:startEvent id="StartEvent_1" />\n    <bpmn:task id="Task_1" name="New Task" />\n  </bpmn:process>\n</bpmn:definitions>\n```\n\nThis XML defines a simple process with a start event and a task.',
         "model": "anthropic:claude-3-7-sonnet-latest",
         "finish_reason": "stop",
         "usage": {"total_tokens": 200},
@@ -191,7 +195,9 @@ async def test_chat_completion_with_xml_extraction(
     response = await async_client.post(
         "/llm/chat",
         json={
-            "messages": [{"role": "user", "content": "Generate XML for a simple process"}],
+            "messages": [
+                {"role": "user", "content": "Generate XML for a simple process"}
+            ],
             "process_id": str(process_definition.id),
         },
     )
@@ -201,7 +207,7 @@ async def test_chat_completion_with_xml_extraction(
     data = response.json()
     assert data["xml"] is not None
     assert "<bpmn:definitions" in data["xml"]
-    assert "<bpmn:task id=\"Task_1\" name=\"New Task\" />" in data["xml"]
+    assert '<bpmn:task id="Task_1" name="New Task" />' in data["xml"]
 
 
 @patch("pythmata.core.llm.service.LlmService.chat_completion")
@@ -227,7 +233,7 @@ async def test_chat_completion_with_current_xml(
 
     # Verify response
     assert response.status_code == 200
-    
+
     # Verify that current XML was included in the system prompt
     args, kwargs = mock_chat_completion.call_args
     messages = kwargs.get("messages", [])
@@ -244,7 +250,7 @@ async def test_generate_xml(
     """Test XML generation endpoint."""
     # Setup mock
     mock_generate_xml.return_value = {
-        "xml": "<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\">\n  <bpmn:process id=\"Process_1\">\n    <bpmn:startEvent id=\"StartEvent_1\" />\n    <bpmn:task id=\"Task_1\" name=\"Review Application\" />\n    <bpmn:endEvent id=\"EndEvent_1\" />\n  </bpmn:process>\n</bpmn:definitions>",
+        "xml": '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">\n  <bpmn:process id="Process_1">\n    <bpmn:startEvent id="StartEvent_1" />\n    <bpmn:task id="Task_1" name="Review Application" />\n    <bpmn:endEvent id="EndEvent_1" />\n  </bpmn:process>\n</bpmn:definitions>',
         "explanation": "This XML defines a simple process with a start event, a task for reviewing applications, and an end event.",
         "model": "anthropic:claude-3-7-sonnet-latest",
     }
@@ -262,7 +268,7 @@ async def test_generate_xml(
     data = response.json()
     assert "xml" in data
     assert "explanation" in data
-    assert "<bpmn:task id=\"Task_1\" name=\"Review Application\" />" in data["xml"]
+    assert '<bpmn:task id="Task_1" name="Review Application" />' in data["xml"]
 
 
 @patch("pythmata.core.llm.service.LlmService.modify_xml")
@@ -273,7 +279,7 @@ async def test_modify_xml(
     """Test XML modification endpoint."""
     # Setup mock
     mock_modify_xml.return_value = {
-        "xml": "<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\">\n  <bpmn:process id=\"Process_1\">\n    <bpmn:startEvent id=\"StartEvent_1\" />\n    <bpmn:task id=\"Task_1\" name=\"Review Application\" />\n    <bpmn:task id=\"Task_2\" name=\"Approve Application\" />\n    <bpmn:endEvent id=\"EndEvent_1\" />\n  </bpmn:process>\n</bpmn:definitions>",
+        "xml": '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">\n  <bpmn:process id="Process_1">\n    <bpmn:startEvent id="StartEvent_1" />\n    <bpmn:task id="Task_1" name="Review Application" />\n    <bpmn:task id="Task_2" name="Approve Application" />\n    <bpmn:endEvent id="EndEvent_1" />\n  </bpmn:process>\n</bpmn:definitions>',
         "explanation": "Added a new task for approving applications after the review task.",
         "model": "anthropic:claude-3-7-sonnet-latest",
     }
@@ -292,7 +298,7 @@ async def test_modify_xml(
     data = response.json()
     assert "xml" in data
     assert "explanation" in data
-    assert "<bpmn:task id=\"Task_2\" name=\"Approve Application\" />" in data["xml"]
+    assert '<bpmn:task id="Task_2" name="Approve Application" />' in data["xml"]
 
 
 async def test_create_chat_session(
@@ -354,9 +360,7 @@ async def test_get_chat_messages(
 ):
     """Test getting messages for a chat session."""
     # Test request
-    response = await async_client.get(
-        f"/llm/sessions/{chat_session.id}/messages"
-    )
+    response = await async_client.get(f"/llm/sessions/{chat_session.id}/messages")
 
     # Verify response
     assert response.status_code == 200

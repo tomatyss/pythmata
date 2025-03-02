@@ -1,10 +1,11 @@
 """Models for chat functionality."""
 
 import uuid
-from sqlalchemy import Column, Text, ForeignKey, DateTime, Integer, String
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from pythmata.models.base import Base
 
@@ -12,7 +13,7 @@ from pythmata.models.base import Base
 class ChatSession(Base):
     """
     Model for storing chat sessions related to process definitions.
-    
+
     Attributes:
         id: Unique identifier for the chat session
         process_definition_id: ID of the related process definition
@@ -22,23 +23,30 @@ class ChatSession(Base):
         process_definition: Relationship to the process definition
         messages: Relationship to the chat messages
     """
+
     __tablename__ = "chat_sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    process_definition_id = Column(UUID(as_uuid=True), ForeignKey("process_definitions.id"))
+    process_definition_id = Column(
+        UUID(as_uuid=True), ForeignKey("process_definitions.id")
+    )
     title = Column(String(255), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    
+
     # Relationships
-    process_definition = relationship("ProcessDefinition", back_populates="chat_sessions")
-    messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+    process_definition = relationship(
+        "ProcessDefinition", back_populates="chat_sessions"
+    )
+    messages = relationship(
+        "ChatMessage", back_populates="session", cascade="all, delete-orphan"
+    )
 
 
 class ChatMessage(Base):
     """
     Model for storing individual chat messages.
-    
+
     Attributes:
         id: Unique identifier for the message
         session_id: ID of the related chat session
@@ -50,6 +58,7 @@ class ChatMessage(Base):
         created_at: Timestamp when the message was created
         session: Relationship to the chat session
     """
+
     __tablename__ = "chat_messages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -57,9 +66,11 @@ class ChatMessage(Base):
     role = Column(String(50), nullable=False)  # 'user', 'assistant', 'system'
     content = Column(Text, nullable=False)
     xml_content = Column(Text, nullable=True)  # Store XML if generated
-    model = Column(String(100), nullable=True)  # Store which model generated this response
+    model = Column(
+        String(100), nullable=True
+    )  # Store which model generated this response
     tokens_used = Column(Integer, nullable=True)  # For tracking usage
     created_at = Column(DateTime, server_default=func.now())
-    
+
     # Relationships
     session = relationship("ChatSession", back_populates="messages")

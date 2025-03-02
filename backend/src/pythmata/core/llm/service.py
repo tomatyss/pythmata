@@ -1,6 +1,7 @@
 """LLM service for interacting with language models using AISuite."""
 
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 import aisuite as ai
 
 from pythmata.utils.logger import get_logger
@@ -30,7 +31,7 @@ class LlmService:
         model: str = "anthropic:claude-3-7-sonnet-latest",
         temperature: float = 0.7,
         max_tokens: int = 1000,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate a chat completion response.
@@ -55,14 +56,15 @@ class LlmService:
                 logger.debug(f"Converted model format to: {model}")
 
             logger.debug(
-                f"Sending request to LLM model {model} with {len(messages)} messages")
+                f"Sending request to LLM model {model} with {len(messages)} messages"
+            )
 
             # Let aisuite handle the provider-specific differences
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
             )
 
             # Extract usage information if available
@@ -74,23 +76,22 @@ class LlmService:
                         # OpenAI format
                         usage = {
                             "prompt_tokens": response.usage.get("prompt_tokens", 0),
-                            "completion_tokens": response.usage.get("completion_tokens", 0),
-                            "total_tokens": response.usage.get("total_tokens", 0)
+                            "completion_tokens": response.usage.get(
+                                "completion_tokens", 0
+                            ),
+                            "total_tokens": response.usage.get("total_tokens", 0),
                         }
                     else:
                         # Anthropic format
-                        input_tokens = getattr(
-                            response.usage, "input_tokens", 0)
-                        output_tokens = getattr(
-                            response.usage, "output_tokens", 0)
+                        input_tokens = getattr(response.usage, "input_tokens", 0)
+                        output_tokens = getattr(response.usage, "output_tokens", 0)
                         usage = {
                             "prompt_tokens": input_tokens,
                             "completion_tokens": output_tokens,
-                            "total_tokens": input_tokens + output_tokens
+                            "total_tokens": input_tokens + output_tokens,
                         }
             except Exception as e:
-                logger.warning(
-                    f"Failed to extract usage information: {str(e)}")
+                logger.warning(f"Failed to extract usage information: {str(e)}")
                 # Set default usage to avoid errors
                 usage = {"total_tokens": 0}
 
@@ -98,7 +99,7 @@ class LlmService:
                 "content": response.choices[0].message.content,
                 "model": model,
                 "finish_reason": response.choices[0].finish_reason,
-                "usage": usage
+                "usage": usage,
             }
 
             logger.debug(f"Received response from LLM model {model}")
@@ -114,7 +115,7 @@ class LlmService:
         model: str = "anthropic:claude-3-7-sonnet-latest",
         temperature: float = 0.3,  # Lower temperature for more deterministic XML generation
         max_tokens: int = 2000,
-        system_prompt: str = None
+        system_prompt: str = None,
     ) -> Dict[str, Any]:
         """
         Generate BPMN XML from a natural language description.
@@ -145,11 +146,11 @@ class LlmService:
             response = await self.chat_completion(
                 messages=[
                     {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
                 model=model,
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
             )
 
             # Extract XML from response
@@ -163,22 +164,18 @@ class LlmService:
                 explanation = content.split("```xml", 1)[0].strip()
             elif "```" in content and "```" in content.split("```", 1)[1]:
                 # Try without language specifier
-                potential_xml = content.split(
-                    "```", 1)[1].split("```", 1)[0].strip()
-                if potential_xml.startswith("<?xml") or potential_xml.startswith("<bpmn:"):
+                potential_xml = content.split("```", 1)[1].split("```", 1)[0].strip()
+                if potential_xml.startswith("<?xml") or potential_xml.startswith(
+                    "<bpmn:"
+                ):
                     xml = potential_xml
                     explanation = content.split("```", 1)[0].strip()
 
             if not xml:
-                logger.warning(
-                    "Failed to extract valid XML from the LLM response")
+                logger.warning("Failed to extract valid XML from the LLM response")
                 xml = ""
 
-            return {
-                "xml": xml,
-                "explanation": explanation,
-                "model": model
-            }
+            return {"xml": xml, "explanation": explanation, "model": model}
 
         except Exception as e:
             logger.error(f"XML generation failed: {str(e)}")
@@ -191,7 +188,7 @@ class LlmService:
         model: str = "anthropic:claude-3-7-sonnet-latest",
         temperature: float = 0.3,
         max_tokens: int = 2000,
-        system_prompt: str = None
+        system_prompt: str = None,
     ) -> Dict[str, Any]:
         """
         Modify existing BPMN XML based on a natural language request.
@@ -210,13 +207,15 @@ class LlmService:
         Raises:
             Exception: If XML modification fails
         """
-        from pythmata.core.llm.prompts import BPMN_SYSTEM_PROMPT, XML_MODIFICATION_PROMPT
+        from pythmata.core.llm.prompts import (
+            BPMN_SYSTEM_PROMPT,
+            XML_MODIFICATION_PROMPT,
+        )
 
         try:
             # Prepare prompt
             prompt = XML_MODIFICATION_PROMPT.format(
-                request=request,
-                current_xml=current_xml
+                request=request, current_xml=current_xml
             )
 
             # Use provided system prompt or default
@@ -226,11 +225,11 @@ class LlmService:
             response = await self.chat_completion(
                 messages=[
                     {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
                 model=model,
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
             )
 
             # Extract XML from response (similar to generate_xml)
@@ -244,23 +243,19 @@ class LlmService:
                 explanation = content.split("```xml", 1)[0].strip()
             elif "```" in content and "```" in content.split("```", 1)[1]:
                 # Try without language specifier
-                potential_xml = content.split(
-                    "```", 1)[1].split("```", 1)[0].strip()
-                if potential_xml.startswith("<?xml") or potential_xml.startswith("<bpmn:"):
+                potential_xml = content.split("```", 1)[1].split("```", 1)[0].strip()
+                if potential_xml.startswith("<?xml") or potential_xml.startswith(
+                    "<bpmn:"
+                ):
                     xml = potential_xml
                     explanation = content.split("```", 1)[0].strip()
 
             if not xml:
-                logger.warning(
-                    "Failed to extract valid XML from the LLM response")
+                logger.warning("Failed to extract valid XML from the LLM response")
                 # Fall back to the original XML
                 xml = current_xml
 
-            return {
-                "xml": xml,
-                "explanation": explanation,
-                "model": model
-            }
+            return {"xml": xml, "explanation": explanation, "model": model}
 
         except Exception as e:
             logger.error(f"XML modification failed: {str(e)}")

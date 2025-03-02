@@ -1,18 +1,18 @@
 """API routes for LLM interactions."""
 
 import uuid
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.dependencies import get_session
-from pythmata.core.llm.service import LlmService
 from pythmata.core.llm.prompts import BPMN_SYSTEM_PROMPT
-from pythmata.models.chat import ChatSession, ChatMessage
+from pythmata.core.llm.service import LlmService
+from pythmata.models.chat import ChatMessage, ChatSession
 from pythmata.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,12 +22,14 @@ router = APIRouter(prefix="/llm", tags=["llm"])
 
 class Message(BaseModel):
     """Chat message model."""
+
     role: str
     content: str
 
 
 class ChatRequest(BaseModel):
     """Chat request model."""
+
     messages: List[Message]
     process_id: Optional[str] = None
     current_xml: Optional[str] = None
@@ -37,6 +39,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     """Chat response model."""
+
     message: str
     xml: Optional[str] = None
     model: str
@@ -45,12 +48,14 @@ class ChatResponse(BaseModel):
 
 class ChatSessionCreate(BaseModel):
     """Chat session creation model."""
+
     process_definition_id: str
     title: str = "New Chat"
 
 
 class ChatSessionResponse(BaseModel):
     """Chat session response model."""
+
     id: str
     process_definition_id: str
     title: str
@@ -60,6 +65,7 @@ class ChatSessionResponse(BaseModel):
 
 class ChatMessageResponse(BaseModel):
     """Chat message response model."""
+
     id: str
     role: str
     content: str
@@ -70,12 +76,14 @@ class ChatMessageResponse(BaseModel):
 
 class XmlGenerationRequest(BaseModel):
     """XML generation request model."""
+
     description: str
     model: Optional[str] = None
 
 
 class XmlModificationRequest(BaseModel):
     """XML modification request model."""
+
     request: str
     current_xml: str
     model: Optional[str] = None
@@ -83,6 +91,7 @@ class XmlModificationRequest(BaseModel):
 
 class XmlResponse(BaseModel):
     """XML response model."""
+
     xml: str
     explanation: str
 
@@ -91,7 +100,7 @@ class XmlResponse(BaseModel):
 async def chat_completion(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
 ) -> Dict[str, Any]:
     """
     Generate a chat completion response for BPMN assistance.
@@ -127,10 +136,7 @@ async def chat_completion(
             messages.append({"role": m.role, "content": m.content})
 
         # Call LLM service
-        response = await llm_service.chat_completion(
-            messages=messages,
-            model=model
-        )
+        response = await llm_service.chat_completion(messages=messages, model=model)
 
         # Extract XML if present in the response
         content = response["content"]
@@ -141,8 +147,7 @@ async def chat_completion(
             xml = content.split("```xml", 1)[1].split("```", 1)[0].strip()
         elif "```" in content and "```" in content.split("```", 1)[1]:
             # Try without language specifier
-            potential_xml = content.split(
-                "```", 1)[1].split("```", 1)[0].strip()
+            potential_xml = content.split("```", 1)[1].split("```", 1)[0].strip()
             if potential_xml.startswith("<?xml") or potential_xml.startswith("<bpmn:"):
                 xml = potential_xml
 
@@ -155,7 +160,7 @@ async def chat_completion(
                 session = ChatSession(
                     id=uuid.uuid4(),
                     process_definition_id=request.process_id,
-                    title=f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                    title=f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M')}",
                 )
                 db.add(session)
                 await db.commit()
@@ -167,7 +172,7 @@ async def chat_completion(
                 id=uuid.uuid4(),
                 session_id=session_id,
                 role="user",
-                content=request.messages[-1].content
+                content=request.messages[-1].content,
             )
             db.add(user_message)
 
@@ -179,7 +184,7 @@ async def chat_completion(
                 content=response["content"],
                 xml_content=xml,
                 model=model,
-                tokens_used=response.get("usage", {}).get("total_tokens")
+                tokens_used=response.get("usage", {}).get("total_tokens"),
             )
             db.add(assistant_message)
             await db.commit()
@@ -188,7 +193,7 @@ async def chat_completion(
             "message": response["content"],
             "xml": xml,
             "model": model,
-            "session_id": str(session_id) if session_id else None
+            "session_id": str(session_id) if session_id else None,
         }
     except Exception as e:
         logger.error(f"Chat completion failed: {str(e)}")
@@ -198,7 +203,9 @@ async def chat_completion(
 
 
 @router.post("/generate-xml", response_model=XmlResponse)
-async def generate_xml(request: XmlGenerationRequest, db: AsyncSession = Depends(get_session)):
+async def generate_xml(
+    request: XmlGenerationRequest, db: AsyncSession = Depends(get_session)
+):
     """
     Generate BPMN XML from a natural language description.
 
@@ -214,25 +221,22 @@ async def generate_xml(request: XmlGenerationRequest, db: AsyncSession = Depends
 
         response = await llm_service.generate_xml(
             description=request.description,
-            model=request.model or "anthropic:claude-3-7-sonnet-latest"
+            model=request.model or "anthropic:claude-3-7-sonnet-latest",
         )
 
         if not response["xml"]:
             raise ValueError("Failed to generate valid XML")
 
-        return {
-            "xml": response["xml"],
-            "explanation": response["explanation"]
-        }
+        return {"xml": response["xml"], "explanation": response["explanation"]}
     except Exception as e:
         logger.error(f"XML generation failed: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate XML: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to generate XML: {str(e)}")
 
 
 @router.post("/modify-xml", response_model=XmlResponse)
-async def modify_xml(request: XmlModificationRequest, db: AsyncSession = Depends(get_session)):
+async def modify_xml(
+    request: XmlModificationRequest, db: AsyncSession = Depends(get_session)
+):
     """
     Modify existing BPMN XML based on a natural language request.
 
@@ -249,27 +253,21 @@ async def modify_xml(request: XmlModificationRequest, db: AsyncSession = Depends
         response = await llm_service.modify_xml(
             current_xml=request.current_xml,
             request=request.request,
-            model=request.model or "anthropic:claude-3-7-sonnet-latest"
+            model=request.model or "anthropic:claude-3-7-sonnet-latest",
         )
 
         if not response["xml"]:
             raise ValueError("Failed to modify XML")
 
-        return {
-            "xml": response["xml"],
-            "explanation": response["explanation"]
-        }
+        return {"xml": response["xml"], "explanation": response["explanation"]}
     except Exception as e:
         logger.error(f"XML modification failed: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to modify XML: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to modify XML: {str(e)}")
 
 
 @router.post("/sessions", response_model=ChatSessionResponse)
 async def create_chat_session(
-    request: ChatSessionCreate,
-    db: AsyncSession = Depends(get_session)
+    request: ChatSessionCreate, db: AsyncSession = Depends(get_session)
 ):
     """
     Create a new chat session for a process definition.
@@ -286,7 +284,7 @@ async def create_chat_session(
         chat_session = ChatSession(
             id=session_id,
             process_definition_id=request.process_definition_id,
-            title=request.title
+            title=request.title,
         )
         db.add(chat_session)
         await db.commit()
@@ -297,7 +295,7 @@ async def create_chat_session(
             "process_definition_id": str(chat_session.process_definition_id),
             "title": chat_session.title,
             "created_at": chat_session.created_at,
-            "updated_at": chat_session.updated_at
+            "updated_at": chat_session.updated_at,
         }
     except Exception as e:
         await db.rollback()
@@ -308,10 +306,7 @@ async def create_chat_session(
 
 
 @router.get("/sessions/{process_id}", response_model=List[ChatSessionResponse])
-async def list_chat_sessions(
-    process_id: str,
-    db: AsyncSession = Depends(get_session)
-):
+async def list_chat_sessions(process_id: str, db: AsyncSession = Depends(get_session)):
     """
     List all chat sessions for a process definition.
 
@@ -333,13 +328,15 @@ async def list_chat_sessions(
         # Convert UUID fields to strings for response
         sessions = []
         for session in db_sessions:
-            sessions.append({
-                "id": str(session.id),
-                "process_definition_id": str(session.process_definition_id),
-                "title": session.title,
-                "created_at": session.created_at,
-                "updated_at": session.updated_at
-            })
+            sessions.append(
+                {
+                    "id": str(session.id),
+                    "process_definition_id": str(session.process_definition_id),
+                    "title": session.title,
+                    "created_at": session.created_at,
+                    "updated_at": session.updated_at,
+                }
+            )
         return sessions
     except Exception as e:
         logger.error(f"Failed to list chat sessions: {str(e)}")
@@ -349,10 +346,7 @@ async def list_chat_sessions(
 
 
 @router.get("/sessions/{session_id}/messages", response_model=List[ChatMessageResponse])
-async def get_chat_messages(
-    session_id: str,
-    db: AsyncSession = Depends(get_session)
-):
+async def get_chat_messages(session_id: str, db: AsyncSession = Depends(get_session)):
     """
     Get all messages for a chat session.
 
@@ -374,14 +368,16 @@ async def get_chat_messages(
         # Convert UUID fields to strings for response
         messages = []
         for message in db_messages:
-            messages.append({
-                "id": str(message.id),
-                "role": message.role,
-                "content": message.content,
-                "xml_content": message.xml_content,
-                "model": message.model,
-                "created_at": message.created_at
-            })
+            messages.append(
+                {
+                    "id": str(message.id),
+                    "role": message.role,
+                    "content": message.content,
+                    "xml_content": message.xml_content,
+                    "model": message.model,
+                    "created_at": message.created_at,
+                }
+            )
         return messages
     except Exception as e:
         logger.error(f"Failed to get chat messages: {str(e)}")
