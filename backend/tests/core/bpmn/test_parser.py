@@ -343,7 +343,7 @@ class TestBPMNParser:
         assert task.output_variables is not None
         assert len(task.output_variables) == 1
         assert task.output_variables["result"] == "integer"
-        
+
     async def test_parse_service_task_config(self, parser):
         """Test parsing of service task configuration."""
         # Parse process with service task config XML
@@ -354,12 +354,12 @@ class TestBPMNParser:
         # Test service task with service task config
         task = next(n for n in nodes if isinstance(n, Task) and n.type == "serviceTask")
         assert task.id == "Task_1"
-        
+
         # Test service task config
         assert "serviceTaskConfig" in task.extensions
         service_config = task.extensions["serviceTaskConfig"]
         assert service_config["task_name"] == "logger"
-        
+
         # Test properties
         properties = service_config["properties"]
         assert properties["level"] == "info"
