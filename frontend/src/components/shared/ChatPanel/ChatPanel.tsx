@@ -11,12 +11,19 @@ import {
   Tabs,
   Tab,
   Tooltip,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemButton,
+  Divider,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   Send as SendIcon,
   ContentCopy as CopyIcon,
   Check as CheckIcon,
+  History as HistoryIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import apiService from '@/services/api';
 
@@ -26,6 +33,13 @@ interface Message {
   content: string;
   timestamp: Date;
   xml?: string;
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface ChatPanelProps {
@@ -65,6 +79,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [xmlPreview, setXmlPreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
@@ -91,33 +107,129 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     if (!processId) return;
 
     try {
+      console.log('Loading chat sessions for process:', processId);
       const response = await apiService.listChatSessions(processId);
+      console.log('Chat sessions response:', response);
 
-      if (response.data && response.data.length > 0) {
+      if (response && response.length > 0) {
+        // Format and store all sessions
+        const formattedSessions = response.map((session) => ({
+          id: session.id,
+          title: session.title,
+          createdAt: new Date(session.createdAt),
+          updatedAt: new Date(session.updatedAt),
+        }));
+
+        console.log('Formatted sessions:', formattedSessions);
+        setChatSessions(formattedSessions);
+
         // Use the most recent session
-        const mostRecentSession = response.data[0];
+        const mostRecentSession = formattedSessions[0];
         if (mostRecentSession) {
           setSessionId(mostRecentSession.id);
+          await loadMessagesForSession(mostRecentSession.id);
+        }
+      } else {
+        console.log('No chat sessions found or empty response');
+        setChatSessions([]);
 
-          // Load messages for this session
-          const messagesResponse = await apiService.getChatMessages(
-            mostRecentSession.id
-          );
-          if (messagesResponse.data && messagesResponse.data.length > 0) {
-            const formattedMessages = messagesResponse.data.map((msg) => ({
-              id: msg.id,
-              role: msg.role as 'user' | 'assistant' | 'system',
-              content: msg.content,
-              timestamp: new Date(msg.createdAt),
-              xml: msg.xmlContent,
-            }));
-
-            setMessages(formattedMessages);
-          }
+        // Create a new session if none exists
+        if (processId) {
+          await createNewSession();
         }
       }
     } catch (error) {
       console.error('Error loading chat sessions:', error);
+      setChatSessions([]);
+    }
+  };
+
+  const loadMessagesForSession = async (sessionId: string) => {
+    setLoadingMessages(true);
+    try {
+      const messagesResponse = await apiService.getChatMessages(sessionId);
+      console.log('Messages response:', messagesResponse);
+
+      if (messagesResponse && messagesResponse.length > 0) {
+        const formattedMessages = messagesResponse.map((msg) => ({
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.content,
+          timestamp: new Date(msg.createdAt),
+          xml: msg.xmlContent,
+        }));
+
+        setMessages(formattedMessages);
+      } else {
+        // If no messages, set default welcome message
+        setMessages([
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content:
+              'Hello! I can help you design your BPMN process. You can ask me questions, request XML generation, or get suggestions for your current diagram.',
+            timestamp: new Date(),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+      setMessages([
+        {
+          id: 'error',
+          role: 'system',
+          content: 'Failed to load chat messages. Please try again.',
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  const handleSessionSelect = async (sessionId: string) => {
+    setSessionId(sessionId);
+    await loadMessagesForSession(sessionId);
+    setCurrentTab(0); // Switch to chat tab after selecting a session
+  };
+
+  const createNewSession = async () => {
+    if (!processId) return;
+
+    try {
+      const title = `Chat ${new Date().toLocaleString()}`;
+      const response = await apiService.createChatSession({
+        process_definition_id: processId,
+        title,
+      });
+
+      if (response) {
+        const newSession = {
+          id: response.id,
+          title: response.title,
+          createdAt: new Date(response.createdAt),
+          updatedAt: new Date(response.updatedAt),
+        };
+
+        setChatSessions((prev) => [newSession, ...prev]);
+        setSessionId(newSession.id);
+
+        // Reset messages to just the welcome message
+        setMessages([
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content:
+              'Hello! I can help you design your BPMN process. You can ask me questions, request XML generation, or get suggestions for your current diagram.',
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Switch to chat tab
+        setCurrentTab(0);
+      }
+    } catch (error) {
+      console.error('Error creating new chat session:', error);
     }
   };
 
@@ -293,11 +405,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       >
         <Tab label="Chat" />
         {xmlPreview && <Tab label="XML Preview" />}
+        <Tab label="History" icon={<HistoryIcon />} iconPosition="start" />
       </Tabs>
 
       {currentTab === 0 ? (
         // Chat tab
         <>
+          {loadingMessages && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          )}
           {/* Messages container */}
           <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
             {messages.map((message) => (
@@ -376,7 +494,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             </Box>
           </Box>
         </>
-      ) : (
+      ) : xmlPreview && currentTab === 1 ? (
         // XML Preview tab
         <Box
           sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2 }}
@@ -421,6 +539,63 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               Apply Changes
             </Button>
           </Box>
+        </Box>
+      ) : (
+        // History tab
+        <Box
+          sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2 }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6">Chat History</Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={createNewSession}
+            >
+              New Chat
+            </Button>
+          </Box>
+
+          {chatSessions.length === 0 ? (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+              }}
+            >
+              <Typography variant="body1" color="text.secondary">
+                No chat sessions found. Start a new chat to begin.
+              </Typography>
+            </Box>
+          ) : (
+            <List
+              sx={{
+                width: '100%',
+                bgcolor: 'background.paper',
+                overflow: 'auto',
+              }}
+            >
+              {chatSessions.map((session) => (
+                <React.Fragment key={session.id}>
+                  <ListItem disablePadding>
+                    <ListItemButton
+                      selected={sessionId === session.id}
+                      onClick={() => handleSessionSelect(session.id)}
+                    >
+                      <ListItemText
+                        primary={session.title}
+                        secondary={`Created: ${session.createdAt.toLocaleString()}`}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                  <Divider component="li" />
+                </React.Fragment>
+              ))}
+            </List>
+          )}
         </Box>
       )}
     </Box>

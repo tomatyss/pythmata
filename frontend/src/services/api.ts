@@ -310,21 +310,17 @@ class ApiService {
   async createChatSession(data: {
     process_definition_id: string;
     title?: string;
-  }): Promise<ApiResponse<ChatSession>> {
+  }): Promise<ChatSession> {
     const response = await this.client.post('/llm/sessions', data);
     return response.data;
   }
 
-  async listChatSessions(
-    processId: string
-  ): Promise<ApiResponse<ChatSession[]>> {
+  async listChatSessions(processId: string): Promise<ChatSession[]> {
     const response = await this.client.get(`/llm/sessions/${processId}`);
     return response.data;
   }
 
-  async getChatMessages(
-    sessionId: string
-  ): Promise<ApiResponse<ChatMessage[]>> {
+  async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
     const response = await this.client.get(
       `/llm/sessions/${sessionId}/messages`
     );
