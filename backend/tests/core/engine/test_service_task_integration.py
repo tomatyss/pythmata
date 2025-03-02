@@ -12,7 +12,13 @@ from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.instance import ProcessInstance, ProcessInstanceManager
 from pythmata.core.services.base import ServiceTask
 from pythmata.core.services.registry import ServiceTaskRegistry
-from pythmata.models.process import ActivityLog, ActivityType, ProcessDefinition, ProcessStatus, Variable
+from pythmata.models.process import (
+    ActivityLog,
+    ActivityType,
+    ProcessDefinition,
+    ProcessStatus,
+    Variable,
+)
 
 # Sample BPMN XML with a service task
 SERVICE_TASK_BPMN = """<?xml version="1.0" encoding="UTF-8"?>
@@ -101,7 +107,7 @@ async def test_service_task_execution(mock_registry, state_manager, session):
         id=uuid4(),
         name="Test Service Task Process",
         version=1,
-        bpmn_xml=SERVICE_TASK_BPMN
+        bpmn_xml=SERVICE_TASK_BPMN,
     )
     session.add(definition)
     await session.commit()
@@ -115,20 +121,20 @@ async def test_service_task_execution(mock_registry, state_manager, session):
 
     # Set the instance manager on the executor
     executor.instance_manager = instance_manager
-    
+
     # Start the process
     await executor.execute_process(str(instance.id), process_graph)
 
     # Wait for the process to complete with a timeout
     timeout = 5.0  # 5 seconds timeout
     start_time = asyncio.get_event_loop().time()
-    
+
     while True:
         await asyncio.sleep(0.1)
         # Check for timeout
         if asyncio.get_event_loop().time() - start_time > timeout:
             raise TimeoutError(f"Test timed out after {timeout} seconds")
-            
+
         # Query the instance status directly from the database
         result = await session.execute(
             select(ProcessInstance).where(ProcessInstance.id == instance.id)
@@ -145,7 +151,7 @@ async def test_service_task_execution(mock_registry, state_manager, session):
     result = await session.execute(
         select(ActivityLog).where(
             ActivityLog.instance_id == instance.id,
-            ActivityLog.activity_type == ActivityType.INSTANCE_COMPLETED
+            ActivityLog.activity_type == ActivityType.INSTANCE_COMPLETED,
         )
     )
     completion_activities = result.scalars().all()
@@ -167,7 +173,7 @@ async def test_service_task_error_handling(mock_registry, state_manager, session
         id=uuid4(),
         name="Test Service Task Process",
         version=1,
-        bpmn_xml=SERVICE_TASK_BPMN
+        bpmn_xml=SERVICE_TASK_BPMN,
     )
     session.add(definition)
     await session.commit()
@@ -181,7 +187,7 @@ async def test_service_task_error_handling(mock_registry, state_manager, session
 
     # Set the instance manager on the executor
     executor.instance_manager = instance_manager
-    
+
     # Mock the service task to raise an exception
     with patch.object(TestServiceTask, "execute", side_effect=Exception("Test error")):
         try:
@@ -190,17 +196,17 @@ async def test_service_task_error_handling(mock_registry, state_manager, session
         except Exception as e:
             # Expected exception, now check that the instance is in error state
             pass
-    
+
     # Wait for the process to be marked as error with a timeout
     timeout = 5.0  # 5 seconds timeout
     start_time = asyncio.get_event_loop().time()
-    
+
     while True:
         await asyncio.sleep(0.1)
         # Check for timeout
         if asyncio.get_event_loop().time() - start_time > timeout:
             raise TimeoutError(f"Test timed out after {timeout} seconds")
-            
+
         # Query the instance status directly from the database
         result = await session.execute(
             select(ProcessInstance).where(ProcessInstance.id == instance.id)
@@ -217,7 +223,7 @@ async def test_service_task_error_handling(mock_registry, state_manager, session
     result = await session.execute(
         select(ActivityLog).where(
             ActivityLog.instance_id == instance.id,
-            ActivityLog.activity_type == ActivityType.INSTANCE_ERROR
+            ActivityLog.activity_type == ActivityType.INSTANCE_ERROR,
         )
     )
     error_activities = result.scalars().all()

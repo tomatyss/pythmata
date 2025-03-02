@@ -1,6 +1,6 @@
 """Tests for the service task executor."""
 
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -68,6 +68,7 @@ async def test_execute_service_task(mock_registry, state_manager):
     # Mock the state_manager.get_variables method to return our test variables
     async def mock_get_variables(*args, **kwargs):
         return {"var1": "value1"}
+
     state_manager.get_variables = mock_get_variables
 
     # Create a mock instance manager
@@ -112,6 +113,7 @@ async def test_execute_nonexistent_task(mock_registry, state_manager):
     # Mock the state_manager.get_variables method to return our test variables
     async def mock_get_variables(*args, **kwargs):
         return {"var1": "value1"}
+
     state_manager.get_variables = mock_get_variables
 
     # Create a mock instance manager
@@ -148,6 +150,7 @@ async def test_execute_task_with_error(mock_registry, state_manager):
     # Mock the state_manager.get_variables method to return our test variables
     async def mock_get_variables(*args, **kwargs):
         return {"var1": "value1"}
+
     state_manager.get_variables = mock_get_variables
 
     # Create a mock instance manager
@@ -200,6 +203,7 @@ async def test_execute_task_with_missing_required_property(
     # Mock the state_manager.get_variables method to return our test variables
     async def mock_get_variables(*args, **kwargs):
         return {"var1": "value1"}
+
     state_manager.get_variables = mock_get_variables
 
     # Create a mock instance manager

@@ -15,6 +15,55 @@ import {
   UpdateScriptRequest,
 } from '@/types/process';
 
+// Chat and LLM types
+interface ChatSession {
+  id: string;
+  processDefinitionId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ChatMessage {
+  id: string;
+  role: string;
+  content: string;
+  xmlContent?: string;
+  model?: string;
+  createdAt: string;
+}
+
+interface ChatRequest {
+  messages: Array<{ role: string; content: string }>;
+  processId?: string;
+  currentXml?: string;
+  model?: string;
+  sessionId?: string;
+}
+
+interface ChatResponse {
+  message: string;
+  xml?: string;
+  model: string;
+  sessionId?: string;
+}
+
+interface XmlGenerationRequest {
+  description: string;
+  model?: string;
+}
+
+interface XmlModificationRequest {
+  request: string;
+  currentXml: string;
+  model?: string;
+}
+
+interface XmlResponse {
+  xml: string;
+  explanation: string;
+}
+
 // Define a type for service tasks
 interface ServiceTask {
   name: string;
@@ -236,6 +285,46 @@ class ApiService {
       console.error('Error fetching service tasks:', error);
       throw error;
     }
+  }
+
+  // Chat and LLM methods
+  async sendChatMessage(data: ChatRequest): Promise<ChatResponse> {
+    const response = await this.client.post('/llm/chat', data);
+    return response.data;
+  }
+
+  async generateXml(
+    data: XmlGenerationRequest
+  ): Promise<ApiResponse<XmlResponse>> {
+    const response = await this.client.post('/llm/generate-xml', data);
+    return response.data;
+  }
+
+  async modifyXml(
+    data: XmlModificationRequest
+  ): Promise<ApiResponse<XmlResponse>> {
+    const response = await this.client.post('/llm/modify-xml', data);
+    return response.data;
+  }
+
+  async createChatSession(data: {
+    process_definition_id: string;
+    title?: string;
+  }): Promise<ChatSession> {
+    const response = await this.client.post('/llm/sessions', data);
+    return response.data;
+  }
+
+  async listChatSessions(processId: string): Promise<ChatSession[]> {
+    const response = await this.client.get(`/llm/sessions/${processId}`);
+    return response.data;
+  }
+
+  async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
+    const response = await this.client.get(
+      `/llm/sessions/${sessionId}/messages`
+    );
+    return response.data;
   }
 }
 

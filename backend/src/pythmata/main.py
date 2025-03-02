@@ -1,5 +1,5 @@
-from contextlib import asynccontextmanager
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -188,10 +188,13 @@ async def lifespan(app: FastAPI):
     plugin_dir = os.environ.get("PYTHMATA_PLUGIN_DIR", "/app/plugins")
     if os.path.isdir(plugin_dir):
         from pythmata.core.plugin import discover_plugins
+
         logger.info(f"Discovering plugins from {plugin_dir}")
         discover_plugins(plugin_dir)
     else:
-        logger.info(f"Plugin directory not found: {plugin_dir}, skipping plugin discovery")
+        logger.info(
+            f"Plugin directory not found: {plugin_dir}, skipping plugin discovery"
+        )
 
     # Initialize and connect services
     logger.info("Initializing database...")
