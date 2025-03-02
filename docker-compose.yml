@@ -3,6 +3,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - .env
     environment:
       - CONFIG_FILE=/app/config/development.toml
       - PYTHMATA_PLUGIN_DIR=/app/plugins

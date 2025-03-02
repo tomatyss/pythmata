@@ -17,7 +17,9 @@ import {
   Save as SaveIcon,
   Settings as SettingsIcon,
   ContentCopy as ContentCopyIcon,
+  Chat as ChatIcon,
 } from '@mui/icons-material';
+import ChatPanel from '@/components/shared/ChatPanel';
 import VariableDefinitionsPanel from '@/components/shared/VariableDefinitionsPanel/VariableDefinitionsPanel';
 import ElementPanel from '@/components/shared/ElementPanel';
 import { ProcessVariableDefinition } from '@/types/process';
@@ -132,6 +134,7 @@ const ProcessDesigner = () => {
   const [error, setError] = useState<string | null>(null);
   const [variablesDrawerOpen, setVariablesDrawerOpen] = useState(false);
   const [elementDrawerOpen, setElementDrawerOpen] = useState(false);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [variableDefinitions, setVariableDefinitions] = useState<
     ProcessVariableDefinition[]
@@ -374,6 +377,13 @@ const ProcessDesigner = () => {
           >
             <SettingsIcon />
           </IconButton>
+          <IconButton
+            color="primary"
+            onClick={() => setChatDrawerOpen(true)}
+            title="Process Assistant"
+          >
+            <ChatIcon />
+          </IconButton>
           <Button
             variant="outlined"
             startIcon={<ContentCopyIcon />}
@@ -463,6 +473,30 @@ const ProcessDesigner = () => {
             onClose={() => setElementDrawerOpen(false)}
           />
         )}
+      </Drawer>
+
+      {/* Chat Drawer */}
+      <Drawer
+        anchor="right"
+        open={chatDrawerOpen}
+        onClose={() => setChatDrawerOpen(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: '450px',
+            p: 0,
+          },
+        }}
+      >
+        <ChatPanel
+          processId={id}
+          modeler={modelerRef.current}
+          onClose={() => setChatDrawerOpen(false)}
+          onApplyXml={(xml) => {
+            if (modelerRef.current) {
+              modelerRef.current.importXML(xml);
+            }
+          }}
+        />
       </Drawer>
     </Box>
   );
