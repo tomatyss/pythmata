@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Form handling with React Hook Form
   - Real-time updates with WebSocket
   - Responsive layout and theming
+  - Timer event properties panel for configuring timer events
 - Backend Python application
   - BPMN execution engine
   - Process management
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Development setup guide
   - Contributing guidelines
   - Code of conduct
+  - Timer events configuration and usage guide
 
 ### Changed
 - None
