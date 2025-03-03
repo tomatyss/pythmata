@@ -1,9 +1,9 @@
 """Tests for timer parser module."""
 
-import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
+import pytest
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
@@ -26,8 +26,10 @@ class TestTimerParser:
         assert _parse_duration("PT30M") == timedelta(minutes=30)
         assert _parse_duration("PT45S") == timedelta(seconds=45)
         assert _parse_duration("PT1H30M") == timedelta(hours=1, minutes=30)
-        assert _parse_duration("PT1H30M45S") == timedelta(hours=1, minutes=30, seconds=45)
-        
+        assert _parse_duration("PT1H30M45S") == timedelta(
+            hours=1, minutes=30, seconds=45
+        )
+
         # Test invalid durations
         assert _parse_duration("1H") is None
         assert _parse_duration("P1D") is None
@@ -39,7 +41,7 @@ class TestTimerParser:
         # Setup mock datetime
         now = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         mock_datetime.now.return_value = now
-        
+
         # Test duration timer
         timer_def = parse_timer_definition("PT1H")
         assert timer_def is not None
@@ -54,7 +56,7 @@ class TestTimerParser:
         # Setup mock datetime
         now = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         mock_datetime.now.return_value = now
-        
+
         # Test cycle timer
         timer_def = parse_timer_definition("R3/PT1H")
         assert timer_def is not None
@@ -90,15 +92,15 @@ class TestTimerParser:
           </bpmn:process>
         </bpmn:definitions>
         """
-        
+
         # Test extraction
         timer_def = extract_timer_definition(bpmn_xml, "StartEvent_1")
         assert timer_def == "PT1H"
-        
+
         # Test non-existent node
         timer_def = extract_timer_definition(bpmn_xml, "NonExistentEvent")
         assert timer_def is None
-        
+
         # Test non-timer event
         bpmn_xml_no_timer = """
         <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
@@ -116,7 +118,7 @@ class TestTimerParser:
         """Test finding timer events in a process definition."""
         # Setup mock
         mock_extract.return_value = "PT1H"
-        
+
         # Simple BPMN XML with timer start event
         bpmn_xml = """
         <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
@@ -129,7 +131,7 @@ class TestTimerParser:
           </bpmn:process>
         </bpmn:definitions>
         """
-        
+
         # Test finding timer events
         timer_events = find_timer_events_in_definition(bpmn_xml, "prefix:", "def1")
         assert len(timer_events) == 1

@@ -88,7 +88,7 @@ class BPMNParser:
         definitions = elem.findall("./bpmn:*Definition", self.ns)
         if not definitions:
             definitions = elem.findall("./bpmn:*EventDefinition", self.ns)
-        
+
         event_definition = None
         if definitions:
             tag = definitions[0].tag.split("}")[-1]

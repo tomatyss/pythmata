@@ -37,8 +37,7 @@ async def handle_process_started(data: dict) -> None:
     try:
         instance_id = data["instance_id"]
         definition_id = data["definition_id"]
-        logger.info(
-            f"Handling process.started event for instance {instance_id}")
+        logger.info(f"Handling process.started event for instance {instance_id}")
 
         # Get required services
         logger.info("[ProcessStarted] Initializing required services")
@@ -46,8 +45,7 @@ async def handle_process_started(data: dict) -> None:
             settings = Settings()
             logger.info("[ProcessStarted] Settings initialized successfully")
         except Exception as e:
-            logger.error(
-                f"[ProcessStarted] Failed to initialize settings: {str(e)}")
+            logger.error(f"[ProcessStarted] Failed to initialize settings: {str(e)}")
             logger.error(
                 "[ProcessStarted] Please check configuration files and environment variables"
             )
@@ -76,28 +74,28 @@ async def handle_process_started(data: dict) -> None:
                 )
 
                 if not definition:
-                    logger.error(
-                        f"Process definition {definition_id} not found")
+                    logger.error(f"Process definition {definition_id} not found")
                     return
                 logger.info(f"Definition loaded successfully: {definition_id}")
 
                 # 2. Check if process instance already exists in database
                 # This is critical for timer events which may publish process.started
                 # before the instance is created in the database
-                from pythmata.models.process import ProcessInstance, ProcessStatus
                 from datetime import UTC, datetime
+
+                from pythmata.models.process import ProcessInstance, ProcessStatus
 
                 instance_uuid = UUID(instance_id)
                 instance_result = await session.execute(
-                    select(ProcessInstance).filter(
-                        ProcessInstance.id == instance_uuid)
+                    select(ProcessInstance).filter(ProcessInstance.id == instance_uuid)
                 )
                 instance = instance_result.scalar_one_or_none()
 
                 # If instance doesn't exist, create it
                 if not instance:
                     logger.info(
-                        f"Process instance {instance_id} not found in database, creating it")
+                        f"Process instance {instance_id} not found in database, creating it"
+                    )
                     instance = ProcessInstance(
                         id=instance_uuid,
                         definition_id=UUID(definition_id),
@@ -106,11 +104,11 @@ async def handle_process_started(data: dict) -> None:
                     )
                     session.add(instance)
                     await session.commit()
-                    logger.info(
-                        f"Process instance {instance_id} created in database")
+                    logger.info(f"Process instance {instance_id} created in database")
                 else:
                     logger.info(
-                        f"Process instance {instance_id} already exists in database")
+                        f"Process instance {instance_id} already exists in database"
+                    )
 
                 # 3. Parse and Validate BPMN
                 try:
@@ -118,11 +116,9 @@ async def handle_process_started(data: dict) -> None:
                     logger.debug(
                         f"Definition bpmn_xml type: {type(definition.bpmn_xml)}"
                     )
-                    logger.debug(
-                        f"Definition bpmn_xml value: {definition.bpmn_xml}")
+                    logger.debug(f"Definition bpmn_xml value: {definition.bpmn_xml}")
                     process_graph = parser.parse(definition.bpmn_xml)
-                    logger.debug(
-                        f"Process graph after parsing: {process_graph}")
+                    logger.debug(f"Process graph after parsing: {process_graph}")
                     logger.info("BPMN XML parsed successfully")
                 except Exception as e:
                     logger.error(f"Failed to parse BPMN XML: {e}")
@@ -145,8 +141,7 @@ async def handle_process_started(data: dict) -> None:
             # 4. Initialize Process Instance
             async with db.session() as session:
                 # Create instance manager with proper initialization
-                instance_manager = ProcessInstanceManager(
-                    session, None, state_manager)
+                instance_manager = ProcessInstanceManager(session, None, state_manager)
                 executor = ProcessExecutor(
                     state_manager=state_manager, instance_manager=instance_manager
                 )
@@ -163,11 +158,9 @@ async def handle_process_started(data: dict) -> None:
                     logger.info(
                         f"Found existing tokens for instance {instance_id}: {existing_tokens}"
                     )
-                    logger.debug(
-                        "Skipping token creation due to existing tokens")
+                    logger.debug("Skipping token creation due to existing tokens")
                 else:
-                    logger.debug(
-                        "No existing tokens found, creating initial token")
+                    logger.debug("No existing tokens found, creating initial token")
                     # Create initial token only if none exist
                     initial_token = await executor.create_initial_token(
                         instance_id, start_event.id
@@ -180,23 +173,19 @@ async def handle_process_started(data: dict) -> None:
                 logger.debug(
                     f"Preparing to execute process with graph: {process_graph}"
                 )
-                logger.info(
-                    f"Starting process execution for instance {instance_id}")
+                logger.info(f"Starting process execution for instance {instance_id}")
                 await executor.execute_process(instance_id, process_graph)
-                logger.info(
-                    f"Process {instance_id} execution completed successfully")
+                logger.info(f"Process {instance_id} execution completed successfully")
 
         finally:
             await state_manager.disconnect()
 
     except Exception as e:
-        logger.error(
-            f"Error handling process.started event: {e}", exc_info=True)
+        logger.error(f"Error handling process.started event: {e}", exc_info=True)
 
         # Try to set error state and clean up if possible
         try:
-            logger.info(
-                "[ErrorCleanup] Attempting to initialize services for cleanup")
+            logger.info("[ErrorCleanup] Attempting to initialize services for cleanup")
             try:
                 settings = Settings()
                 logger.info("[ErrorCleanup] Settings initialized for cleanup")
@@ -211,8 +200,7 @@ async def handle_process_started(data: dict) -> None:
             await state_manager.connect()
 
             async with get_db().session() as session:
-                instance_manager = ProcessInstanceManager(
-                    session, None, state_manager)
+                instance_manager = ProcessInstanceManager(session, None, state_manager)
                 await instance_manager.handle_error(instance_id, e)
         except Exception as cleanup_error:
             logger.error(f"Error during cleanup: {cleanup_error}")
@@ -267,8 +255,10 @@ async def lifespan(app: FastAPI):
 
     # Initialize and start timer scheduler
     from pythmata.core.engine.events.timer_scheduler import TimerScheduler
+
     app.state.timer_scheduler = TimerScheduler(
-        app.state.state_manager, app.state.event_bus)
+        app.state.state_manager, app.state.event_bus
+    )
 
     # Recover timer state from previous run if needed
     await app.state.timer_scheduler.recover_from_crash()
@@ -281,8 +271,7 @@ async def lifespan(app: FastAPI):
     # Log registered service tasks
     registry = get_service_task_registry()
     tasks = registry.list_tasks()
-    logger.info(
-        f"Registered service tasks: {[task['name'] for task in tasks]}")
+    logger.info(f"Registered service tasks: {[task['name'] for task in tasks]}")
 
     yield
 

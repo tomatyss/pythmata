@@ -3,10 +3,9 @@
 import asyncio
 import hashlib
 import json
-import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 
 from apscheduler.executors.asyncio import AsyncIOExecutor
 from apscheduler.jobstores.redis import RedisJobStore
@@ -16,8 +15,6 @@ from sqlalchemy import select
 from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.database import get_db
 from pythmata.core.engine.events.timer_parser import (
-    TimerDefinition,
-    extract_timer_definition,
     find_timer_events_in_definition,
     parse_timer_definition,
 )
@@ -32,7 +29,7 @@ logger = get_logger(__name__)
 class TimerScheduler:
     """
     Scheduler for BPMN timer start events.
-    
+
     Scans process definitions for timer start events and schedules them
     using APScheduler with Redis persistence.
     """
@@ -102,7 +99,7 @@ class TimerScheduler:
     async def recover_from_crash(self) -> None:
         """
         Recover timer state after a system crash or restart.
-        
+
         Loads timer metadata from Redis for rescheduling after start.
         """
         try:
@@ -111,7 +108,7 @@ class TimerScheduler:
             # Find all timer metadata keys
             pattern = f"{self._timer_prefix}*:metadata"
             keys = await self.state_manager.redis.keys(pattern)
-            
+
             # Store metadata for later rescheduling
             self._recovery_metadata = []
 
@@ -126,17 +123,21 @@ class TimerScheduler:
                         continue
 
                     metadata = json.loads(metadata_json)
-                    
+
                     # Store metadata for later rescheduling after start() is called
-                    self._recovery_metadata.append({
-                        'timer_id': timer_id,
-                        'definition_id': metadata['definition_id'],
-                        'node_id': metadata['node_id'],
-                        'timer_def': metadata['timer_def']
-                    })
+                    self._recovery_metadata.append(
+                        {
+                            "timer_id": timer_id,
+                            "definition_id": metadata["definition_id"],
+                            "node_id": metadata["node_id"],
+                            "timer_def": metadata["timer_def"],
+                        }
+                    )
 
                 except Exception as e:
-                    logger.error(f"Error recovering timer metadata {key}: {e}", exc_info=True)
+                    logger.error(
+                        f"Error recovering timer metadata {key}: {e}", exc_info=True
+                    )
 
             logger.info(f"Found {len(self._recovery_metadata)} timers to recover")
 
@@ -150,42 +151,48 @@ class TimerScheduler:
     async def _create_scheduler(self) -> AsyncIOScheduler:
         """
         Create and configure the APScheduler instance.
-        
+
         Returns:
             Configured AsyncIOScheduler instance
         """
         return AsyncIOScheduler(
             jobstores={
-                'default': RedisJobStore(
-                    jobs_key='pythmata:jobs',
-                    run_times_key='pythmata:run_times',
-                    host=self.state_manager.redis.connection_pool.connection_kwargs['host'],
-                    port=self.state_manager.redis.connection_pool.connection_kwargs['port'],
-                    db=self.state_manager.redis.connection_pool.connection_kwargs.get('db', 0)
+                "default": RedisJobStore(
+                    jobs_key="pythmata:jobs",
+                    run_times_key="pythmata:run_times",
+                    host=self.state_manager.redis.connection_pool.connection_kwargs[
+                        "host"
+                    ],
+                    port=self.state_manager.redis.connection_pool.connection_kwargs[
+                        "port"
+                    ],
+                    db=self.state_manager.redis.connection_pool.connection_kwargs.get(
+                        "db", 0
+                    ),
                 )
             },
-            executors={
-                'default': AsyncIOExecutor()
-            },
+            executors={"default": AsyncIOExecutor()},
             job_defaults={
-                'coalesce': True,  # Combine multiple pending executions into one
-                'max_instances': 1,  # Only allow one instance of each job to run at a time
-                'misfire_grace_time': 60  # Allow jobs to be 60 seconds late
-            }
+                "coalesce": True,  # Combine multiple pending executions into one
+                "max_instances": 1,  # Only allow one instance of each job to run at a time
+                "misfire_grace_time": 60,  # Allow jobs to be 60 seconds late
+            },
         )
 
     async def _schedule_recovery_timers(self) -> None:
         """Schedule timers from recovery metadata."""
         if not self._recovery_metadata:
             return
-            
-        logger.info(f"Scheduling {len(self._recovery_metadata)} timers from recovery metadata")
+
+        logger.info(
+            f"Scheduling {len(self._recovery_metadata)} timers from recovery metadata"
+        )
         for metadata in self._recovery_metadata:
             await self._schedule_timer(
-                metadata['timer_id'],
-                metadata['definition_id'],
-                metadata['node_id'],
-                metadata['timer_def']
+                metadata["timer_id"],
+                metadata["definition_id"],
+                metadata["node_id"],
+                metadata["timer_def"],
             )
         # Clear recovery metadata after scheduling
         self._recovery_metadata = []
@@ -197,7 +204,9 @@ class TimerScheduler:
                 # Check if process definitions have changed
                 current_hash = await self._get_process_definitions_hash()
                 if current_hash != self._process_definitions_hash:
-                    logger.info("Process definitions changed, rescanning for timer events")
+                    logger.info(
+                        "Process definitions changed, rescanning for timer events"
+                    )
                     self._process_definitions_hash = current_hash
                     await self._scan_for_timer_start_events()
                 else:
@@ -218,12 +227,15 @@ class TimerScheduler:
         try:
             db = get_db()
             async with db.session() as session:
-                result = await session.execute(select(ProcessDefinition.id, ProcessDefinition.updated_at))
+                result = await session.execute(
+                    select(ProcessDefinition.id, ProcessDefinition.updated_at)
+                )
                 definitions = result.all()
 
                 # Create a string representation of all definition IDs and update timestamps
                 definitions_str = "|".join(
-                    f"{d.id}:{d.updated_at.isoformat()}" for d in definitions)
+                    f"{d.id}:{d.updated_at.isoformat()}" for d in definitions
+                )
 
                 # Use a simple hash function
                 return hashlib.md5(definitions_str.encode()).hexdigest()
@@ -234,7 +246,7 @@ class TimerScheduler:
     async def _scan_for_timer_start_events(self) -> None:
         """
         Scan all process definitions for timer start events.
-        
+
         Finds timer start events in all process definitions and schedules them.
         """
         logger.info("Scanning for timer start events")
@@ -254,23 +266,32 @@ class TimerScheduler:
                     timer_events = find_timer_events_in_definition(
                         definition.bpmn_xml, self._timer_prefix, str(definition.id)
                     )
-                    
+
                     # Schedule each timer event
                     for timer_id, node_id, timer_def in timer_events:
                         found_timer_ids.add(timer_id)
-                        await self._schedule_timer(timer_id, str(definition.id), node_id, timer_def)
-                        
+                        await self._schedule_timer(
+                            timer_id, str(definition.id), node_id, timer_def
+                        )
+
                 except Exception as e:
-                    logger.error(f"Error processing definition {definition.id}: {e}", exc_info=True)
+                    logger.error(
+                        f"Error processing definition {definition.id}: {e}",
+                        exc_info=True,
+                    )
 
         # Remove timers for deleted process definitions
         timers_to_remove = self._scheduled_timer_ids - found_timer_ids
         for timer_id in timers_to_remove:
             await self._remove_timer(timer_id)
 
-        logger.info(f"Timer scan complete. Active timers: {len(self._scheduled_timer_ids)}")
+        logger.info(
+            f"Timer scan complete. Active timers: {len(self._scheduled_timer_ids)}"
+        )
 
-    async def _schedule_timer(self, timer_id: str, definition_id: str, node_id: str, timer_def: str) -> None:
+    async def _schedule_timer(
+        self, timer_id: str, definition_id: str, node_id: str, timer_def: str
+    ) -> None:
         """
         Schedule a timer for execution using APScheduler.
 
@@ -289,27 +310,30 @@ class TimerScheduler:
 
             # Store timer metadata in Redis for recovery
             timer_metadata = {
-                'definition_id': definition_id,
-                'node_id': node_id,
-                'timer_def': timer_def,
-                'timer_type': timer_definition.timer_type,
-                'created_at': datetime.now(timezone.utc).isoformat()
+                "definition_id": definition_id,
+                "node_id": node_id,
+                "timer_def": timer_def,
+                "timer_type": timer_definition.timer_type,
+                "created_at": datetime.now(timezone.utc).isoformat(),
             }
 
             await self.state_manager.redis.set(
-                f"{timer_id}:metadata",
-                json.dumps(timer_metadata)
+                f"{timer_id}:metadata", json.dumps(timer_metadata)
             )
 
             # If scheduler is not initialized yet, store metadata for later scheduling
             if self._scheduler is None:
-                logger.info(f"Scheduler not initialized yet, storing metadata for timer {timer_id}")
-                self._recovery_metadata.append({
-                    'timer_id': timer_id,
-                    'definition_id': definition_id,
-                    'node_id': node_id,
-                    'timer_def': timer_def
-                })
+                logger.info(
+                    f"Scheduler not initialized yet, storing metadata for timer {timer_id}"
+                )
+                self._recovery_metadata.append(
+                    {
+                        "timer_id": timer_id,
+                        "definition_id": definition_id,
+                        "node_id": node_id,
+                        "timer_def": timer_def,
+                    }
+                )
                 return
 
             # Check if job already exists
@@ -318,7 +342,9 @@ class TimerScheduler:
                 logger.info(f"Updating existing timer job: {timer_id}")
                 job.reschedule(timer_definition.trigger)
             else:
-                logger.info(f"Scheduling new timer job: {timer_id} with definition {timer_def}")
+                logger.info(
+                    f"Scheduling new timer job: {timer_id} with definition {timer_def}"
+                )
                 # Use the standalone function for the callback
                 self._scheduler.add_job(
                     timer_callback,
@@ -326,12 +352,12 @@ class TimerScheduler:
                     id=timer_id,
                     replace_existing=True,
                     kwargs={
-                        'timer_id': timer_id,
-                        'definition_id': definition_id,
-                        'node_id': node_id,
-                        'timer_type': timer_definition.timer_type,
-                        'timer_def': timer_def
-                    }
+                        "timer_id": timer_id,
+                        "definition_id": definition_id,
+                        "node_id": node_id,
+                        "timer_type": timer_definition.timer_type,
+                        "timer_def": timer_def,
+                    },
                 )
 
             # Add to set of scheduled timers
@@ -350,7 +376,9 @@ class TimerScheduler:
         try:
             # If scheduler is not initialized yet, remove from recovery metadata
             if self._scheduler is None:
-                self._recovery_metadata = [m for m in self._recovery_metadata if m['timer_id'] != timer_id]
+                self._recovery_metadata = [
+                    m for m in self._recovery_metadata if m["timer_id"] != timer_id
+                ]
                 return
 
             # Remove from APScheduler
@@ -367,8 +395,9 @@ class TimerScheduler:
             logger.error(f"Error removing timer {timer_id}: {e}", exc_info=True)
 
 
-def timer_callback(timer_id: str, definition_id: str, node_id: str,
-                   timer_type: str, timer_def: str) -> None:
+def timer_callback(
+    timer_id: str, definition_id: str, node_id: str, timer_type: str, timer_def: str
+) -> None:
     """
     Standalone callback function for timer events.
 
@@ -427,7 +456,7 @@ def timer_callback(timer_id: str, definition_id: str, node_id: str,
 
             # Create the process instance
             instance_id = new_loop.run_until_complete(create_process_instance())
-            
+
             # Publish process.started event
             async def publish_event():
                 await event_bus.publish(
@@ -437,11 +466,13 @@ def timer_callback(timer_id: str, definition_id: str, node_id: str,
                         "definition_id": definition_id,
                         "variables": {},
                         "source": "timer_scheduler",
-                        "timestamp": datetime.now(timezone.utc).isoformat()
-                    }
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
                 )
-                logger.info(f"Started process instance {instance_id} from definition {definition_id}")
-                
+                logger.info(
+                    f"Started process instance {instance_id} from definition {definition_id}"
+                )
+
             new_loop.run_until_complete(publish_event())
 
         finally:

@@ -20,7 +20,13 @@ class TestProcessStartedHandler(BaseEngineTest):
     """Test suite for the process.started event handler."""
 
     @pytest.fixture(autouse=True)
-    async def setup_handler_test(self, state_manager: StateManager, event_bus: EventBus, session, test_settings: Settings):
+    async def setup_handler_test(
+        self,
+        state_manager: StateManager,
+        event_bus: EventBus,
+        session,
+        test_settings: Settings,
+    ):
         """Setup test environment with state manager, event bus, and session.
 
         Args:
@@ -37,7 +43,7 @@ class TestProcessStartedHandler(BaseEngineTest):
         """
         Test that handle_process_started creates a process instance in the database
         if it doesn't already exist.
-        
+
         This test verifies the fix for the foreign key violation issue.
         """
         # Create a process definition in the database
@@ -55,53 +61,64 @@ class TestProcessStartedHandler(BaseEngineTest):
                 <bpmn:startEvent id="StartEvent_1" />
               </bpmn:process>
             </bpmn:definitions>""",
-            version=1
+            version=1,
         )
         self.session.add(definition)
         await self.session.commit()
-        
+
         # Generate a unique instance ID
         instance_id = str(uuid.uuid4())
-        
+
         # Only mock Settings and execute_process
-        with patch('pythmata.main.Settings', return_value=self.test_settings), \
-             patch('pythmata.core.engine.executor.ProcessExecutor.execute_process', new_callable=AsyncMock) as mock_execute:
-            
+        with (
+            patch("pythmata.main.Settings", return_value=self.test_settings),
+            patch(
+                "pythmata.core.engine.executor.ProcessExecutor.execute_process",
+                new_callable=AsyncMock,
+            ) as mock_execute,
+        ):
+
             # Call the handle_process_started function with our test data
-            await handle_process_started({
-                "instance_id": instance_id,
-                "definition_id": definition_id,
-                "variables": {},
-                "source": "test",
-                "timestamp": "2025-03-02T12:00:00Z"
-            })
-            
+            await handle_process_started(
+                {
+                    "instance_id": instance_id,
+                    "definition_id": definition_id,
+                    "variables": {},
+                    "source": "test",
+                    "timestamp": "2025-03-02T12:00:00Z",
+                }
+            )
+
             # Verify that execute_process was called
             mock_execute.assert_called_once()
-            
+
             # Verify that the process instance was created in the database
             result = await self.session.execute(
-                select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id))
+                select(ProcessInstance).where(
+                    ProcessInstance.id == uuid.UUID(instance_id)
+                )
             )
             instance = result.scalar_one_or_none()
             assert instance is not None
             assert str(instance.definition_id) == definition_id
-            
+
             # Verify that activity logs can be created for this instance
             activity_log = ActivityLog(
                 instance_id=uuid.UUID(instance_id),
                 activity_type="NODE_ENTERED",
                 node_id="StartEvent_1",
-                timestamp=instance.start_time
+                timestamp=instance.start_time,
             )
             self.session.add(activity_log)
-            
+
             # This commit would fail with a foreign key violation if the instance doesn't exist
             await self.session.commit()
-            
+
             # Verify that the activity log was created
             result = await self.session.execute(
-                select(ActivityLog).where(ActivityLog.instance_id == uuid.UUID(instance_id))
+                select(ActivityLog).where(
+                    ActivityLog.instance_id == uuid.UUID(instance_id)
+                )
             )
             logs = result.scalars().all()
             assert len(logs) == 1
@@ -127,15 +144,16 @@ class TestProcessStartedHandler(BaseEngineTest):
                 <bpmn:startEvent id="StartEvent_1" />
               </bpmn:process>
             </bpmn:definitions>""",
-            version=1
+            version=1,
         )
         self.session.add(definition)
         await self.session.commit()
-        
+
         # Create a process instance in the database
-        from pythmata.models.process import ProcessStatus
         from datetime import UTC, datetime
-        
+
+        from pythmata.models.process import ProcessStatus
+
         instance_id = str(uuid.uuid4())
         instance = ProcessInstance(
             id=uuid.UUID(instance_id),
@@ -145,31 +163,40 @@ class TestProcessStartedHandler(BaseEngineTest):
         )
         self.session.add(instance)
         await self.session.commit()
-        
+
         # Only mock Settings and execute_process
-        with patch('pythmata.main.Settings', return_value=self.test_settings), \
-             patch('pythmata.core.engine.executor.ProcessExecutor.execute_process', new_callable=AsyncMock) as mock_execute:
-            
+        with (
+            patch("pythmata.main.Settings", return_value=self.test_settings),
+            patch(
+                "pythmata.core.engine.executor.ProcessExecutor.execute_process",
+                new_callable=AsyncMock,
+            ) as mock_execute,
+        ):
+
             # Call the handle_process_started function with our test data
-            await handle_process_started({
-                "instance_id": instance_id,
-                "definition_id": definition_id,
-                "variables": {},
-                "source": "test",
-                "timestamp": "2025-03-02T12:00:00Z"
-            })
-            
+            await handle_process_started(
+                {
+                    "instance_id": instance_id,
+                    "definition_id": definition_id,
+                    "variables": {},
+                    "source": "test",
+                    "timestamp": "2025-03-02T12:00:00Z",
+                }
+            )
+
             # Verify that execute_process was called
             mock_execute.assert_called_once()
-            
+
             # Verify that the process instance still exists in the database
             result = await self.session.execute(
-                select(ProcessInstance).where(ProcessInstance.id == uuid.UUID(instance_id))
+                select(ProcessInstance).where(
+                    ProcessInstance.id == uuid.UUID(instance_id)
+                )
             )
             db_instance = result.scalar_one_or_none()
             assert db_instance is not None
             assert str(db_instance.definition_id) == definition_id
-            
+
             # Verify that the instance in the database is the same one we created
             assert db_instance.id == instance.id
             assert db_instance.start_time == instance.start_time

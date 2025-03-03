@@ -19,9 +19,9 @@ def state_manager():
     state_manager = AsyncMock()
     state_manager.redis = AsyncMock()
     state_manager.redis.connection_pool.connection_kwargs = {
-        'host': 'localhost',
-        'port': 6379,
-        'db': 0
+        "host": "localhost",
+        "port": 6379,
+        "db": 0,
     }
     return state_manager
 
@@ -36,7 +36,9 @@ def event_bus():
 def scheduler(state_manager, event_bus):
     """Create a timer scheduler instance with mocked dependencies."""
     scheduler = TimerScheduler(state_manager, event_bus)
-    scheduler._create_scheduler = AsyncMock(return_value=AsyncMock(spec=AsyncIOScheduler))
+    scheduler._create_scheduler = AsyncMock(
+        return_value=AsyncMock(spec=AsyncIOScheduler)
+    )
     return scheduler
 
 
@@ -49,10 +51,10 @@ class TestTimerScheduler:
         # Setup
         scheduler._schedule_recovery_timers = AsyncMock()
         scheduler._scan_for_timer_start_events = AsyncMock()
-        
+
         # Execute
         await scheduler.start()
-        
+
         # Assert
         assert scheduler._running is True
         assert scheduler._scheduler.start.called
@@ -67,10 +69,10 @@ class TestTimerScheduler:
         scheduler._running = True
         scheduler._scan_task = asyncio.create_task(asyncio.sleep(0.1))
         scheduler._scheduler = AsyncMock()
-        
+
         # Execute
         await scheduler.stop()
-        
+
         # Assert
         assert scheduler._running is False
         assert scheduler._scheduler.shutdown.called
@@ -80,17 +82,19 @@ class TestTimerScheduler:
         """Test recovering timer state after a crash."""
         # Setup
         state_manager.redis.keys.return_value = ["pythmata:timer:123:metadata"]
-        state_manager.redis.get.return_value = json.dumps({
-            "definition_id": "def1",
-            "node_id": "node1",
-            "timer_def": "PT1H",
-            "timer_type": "duration"
-        })
+        state_manager.redis.get.return_value = json.dumps(
+            {
+                "definition_id": "def1",
+                "node_id": "node1",
+                "timer_def": "PT1H",
+                "timer_type": "duration",
+            }
+        )
         scheduler._schedule_recovery_timers = AsyncMock()
-        
+
         # Execute
         await scheduler.recover_from_crash()
-        
+
         # Assert
         assert len(scheduler._recovery_metadata) == 1
         assert scheduler._recovery_metadata[0]["timer_id"] == "pythmata:timer:123"
@@ -107,14 +111,14 @@ class TestTimerScheduler:
                 "timer_id": "timer1",
                 "definition_id": "def1",
                 "node_id": "node1",
-                "timer_def": "PT1H"
+                "timer_def": "PT1H",
             }
         ]
         scheduler._schedule_timer = AsyncMock()
-        
+
         # Execute
         await scheduler._schedule_recovery_timers()
-        
+
         # Assert
         scheduler._schedule_timer.assert_called_once_with(
             "timer1", "def1", "node1", "PT1H"
@@ -129,19 +133,21 @@ class TestTimerScheduler:
         definition_id = "def1"
         node_id = "node1"
         timer_def = "PT1H"
-        
+
         timer_definition = MagicMock(spec=TimerDefinition)
         timer_definition.timer_type = "duration"
         timer_definition.trigger = MagicMock()
-        
-        with patch("pythmata.core.engine.events.timer_scheduler.parse_timer_definition", 
-                  return_value=timer_definition):
+
+        with patch(
+            "pythmata.core.engine.events.timer_scheduler.parse_timer_definition",
+            return_value=timer_definition,
+        ):
             scheduler._scheduler = MagicMock()
             scheduler._scheduler.get_job.return_value = None
-            
+
             # Execute
             await scheduler._schedule_timer(timer_id, definition_id, node_id, timer_def)
-            
+
             # Assert
             assert timer_id in scheduler._scheduled_timer_ids
             state_manager.redis.set.assert_called_once()
@@ -151,12 +157,12 @@ class TestTimerScheduler:
                 id=timer_id,
                 replace_existing=True,
                 kwargs={
-                    'timer_id': timer_id,
-                    'definition_id': definition_id,
-                    'node_id': node_id,
-                    'timer_type': timer_definition.timer_type,
-                    'timer_def': timer_def
-                }
+                    "timer_id": timer_id,
+                    "definition_id": definition_id,
+                    "node_id": node_id,
+                    "timer_type": timer_definition.timer_type,
+                    "timer_def": timer_def,
+                },
             )
 
     @pytest.mark.asyncio
@@ -166,10 +172,10 @@ class TestTimerScheduler:
         timer_id = "timer1"
         scheduler._scheduled_timer_ids.add(timer_id)
         scheduler._scheduler = MagicMock()
-        
+
         # Execute
         await scheduler._remove_timer(timer_id)
-        
+
         # Assert
         assert timer_id not in scheduler._scheduled_timer_ids
         scheduler._scheduler.remove_job.assert_called_once_with(timer_id)
@@ -181,33 +187,35 @@ class TestTimerScheduler:
 @patch("pythmata.core.events.EventBus")
 @patch("pythmata.core.database.get_db")
 @patch("pythmata.core.engine.events.timer_scheduler.asyncio")
-def test_timer_callback(mock_asyncio, mock_get_db, mock_event_bus, mock_state_manager, mock_settings):
+def test_timer_callback(
+    mock_asyncio, mock_get_db, mock_event_bus, mock_state_manager, mock_settings
+):
     """Test the timer callback function."""
     # Setup mocks
     mock_loop = MagicMock()
     mock_asyncio.new_event_loop.return_value = mock_loop
     mock_asyncio.set_event_loop = MagicMock()
-    
+
     mock_state_manager_instance = MagicMock()
     mock_event_bus_instance = MagicMock()
     mock_db_instance = MagicMock()
-    
+
     mock_state_manager.return_value = mock_state_manager_instance
     mock_event_bus.return_value = mock_event_bus_instance
     mock_get_db.return_value = mock_db_instance
-    
+
     # Mock UUID generation
     test_uuid = uuid.uuid4()
     with patch("uuid.uuid4", return_value=test_uuid):
         # Execute
         timer_callback("timer1", "def1", "node1", "duration", "PT1H")
-        
+
         # Assert
         mock_asyncio.new_event_loop.assert_called_once()
         mock_asyncio.set_event_loop.assert_called_once_with(mock_loop)
-        
+
         # Check connections were established
         assert mock_loop.run_until_complete.call_count >= 5
-        
+
         # Check loop was closed
         mock_loop.close.assert_called_once()

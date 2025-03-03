@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 @dataclass
 class TimerDefinition:
     """Timer definition with parsed information."""
-    
+
     timer_type: str
     trigger: Union[DateTrigger, IntervalTrigger]
     repetitions: Optional[int] = None
@@ -41,14 +41,14 @@ def parse_timer_definition(timer_def: str) -> Optional[TimerDefinition]:
         duration = _parse_duration(timer_def)
         if not duration:
             return None
-            
+
         # Calculate run date
         run_date = datetime.now(timezone.utc) + duration
-        
+
         return TimerDefinition(
             timer_type="duration",
             trigger=DateTrigger(run_date=run_date),
-            duration=duration
+            duration=duration,
         )
 
     # Try parsing as cycle (e.g., R3/PT1H)
@@ -70,11 +70,10 @@ def parse_timer_definition(timer_def: str) -> Optional[TimerDefinition]:
         return TimerDefinition(
             timer_type="cycle",
             trigger=IntervalTrigger(
-                seconds=interval.total_seconds(),
-                start_date=datetime.now(timezone.utc)
+                seconds=interval.total_seconds(), start_date=datetime.now(timezone.utc)
             ),
             repetitions=repetitions,
-            interval=interval
+            interval=interval,
         )
 
     # Try parsing as date
@@ -83,7 +82,7 @@ def parse_timer_definition(timer_def: str) -> Optional[TimerDefinition]:
         return TimerDefinition(
             timer_type="date",
             trigger=DateTrigger(run_date=run_date),
-            target_date=run_date
+            target_date=run_date,
         )
     except ValueError:
         pass
@@ -94,10 +93,10 @@ def parse_timer_definition(timer_def: str) -> Optional[TimerDefinition]:
 def _parse_duration(duration_str: str) -> Optional[timedelta]:
     """
     Parse ISO 8601 duration string.
-    
+
     Args:
         duration_str: Duration string in ISO 8601 format (e.g., PT1H30M)
-        
+
     Returns:
         timedelta object or None if parsing fails
     """
@@ -174,25 +173,25 @@ def find_timer_events_in_definition(
 ) -> List[Tuple[str, str, str]]:
     """
     Find timer start events in a process definition.
-    
+
     Args:
         bpmn_xml: BPMN XML string
         timer_prefix: Prefix for timer IDs
         definition_id: Process definition ID
-        
+
     Returns:
         List of tuples containing (timer_id, node_id, timer_definition)
     """
     import xml.etree.ElementTree as ET
-    
+
     timer_events = []
-    
+
     # First try to extract timer events directly from XML
     root = ET.fromstring(bpmn_xml)
     ns = {
         "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
         "pythmata": "http://pythmata.org/schema/1.0/bpmn",
-        "xsi": "http://www.w3.org/2001/XMLSchema-instance"
+        "xsi": "http://www.w3.org/2001/XMLSchema-instance",
     }
 
     # Find all start events with timer definitions
@@ -210,7 +209,9 @@ def find_timer_events_in_definition(
             # Find timer definition
             timer_def = extract_timer_definition(bpmn_xml, node_id)
             if not timer_def:
-                logger.warning(f"No timer definition found for {node_id} in {definition_id}")
+                logger.warning(
+                    f"No timer definition found for {node_id} in {definition_id}"
+                )
                 continue
 
             timer_events.append((timer_id, node_id, timer_def))
@@ -219,14 +220,17 @@ def find_timer_events_in_definition(
     if not timer_events_found:
         try:
             from pythmata.core.bpmn.parser import BPMNParser
+
             parser = BPMNParser()
             process_graph = parser.parse(bpmn_xml)
 
             # Find timer start events
             for node in process_graph["nodes"]:
-                if (hasattr(node, "event_type") and
-                    node.event_type == "start" and
-                    node.event_definition == "timer"):
+                if (
+                    hasattr(node, "event_type")
+                    and node.event_type == "start"
+                    and node.event_definition == "timer"
+                ):
 
                     # Generate a unique ID for this timer
                     timer_id = f"{timer_prefix}{definition_id}:{node.id}"
@@ -234,12 +238,14 @@ def find_timer_events_in_definition(
                     # Find timer definition in XML
                     timer_def = extract_timer_definition(bpmn_xml, node.id)
                     if not timer_def:
-                        logger.warning(f"No timer definition found for {node.id} in {definition_id}")
+                        logger.warning(
+                            f"No timer definition found for {node.id} in {definition_id}"
+                        )
                         continue
 
                     timer_events.append((timer_id, node.id, timer_def))
         except ValueError as e:
             # If parsing fails due to validation errors, we've already tried direct XML extraction
             logger.debug(f"Parser error for {definition_id}: {e}")
-            
+
     return timer_events

@@ -58,14 +58,13 @@ class BPMNValidator:
 
         # Load Pythmata extension schema
         self.extension_schema = xmlschema.XMLSchema(
-            schema_dir / "pythmata.xsd", 
-            validation="lax"
+            schema_dir / "pythmata.xsd", validation="lax"
         )
-        
+
         # Define known validation issues to skip
         self.known_validation_patterns = [
             "tFormalExpression",
-            "global xs:simpleType/xs:complexType 'bpmn:tFormalExpression' not found"
+            "global xs:simpleType/xs:complexType 'bpmn:tFormalExpression' not found",
         ]
 
     def validate(self, xml: str) -> ValidationResult:
@@ -95,10 +94,10 @@ class BPMNValidator:
 
             # Define namespaces for validation
             namespaces = {
-                'bpmn': "http://www.omg.org/spec/BPMN/20100524/MODEL",
-                'xsi': "http://www.w3.org/2001/XMLSchema-instance"
+                "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
+                "xsi": "http://www.w3.org/2001/XMLSchema-instance",
             }
-            
+
             # Validate against BPMN schema with relaxed extension validation
             validation_errors = []
             for error in self.bpmn_schema.iter_errors(doc, namespaces=namespaces):
@@ -111,7 +110,7 @@ class BPMNValidator:
                             logger.debug(f"Skipping known validation issue: {error}")
                             should_skip = True
                             break
-                    
+
                     if not should_skip:
                         validation_errors.append(error)
 

@@ -1,7 +1,8 @@
 """Tests for BPMN timer event validation."""
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from pythmata.core.bpmn.validator import BPMNValidator
 
@@ -80,7 +81,7 @@ def test_timer_start_event_validation(validator, timer_start_event_xml):
 def test_timer_event_extraction():
     """Test that timer event definitions can be extracted from BPMN XML."""
     from pythmata.core.engine.events.timer_scheduler import TimerScheduler
-    
+
     # Test XML with a timer start event
     xml = """<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
@@ -96,11 +97,11 @@ def test_timer_event_extraction():
     </bpmn:startEvent>
   </bpmn:process>
 </bpmn:definitions>"""
-    
+
     # Create a minimal instance just for testing the extraction method
     # We don't need state_manager or event_bus for this test
     scheduler = TimerScheduler.__new__(TimerScheduler)
-    
+
     # Extract timer definition using the static method
     timer_def = scheduler._extract_timer_definition(xml, "StartEvent_1")
     assert timer_def == "PT5M", f"Expected PT5M, got {timer_def}"
