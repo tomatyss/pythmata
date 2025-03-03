@@ -8,7 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.core.types import Event, EventType
-from pythmata.main import app, handle_process_started
+from pythmata.core.utils.event_handlers import handle_process_started
+from pythmata.main import app
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 
 
@@ -23,11 +24,14 @@ async def test_lifespan():
     mock_db = AsyncMock()
 
     with (
-        patch("pythmata.main.EventBus", return_value=mock_event_bus),
-        patch("pythmata.main.StateManager", return_value=mock_state_manager),
-        patch("pythmata.main.Settings", return_value=mock_settings),
-        patch("pythmata.main.get_db", return_value=mock_db),
-        patch("pythmata.main.init_db"),
+        patch("pythmata.core.utils.lifecycle.EventBus", return_value=mock_event_bus),
+        patch(
+            "pythmata.core.utils.lifecycle.StateManager",
+            return_value=mock_state_manager,
+        ),
+        patch("pythmata.core.utils.lifecycle.Settings", return_value=mock_settings),
+        patch("pythmata.core.utils.lifecycle.get_db", return_value=mock_db),
+        patch("pythmata.core.utils.lifecycle.init_db"),
     ):
         # Create a lifespan context
         async with app.router.lifespan_context(app) as _:
@@ -74,11 +78,14 @@ async def test_lifespan_error_handling():
     mock_db.disconnect.side_effect = db_error
 
     with (
-        patch("pythmata.main.EventBus", return_value=mock_event_bus),
-        patch("pythmata.main.StateManager", return_value=mock_state_manager),
-        patch("pythmata.main.Settings", return_value=mock_settings),
-        patch("pythmata.main.get_db", return_value=mock_db),
-        patch("pythmata.main.init_db"),
+        patch("pythmata.core.utils.lifecycle.EventBus", return_value=mock_event_bus),
+        patch(
+            "pythmata.core.utils.lifecycle.StateManager",
+            return_value=mock_state_manager,
+        ),
+        patch("pythmata.core.utils.lifecycle.Settings", return_value=mock_settings),
+        patch("pythmata.core.utils.lifecycle.get_db", return_value=mock_db),
+        patch("pythmata.core.utils.lifecycle.init_db"),
         pytest.raises(Exception) as exc_info,
     ):
         async with app.router.lifespan_context(app) as _:
@@ -168,12 +175,18 @@ async def test_handle_process_started():
     mock_executor.create_initial_token.return_value = mock_initial_token
 
     with (
-        patch("pythmata.main.Settings"),
-        patch("pythmata.main.StateManager", return_value=mock_state_manager),
-        patch("pythmata.main.get_db", return_value=mock_db),
-        patch("pythmata.main.BPMNParser", return_value=mock_parser),
-        patch("pythmata.main.ProcessExecutor", return_value=mock_executor),
-        patch("pythmata.main.select", return_value=mock_select),
+        patch("pythmata.core.utils.event_handlers.Settings"),
+        patch(
+            "pythmata.core.utils.event_handlers.StateManager",
+            return_value=mock_state_manager,
+        ),
+        patch("pythmata.core.utils.event_handlers.get_db", return_value=mock_db),
+        patch("pythmata.core.utils.process_utils.BPMNParser", return_value=mock_parser),
+        patch(
+            "pythmata.core.utils.process_utils.ProcessExecutor",
+            return_value=mock_executor,
+        ),
+        patch("pythmata.core.utils.process_utils.select", return_value=mock_select),
     ):
         # Execute handler
         await handle_process_started(test_data)
@@ -240,11 +253,14 @@ async def test_handle_process_started_error_cases():
 
     # Test Case 1: Process definition not found
     with (
-        patch("pythmata.main.Settings"),
-        patch("pythmata.main.StateManager", return_value=mock_state_manager),
-        patch("pythmata.main.get_db", return_value=mock_db),
-        patch("pythmata.main.BPMNParser", return_value=mock_parser),
-        patch("pythmata.main.select", return_value=mock_select),
+        patch("pythmata.core.utils.event_handlers.Settings"),
+        patch(
+            "pythmata.core.utils.event_handlers.StateManager",
+            return_value=mock_state_manager,
+        ),
+        patch("pythmata.core.utils.event_handlers.get_db", return_value=mock_db),
+        patch("pythmata.core.utils.process_utils.BPMNParser", return_value=mock_parser),
+        patch("pythmata.core.utils.process_utils.select", return_value=mock_select),
     ):
         await handle_process_started(test_data)
         mock_state_manager.disconnect.assert_called_once()
@@ -262,11 +278,14 @@ async def test_handle_process_started_error_cases():
     mock_parser.parse.side_effect = Exception("Invalid BPMN XML")
 
     with (
-        patch("pythmata.main.Settings"),
-        patch("pythmata.main.StateManager", return_value=mock_state_manager),
-        patch("pythmata.main.get_db", return_value=mock_db),
-        patch("pythmata.main.BPMNParser", return_value=mock_parser),
-        patch("pythmata.main.select", return_value=mock_select),
+        patch("pythmata.core.utils.event_handlers.Settings"),
+        patch(
+            "pythmata.core.utils.event_handlers.StateManager",
+            return_value=mock_state_manager,
+        ),
+        patch("pythmata.core.utils.event_handlers.get_db", return_value=mock_db),
+        patch("pythmata.core.utils.process_utils.BPMNParser", return_value=mock_parser),
+        patch("pythmata.core.utils.process_utils.select", return_value=mock_select),
     ):
         await handle_process_started(test_data)
         mock_state_manager.disconnect.assert_called_once()
@@ -284,11 +303,14 @@ async def test_handle_process_started_error_cases():
     mock_parser.parse.return_value = {"nodes": [], "flows": []}  # No start event
 
     with (
-        patch("pythmata.main.Settings"),
-        patch("pythmata.main.StateManager", return_value=mock_state_manager),
-        patch("pythmata.main.get_db", return_value=mock_db),
-        patch("pythmata.main.BPMNParser", return_value=mock_parser),
-        patch("pythmata.main.select", return_value=mock_select),
+        patch("pythmata.core.utils.event_handlers.Settings"),
+        patch(
+            "pythmata.core.utils.event_handlers.StateManager",
+            return_value=mock_state_manager,
+        ),
+        patch("pythmata.core.utils.event_handlers.get_db", return_value=mock_db),
+        patch("pythmata.core.utils.process_utils.BPMNParser", return_value=mock_parser),
+        patch("pythmata.core.utils.process_utils.select", return_value=mock_select),
     ):
         await handle_process_started(test_data)
         mock_state_manager.disconnect.assert_called_once()

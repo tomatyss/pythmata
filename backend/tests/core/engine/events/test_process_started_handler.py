@@ -10,7 +10,7 @@ from pythmata.core.config import Settings
 from pythmata.core.database import get_db
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
-from pythmata.main import handle_process_started
+from pythmata.core.utils.event_handlers import handle_process_started
 from pythmata.models.process import ActivityLog, ProcessDefinition, ProcessInstance
 from tests.core.engine.base import BaseEngineTest
 
@@ -71,7 +71,10 @@ class TestProcessStartedHandler(BaseEngineTest):
 
         # Only mock Settings and execute_process
         with (
-            patch("pythmata.main.Settings", return_value=self.test_settings),
+            patch(
+                "pythmata.core.utils.event_handlers.Settings",
+                return_value=self.test_settings,
+            ),
             patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,
@@ -166,7 +169,10 @@ class TestProcessStartedHandler(BaseEngineTest):
 
         # Only mock Settings and execute_process
         with (
-            patch("pythmata.main.Settings", return_value=self.test_settings),
+            patch(
+                "pythmata.core.utils.event_handlers.Settings",
+                return_value=self.test_settings,
+            ),
             patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,

@@ -47,8 +47,7 @@ def parse_timer_definition(timer_def: str) -> Optional[TimerDefinition]:
 
         # Calculate run date
         run_date = datetime.now(timezone.utc) + duration
-        logger.info(
-            f"Parsed duration timer: {duration}, will run at {run_date}")
+        logger.info(f"Parsed duration timer: {duration}, will run at {run_date}")
 
         return TimerDefinition(
             timer_type="duration",
@@ -74,8 +73,7 @@ def parse_timer_definition(timer_def: str) -> Optional[TimerDefinition]:
             return None
 
         # Create an interval trigger
-        logger.info(
-            f"Parsed cycle timer: {interval}, repetitions: {repetitions}")
+        logger.info(f"Parsed cycle timer: {interval}, repetitions: {repetitions}")
         return TimerDefinition(
             timer_type="cycle",
             trigger=IntervalTrigger(
@@ -96,7 +94,6 @@ def parse_timer_definition(timer_def: str) -> Optional[TimerDefinition]:
         )
     except ValueError:
         logger.error(f"Failed to parse date: {timer_def}")
-        pass
 
     logger.error(f"Could not parse timer definition: {timer_def}")
     return None
@@ -191,7 +188,8 @@ def extract_timer_definition(bpmn_xml: str, node_id: str) -> Optional[str]:
             timer_value = timer_config.get("timerValue")
             if timer_type and timer_value:
                 logger.info(
-                    f"Found timer in extension elements: type={timer_type}, value={timer_value}")
+                    f"Found timer in extension elements: type={timer_type}, value={timer_value}"
+                )
                 return timer_value
 
     logger.warning(f"No timer definition found for {node_id}")
@@ -246,14 +244,12 @@ def find_timer_events_in_definition(
                 )
                 continue
 
-            logger.info(
-                f"Adding timer event: {timer_id}, {node_id}, {timer_def}")
+            logger.info(f"Adding timer event: {timer_id}, {node_id}, {timer_def}")
             timer_events.append((timer_id, node_id, timer_def))
 
     # If no timer events were found via direct XML parsing, try using the parser
     if not timer_events_found:
-        logger.info(
-            "No timer events found via direct XML parsing, trying parser")
+        logger.info("No timer events found via direct XML parsing, trying parser")
         try:
             from pythmata.core.bpmn.parser import BPMNParser
 
@@ -267,8 +263,7 @@ def find_timer_events_in_definition(
                     and node.event_type == "start"
                     and node.event_definition == "timer"
                 ):
-                    logger.info(
-                        f"Found timer start event in parser: {node.id}")
+                    logger.info(f"Found timer start event in parser: {node.id}")
 
                     # Generate a unique ID for this timer
                     timer_id = f"{timer_prefix}{definition_id}:{node.id}"
@@ -282,12 +277,12 @@ def find_timer_events_in_definition(
                         continue
 
                     logger.info(
-                        f"Adding timer event from parser: {timer_id}, {node.id}, {timer_def}")
+                        f"Adding timer event from parser: {timer_id}, {node.id}, {timer_def}"
+                    )
                     timer_events.append((timer_id, node.id, timer_def))
         except ValueError as e:
             # If parsing fails due to validation errors, we've already tried direct XML extraction
             logger.debug(f"Parser error for {definition_id}: {e}")
 
-    logger.info(
-        f"Found {len(timer_events)} timer events in definition {definition_id}")
+    logger.info(f"Found {len(timer_events)} timer events in definition {definition_id}")
     return timer_events
