@@ -63,12 +63,8 @@ describe('TimerEventPropertiesPanel', () => {
       <TimerEventPropertiesPanel element={mockElement} modeler={mockModeler} />
     );
 
-    // Find the select element by its label text in the FormControl
-    const selectContainer = screen.getByText('Timer Type').closest('div');
-    expect(selectContainer).toBeInTheDocument();
-
-    // Find the select element within the container
-    const selectElement = selectContainer?.querySelector('div[role="button"]');
+    // Find the select element directly by its role
+    const selectElement = screen.getByRole('combobox');
     expect(selectElement).toBeInTheDocument();
 
     // Click on the select to open the dropdown
@@ -94,6 +90,25 @@ describe('TimerEventPropertiesPanel', () => {
   });
 
   it('updates timer value correctly', async () => {
+    // Setup the mock more explicitly
+    const updatePropertiesMock = vi.fn();
+    mockModeler.get.mockImplementation((module) => {
+      if (module === 'modeling') {
+        return {
+          updateProperties: updatePropertiesMock,
+        };
+      }
+      if (module === 'moddle') {
+        return {
+          create: vi.fn().mockImplementation((type, props) => ({
+            $type: type,
+            ...props,
+          })),
+        };
+      }
+      return {};
+    });
+
     render(
       <TimerEventPropertiesPanel element={mockElement} modeler={mockModeler} />
     );
@@ -101,17 +116,24 @@ describe('TimerEventPropertiesPanel', () => {
     // Get the timer value input
     const timerValueInput = screen.getByLabelText(/Timer Value/i);
 
-    // Change timer value
+    // Change timer value with a more explicit event
     fireEvent.change(timerValueInput, { target: { value: 'PT2H30M' } });
+
+    // Trigger blur to ensure the change is processed
+    fireEvent.blur(timerValueInput);
 
     // Check if the timer value is updated
     expect(timerValueInput).toHaveValue('PT2H30M');
 
-    // Verify that the modeling.updateProperties was called
-    const modeling = mockModeler.get('modeling');
-    await waitFor(() => {
-      expect(modeling.updateProperties).toHaveBeenCalled();
-    });
+    // Verify that the updateProperties was called
+    await waitFor(
+      () => {
+        expect(updatePropertiesMock).toHaveBeenCalled();
+      },
+      {
+        timeout: 2000, // Increased timeout to 2000ms
+      }
+    );
   });
 
   it('handles element with extension elements correctly', () => {

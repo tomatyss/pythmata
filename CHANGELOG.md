@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Activity logs not showing in UI by committing logs to database and passing instance_manager to token movement methods
+- Timer event validation issues with xsi:type attributes in BPMN XML by enhancing the validator to handle complex type substitutions and adding specific error categorization for known valid patterns
+- Foreign key violation in activity logs when triggered by timer events by ensuring process instance exists in database before creating activity logs
 
 ### Security
 - None

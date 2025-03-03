@@ -72,7 +72,7 @@ All timer values use the ISO 8601 format:
 ```xml
 <bpmn:startEvent id="StartEvent_1">
   <bpmn:timerEventDefinition>
-    <bpmn:timeCycle>R/PT24H</bpmn:timeCycle>
+    <bpmn:timeCycle xsi:type="bpmn:tFormalExpression">R/PT24H</bpmn:timeCycle>
   </bpmn:timerEventDefinition>
 </bpmn:startEvent>
 ```
@@ -87,11 +87,28 @@ All timer values use the ISO 8601 format:
 
 <bpmn:boundaryEvent id="BoundaryEvent_1" attachedToRef="UserTask_1">
   <bpmn:timerEventDefinition>
-    <bpmn:timeDuration>PT1H</bpmn:timeDuration>
+    <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT1H</bpmn:timeDuration>
   </bpmn:timerEventDefinition>
   <bpmn:outgoing>Flow_3</bpmn:outgoing>
 </bpmn:boundaryEvent>
 ```
+
+### Example 3: Using tFormalExpression
+
+When defining timer events in BPMN XML, you can use the `xsi:type="bpmn:tFormalExpression"` attribute to specify that the timer value is a formal expression:
+
+```xml
+<bpmn:startEvent id="StartEvent_1" name="5 min">
+  <bpmn:timerEventDefinition id="TimerEventDefinition_1">
+    <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT5M</bpmn:timeDuration>
+  </bpmn:timerEventDefinition>
+</bpmn:startEvent>
+```
+
+This is particularly important when:
+- Using the BPMN modeler to create timer events
+- Importing BPMN diagrams from other tools
+- Ensuring compatibility with the BPMN 2.0 specification
 
 ## Best Practices
 
@@ -99,6 +116,11 @@ All timer values use the ISO 8601 format:
    - Use duration for relative time periods
    - Use date for specific points in time
    - Use cycle for recurring events
+
+2. **Include the xsi:type attribute**:
+   - Always include `xsi:type="bpmn:tFormalExpression"` for timer definitions
+   - This ensures compatibility with the BPMN 2.0 specification
+   - The Pythmata validator handles this attribute correctly
 
 2. **Consider time zones**:
    - Date timers are interpreted in UTC unless specified otherwise
