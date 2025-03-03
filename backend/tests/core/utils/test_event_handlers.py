@@ -167,31 +167,28 @@ class TestEventHandlers(BaseEngineTest):
 
         instance_id = str(uuid.uuid4())
 
-        # Mock Settings, parse_bpmn, and execute_process
+        # Mock Settings and execute_process
         with (
             patch(
                 "pythmata.core.utils.service_utils.Settings",
                 new=MagicMock(return_value=self.test_settings),
             ),
             patch(
-                "pythmata.core.utils.process_utils.parse_bpmn",
-                side_effect=ValueError("Invalid BPMN XML"),
-            ),
-            patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,
             ) as mock_execute
         ):
-            # Call the handle_process_started function with our test data
-            await handle_process_started(
-                {
-                    "instance_id": instance_id,
-                    "definition_id": definition_id,
-                    "variables": {},
-                    "source": "test",
-                    "timestamp": "2025-03-02T12:00:00Z",
-                }
-            )
+            # Call the handle_process_started function and expect a ValueError
+            with pytest.raises(ValueError, match="Invalid BPMN XML"):
+                await handle_process_started(
+                    {
+                        "instance_id": instance_id,
+                        "definition_id": definition_id,
+                        "variables": {},
+                        "source": "test",
+                        "timestamp": "2025-03-02T12:00:00Z",
+                    }
+                )
 
             # Verify that execute_process was not called
             mock_execute.assert_not_called()
@@ -222,31 +219,28 @@ class TestEventHandlers(BaseEngineTest):
 
         instance_id = str(uuid.uuid4())
 
-        # Mock Settings, validate_start_event, and execute_process
+        # Mock Settings and execute_process
         with (
             patch(
                 "pythmata.core.utils.service_utils.Settings",
                 new=MagicMock(return_value=self.test_settings),
             ),
             patch(
-                "pythmata.core.utils.process_utils.validate_start_event",
-                side_effect=ValueError("No start event found in process definition"),
-            ),
-            patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,
             ) as mock_execute
         ):
-            # Call the handle_process_started function with our test data
-            await handle_process_started(
-                {
-                    "instance_id": instance_id,
-                    "definition_id": definition_id,
-                    "variables": {},
-                    "source": "test",
-                    "timestamp": "2025-03-02T12:00:00Z",
-                }
-            )
+            # Call the handle_process_started function and expect a ValueError
+            with pytest.raises(ValueError, match="Invalid BPMN XML"):
+                await handle_process_started(
+                    {
+                        "instance_id": instance_id,
+                        "definition_id": definition_id,
+                        "variables": {},
+                        "source": "test",
+                        "timestamp": "2025-03-02T12:00:00Z",
+                    }
+                )
 
             # Verify that execute_process was not called
             mock_execute.assert_not_called()

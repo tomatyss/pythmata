@@ -31,7 +31,8 @@ class BPMNParser:
         # Validate XML first
         validation_result = self.validator.validate(xml)
         if not validation_result.is_valid:
-            raise ValueError(f"Invalid BPMN XML: {validation_result.errors}")
+            error_details = ', '.join(str(err) for err in validation_result.errors)
+            raise ValueError(f"Invalid BPMN XML: {error_details}")
 
         # Parse XML
         root = ET.fromstring(xml)

@@ -98,13 +98,20 @@ def parse_bpmn(bpmn_xml: str) -> Dict[str, Any]:
         The parsed process graph
 
     Raises:
-        Exception: If parsing fails
+        ValueError: If BPMN XML is invalid or parsing fails
     """
     try:
         parser = BPMNParser()
         process_graph = parser.parse(bpmn_xml)
         logger.info("BPMN XML parsed successfully")
         return process_graph
+    except ValueError as e:
+        # Normalize validation error message
+        if "Invalid BPMN XML" in str(e):
+            logger.error(f"Failed to parse BPMN XML: Invalid format - {e}")
+            raise ValueError("Invalid BPMN XML")
+        logger.error(f"Failed to parse BPMN XML: {e}")
+        raise
     except Exception as e:
         logger.error(f"Failed to parse BPMN XML: {e}")
         raise
