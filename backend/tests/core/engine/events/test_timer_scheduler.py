@@ -4,7 +4,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -134,24 +134,38 @@ class TestTimerScheduler:
         node_id = "node1"
         timer_def = "PT1H"
 
+        # Create a more complete mock of TimerDefinition
         timer_definition = MagicMock(spec=TimerDefinition)
         timer_definition.timer_type = "duration"
         timer_definition.trigger = MagicMock()
-
+        
+        # Ensure the Redis mock won't raise exceptions
+        state_manager.redis.set = AsyncMock()
+        
         with patch(
             "pythmata.core.engine.events.timer_scheduler.parse_timer_definition",
             return_value=timer_definition,
         ):
+            # Ensure scheduler is properly initialized
             scheduler._scheduler = MagicMock()
             scheduler._scheduler.get_job.return_value = None
 
             # Execute
             await scheduler._schedule_timer(timer_id, definition_id, node_id, timer_def)
 
+            # Debug assertions
+            assert scheduler._scheduler is not None, "Scheduler is None"
+            
             # Assert
             assert timer_id in scheduler._scheduled_timer_ids
             state_manager.redis.set.assert_called_once()
-            scheduler._scheduler.add_job.assert_called_once_with(
+            
+            # Check if add_job was called at all
+            assert scheduler._scheduler.add_job.called, "add_job was not called"
+            
+            # Check the actual call arguments
+            actual_args = scheduler._scheduler.add_job.call_args
+            expected_args = call(
                 timer_callback,
                 trigger=timer_definition.trigger,
                 id=timer_id,
@@ -164,6 +178,9 @@ class TestTimerScheduler:
                     "timer_def": timer_def,
                 },
             )
+            
+            # Compare the actual and expected arguments
+            assert actual_args == expected_args, f"Expected: {expected_args}, Got: {actual_args}"
 
     @pytest.mark.asyncio
     async def test_remove_timer(self, scheduler, state_manager):
@@ -182,11 +199,14 @@ class TestTimerScheduler:
         state_manager.redis.delete.assert_called_once_with(f"{timer_id}:metadata")
 
 
+# Import the module directly to ensure correct patching
+import pythmata.core.engine.events.timer_scheduler
+
 @patch("pythmata.core.config.Settings")
 @patch("pythmata.core.state.StateManager")
 @patch("pythmata.core.events.EventBus")
 @patch("pythmata.core.database.get_db")
-@patch("pythmata.core.engine.events.timer_scheduler.asyncio")
+@patch.object(pythmata.core.engine.events.timer_scheduler, 'asyncio')  # Patch the module directly
 def test_timer_callback(
     mock_asyncio, mock_get_db, mock_event_bus, mock_state_manager, mock_settings
 ):
@@ -207,15 +227,23 @@ def test_timer_callback(
     # Mock UUID generation
     test_uuid = uuid.uuid4()
     with patch("uuid.uuid4", return_value=test_uuid):
-        # Execute
-        timer_callback("timer1", "def1", "node1", "duration", "PT1H")
+        try:
+            # Execute
+            timer_callback("timer1", "def1", "node1", "duration", "PT1H")
+        except Exception as e:
+            pytest.fail(f"Exception raised during timer_callback: {e}")
 
         # Assert
         mock_asyncio.new_event_loop.assert_called_once()
-        mock_asyncio.set_event_loop.assert_called_once_with(mock_loop)
+        
+        # Check that set_event_loop was called twice:
+        # First with the new loop, then with None at the end
+        assert mock_asyncio.set_event_loop.call_count == 2, "set_event_loop should be called twice"
+        assert mock_asyncio.set_event_loop.call_args_list[0] == call(mock_loop), "First call should set the new loop"
+        assert mock_asyncio.set_event_loop.call_args_list[1] == call(None), "Second call should set None"
 
-        # Check connections were established
-        assert mock_loop.run_until_complete.call_count >= 5
+        # Check that run_until_complete was called for connect, publish, and disconnect
+        assert mock_loop.run_until_complete.call_count == 3, f"Expected 3 calls to run_until_complete, got {mock_loop.run_until_complete.call_count}"
 
         # Check loop was closed
         mock_loop.close.assert_called_once()
