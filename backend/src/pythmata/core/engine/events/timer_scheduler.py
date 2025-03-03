@@ -401,7 +401,10 @@ def timer_callback(
     """
     Standalone callback function for timer events.
 
-    Creates a new process instance when a timer is triggered.
+    Instead of creating a process instance directly, this function just publishes
+    a process.timer_triggered event to the event bus. The main application will
+    handle creating the process instance in the main event loop, avoiding event loop
+    conflicts.
 
     Args:
         timer_id: ID of the timer
@@ -411,77 +414,67 @@ def timer_callback(
         timer_def: Timer definition string
     """
     from pythmata.core.config import Settings
-    from pythmata.core.database import get_db
     from pythmata.core.events import EventBus
-    from pythmata.core.state import StateManager
-    from pythmata.models.process import ProcessInstance, ProcessStatus
 
     logger.info(f"Timer {timer_id} triggered for process {definition_id}")
 
     # Create a new event loop for this thread
     new_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(new_loop)
+    logger.info(f"Created new event loop for timer callback")
 
     try:
         # Get settings from environment
         settings = Settings()
+        logger.info("Settings initialized")
 
-        # Create new instances for this callback
-        state_manager = StateManager(settings)
+        # Create event bus instance
         event_bus = EventBus(settings)
-        db = get_db()
+        logger.info("Event bus instance created")
 
-        # Connect to services
-        new_loop.run_until_complete(state_manager.connect())
+        # Connect to event bus
+        logger.info("Connecting to event bus...")
         new_loop.run_until_complete(event_bus.connect())
-        new_loop.run_until_complete(db.connect())
+        logger.info("Event bus connected successfully")
 
         try:
             # Generate a unique instance ID
             instance_id = str(uuid.uuid4())
+            logger.info(f"Generated instance ID: {instance_id}")
 
-            # Create the process instance in the database
-            async def create_process_instance():
-                async with db.session() as session:
-                    process_instance = ProcessInstance(
-                        id=uuid.UUID(instance_id),
-                        definition_id=uuid.UUID(definition_id),
-                        status=ProcessStatus.RUNNING,
-                        start_time=datetime.now(timezone.utc),
-                    )
-                    session.add(process_instance)
-                    await session.commit()
-                    logger.info(f"Process instance {instance_id} created in database")
-                return instance_id
-
-            # Create the process instance
-            instance_id = new_loop.run_until_complete(create_process_instance())
-
-            # Publish process.started event
+            # Publish process.timer_triggered event
             async def publish_event():
+                logger.info("Publishing process.timer_triggered event...")
                 await event_bus.publish(
-                    "process.started",
+                    "process.timer_triggered",
                     {
                         "instance_id": instance_id,
                         "definition_id": definition_id,
-                        "variables": {},
-                        "source": "timer_scheduler",
+                        "node_id": node_id,
+                        "timer_id": timer_id,
+                        "timer_type": timer_type,
+                        "timer_def": timer_def,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                 )
-                logger.info(
-                    f"Started process instance {instance_id} from definition {definition_id}"
-                )
+                logger.info(f"Timer event published for process {definition_id}")
 
+            logger.info("Running publish_event...")
             new_loop.run_until_complete(publish_event())
+            logger.info("Event published successfully")
 
         finally:
-            # Disconnect from services
-            new_loop.run_until_complete(db.disconnect())
-            new_loop.run_until_complete(state_manager.disconnect())
+            # Disconnect from event bus
+            logger.info("Disconnecting from event bus...")
             new_loop.run_until_complete(event_bus.disconnect())
+            logger.info("Event bus disconnected")
 
     except Exception as e:
         logger.error(f"Error in timer callback for {timer_id}: {e}", exc_info=True)
     finally:
+        # Close the event loop
+        logger.info("Closing event loop...")
         new_loop.close()
+        # Remove the event loop reference
+        asyncio.set_event_loop(None)
+        logger.info("Event loop closed and reference removed")

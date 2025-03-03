@@ -21,6 +21,72 @@ from pythmata.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+async def handle_timer_triggered(data: dict) -> None:
+    """
+    Handle process.timer_triggered event by creating a process instance and publishing a process.started event.
+    
+    This function is specifically for handling timer events and avoids the event loop conflicts
+    that can occur when creating process instances directly in the timer callback.
+    
+    Args:
+        data: Dictionary containing instance_id, definition_id, and other timer information
+    """
+    try:
+        instance_id = data["instance_id"]
+        definition_id = data["definition_id"]
+        logger.info(f"Handling process.timer_triggered event for instance {instance_id}")
+        
+        # Get required services
+        settings = Settings()
+        event_bus = EventBus(settings)
+        db = get_db()
+        
+        # Connect to services
+        await event_bus.connect()
+        
+        # Ensure database is connected
+        if not db.is_connected:
+            logger.info("Database not connected, connecting...")
+            await db.connect()
+            logger.info("Database connected successfully")
+        
+        try:
+            # Create the process instance in the database
+            async with db.session() as session:
+                from datetime import UTC, datetime
+                from pythmata.models.process import ProcessInstance, ProcessStatus
+                
+                instance_uuid = UUID(instance_id)
+                instance = ProcessInstance(
+                    id=instance_uuid,
+                    definition_id=UUID(definition_id),
+                    status=ProcessStatus.RUNNING,
+                    start_time=datetime.now(UTC),
+                )
+                session.add(instance)
+                await session.commit()
+                logger.info(f"Process instance {instance_id} created in database from timer event")
+            
+            # Publish process.started event to trigger the normal process execution flow
+            await event_bus.publish(
+                "process.started",
+                {
+                    "instance_id": instance_id,
+                    "definition_id": definition_id,
+                    "variables": {},
+                    "source": "timer_event",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+            )
+            logger.info(f"Published process.started event for timer-triggered instance {instance_id}")
+            
+        finally:
+            await event_bus.disconnect()
+            
+    except Exception as e:
+        logger.error(f"Error handling process.timer_triggered event: {e}", exc_info=True)
+
+
 async def handle_process_started(data: dict) -> None:
     """
     Handle process.started event by initializing and executing a new process instance.
@@ -252,6 +318,14 @@ async def lifespan(app: FastAPI):
         queue_name="process_execution",
     )
     logger.info("Subscribed to process.started events")
+    
+    # Subscribe to process.timer_triggered events
+    await app.state.event_bus.subscribe(
+        routing_key="process.timer_triggered",
+        callback=handle_timer_triggered,
+        queue_name="timer_execution",
+    )
+    logger.info("Subscribed to process.timer_triggered events")
 
     # Initialize and start timer scheduler
     from pythmata.core.engine.events.timer_scheduler import TimerScheduler
