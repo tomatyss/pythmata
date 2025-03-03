@@ -37,6 +37,10 @@ class TestProcessStartedHandler(BaseEngineTest):
         self.event_bus = event_bus
         self.session = session
         self.test_settings = test_settings
+        self.state_manager = state_manager
+        # Get database instance for the context manager mock
+        from pythmata.core.database import get_db
+        self.db = get_db()
 
     async def test_process_started_creates_instance_if_not_exists(self):
         """
@@ -78,17 +82,23 @@ class TestProcessStartedHandler(BaseEngineTest):
         # Generate a unique instance ID
         instance_id = str(uuid.uuid4())
 
-        # Only mock Settings and execute_process
+        # Mock get_process_services and execute_process
         with (
             patch(
-                "pythmata.core.utils.service_utils.Settings",
-                return_value=self.test_settings,
-            ),
+                "pythmata.core.utils.event_handlers.get_process_services",
+            ) as mock_get_services,
             patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,
             ) as mock_execute,
         ):
+            # Configure the mock to return the test settings and other required services
+            mock_get_services.return_value.__aenter__.return_value = (
+                self.test_settings, 
+                self.state_manager,
+                self.db,
+                self.event_bus
+            )
 
             # Call the handle_process_started function with our test data
             await handle_process_started(
@@ -186,17 +196,23 @@ class TestProcessStartedHandler(BaseEngineTest):
         self.session.add(instance)
         await self.session.commit()
 
-        # Only mock Settings and execute_process
+        # Mock get_process_services and execute_process
         with (
             patch(
-                "pythmata.core.utils.service_utils.Settings",
-                return_value=self.test_settings,
-            ),
+                "pythmata.core.utils.event_handlers.get_process_services",
+            ) as mock_get_services,
             patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,
             ) as mock_execute,
         ):
+            # Configure the mock to return the test settings and other required services
+            mock_get_services.return_value.__aenter__.return_value = (
+                self.test_settings, 
+                self.state_manager,
+                self.db,
+                self.event_bus
+            )
 
             # Call the handle_process_started function with our test data
             await handle_process_started(
