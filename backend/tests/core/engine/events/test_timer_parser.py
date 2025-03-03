@@ -35,37 +35,37 @@ class TestTimerParser:
         assert _parse_duration("P1D") is None
         assert _parse_duration("invalid") is None
 
-    @patch("pythmata.core.engine.events.timer_parser.datetime")
-    def test_parse_timer_definition_duration(self, mock_datetime):
+    def test_parse_timer_definition_duration(self):
         """Test parsing duration timer definitions."""
-        # Setup mock datetime
+        # Setup mock datetime with context manager for better isolation
         now = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        mock_datetime.now.return_value = now
+        with patch("pythmata.core.engine.events.timer_parser.datetime") as mock_datetime:
+            mock_datetime.now.return_value = now
+            
+            # Test duration timer
+            timer_def = parse_timer_definition("PT1H")
+            assert timer_def is not None
+            assert timer_def.timer_type == "duration"
+            assert isinstance(timer_def.trigger, DateTrigger)
+            assert timer_def.duration == timedelta(hours=1)
+            assert timer_def.trigger.run_date == now + timedelta(hours=1)
 
-        # Test duration timer
-        timer_def = parse_timer_definition("PT1H")
-        assert timer_def is not None
-        assert timer_def.timer_type == "duration"
-        assert isinstance(timer_def.trigger, DateTrigger)
-        assert timer_def.duration == timedelta(hours=1)
-        assert timer_def.trigger.run_date == now + timedelta(hours=1)
-
-    @patch("pythmata.core.engine.events.timer_parser.datetime")
-    def test_parse_timer_definition_cycle(self, mock_datetime):
+    def test_parse_timer_definition_cycle(self):
         """Test parsing cycle timer definitions."""
-        # Setup mock datetime
+        # Setup mock datetime with context manager for better isolation
         now = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        mock_datetime.now.return_value = now
+        with patch("pythmata.core.engine.events.timer_parser.datetime") as mock_datetime:
+            mock_datetime.now.return_value = now
 
-        # Test cycle timer
-        timer_def = parse_timer_definition("R3/PT1H")
-        assert timer_def is not None
-        assert timer_def.timer_type == "cycle"
-        assert isinstance(timer_def.trigger, IntervalTrigger)
-        assert timer_def.repetitions == 3
-        assert timer_def.interval == timedelta(hours=1)
-        # The IntervalTrigger stores the interval as a timedelta object
-        assert timer_def.trigger.interval == timedelta(hours=1)
+            # Test cycle timer
+            timer_def = parse_timer_definition("R3/PT1H")
+            assert timer_def is not None
+            assert timer_def.timer_type == "cycle"
+            assert isinstance(timer_def.trigger, IntervalTrigger)
+            assert timer_def.repetitions == 3
+            assert timer_def.interval == timedelta(hours=1)
+            # The IntervalTrigger stores the interval as a timedelta object
+            assert timer_def.trigger.interval == timedelta(hours=1)
 
     def test_parse_timer_definition_date(self):
         """Test parsing date timer definitions."""
@@ -113,12 +113,8 @@ class TestTimerParser:
         timer_def = extract_timer_definition(bpmn_xml_no_timer, "StartEvent_1")
         assert timer_def is None
 
-    @patch("pythmata.core.engine.events.timer_parser.extract_timer_definition")
-    def test_find_timer_events_in_definition(self, mock_extract):
+    def test_find_timer_events_in_definition(self):
         """Test finding timer events in a process definition."""
-        # Setup mock
-        mock_extract.return_value = "PT1H"
-
         # Simple BPMN XML with timer start event
         bpmn_xml = """
         <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
@@ -132,7 +128,11 @@ class TestTimerParser:
         </bpmn:definitions>
         """
 
-        # Test finding timer events
-        timer_events = find_timer_events_in_definition(bpmn_xml, "prefix:", "def1")
-        assert len(timer_events) == 1
-        assert timer_events[0] == ("prefix:def1:StartEvent_1", "StartEvent_1", "PT1H")
+        with patch("pythmata.core.engine.events.timer_parser.extract_timer_definition") as mock_extract:
+            # Setup mock
+            mock_extract.return_value = "PT1H"
+            
+            # Test finding timer events
+            timer_events = find_timer_events_in_definition(bpmn_xml, "prefix:", "def1")
+            assert len(timer_events) == 1
+            assert timer_events[0] == ("prefix:def1:StartEvent_1", "StartEvent_1", "PT1H")

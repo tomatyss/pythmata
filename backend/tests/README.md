@@ -130,3 +130,75 @@ pytest --cov=pythmata
    - Document complex test scenarios
    - Include examples in docstrings
    - Keep this README updated
+
+## Settings Fixtures Best Practices
+
+The project uses different approaches for settings in tests depending on the testing scenario. Here are the best practices for using settings fixtures:
+
+1. **Global Test Settings Fixture**
+   - Use for integration tests that need realistic configuration
+   - Use for testing database operations, API endpoints, or service integrations
+   - Use when you need environment-aware configuration
+   ```python
+   async def test_feature(test_settings, state_manager, session):
+       # Use components configured with test_settings
+       result = await some_function_that_uses_settings()
+       assert result == expected_value
+   ```
+
+2. **Local Mock Settings**
+   - Use for unit tests that verify behavior in isolation
+   - Use when testing error handling or specific code paths
+   - Use when the actual settings values don't matter
+   ```python
+   @pytest.fixture
+   def mock_settings():
+       """Create mock settings for testing."""
+       return Settings(
+           server=ServerSettings(host="localhost", port=8000, debug=True),
+           # Other settings with controlled values
+       )
+   ```
+
+3. **Hybrid Approach (Using test_settings with Patching)**
+   - Use when you need realistic settings but need to control where they're used
+   - Use when testing components that create their own Settings instances internally
+   ```python
+   async def test_with_patched_settings(self):
+       with patch(
+           "module.path.Settings",
+           new=MagicMock(return_value=self.test_settings)
+       ):
+           # Any code that creates a Settings instance will get test_settings
+           result = await function_that_creates_settings_internally()
+           assert result == expected_value
+   ```
+
+4. **Complete Mocking for Behavior Verification**
+   - Use when testing functions that use settings but you only care about method calls
+   - Use when verifying interaction patterns rather than actual functionality
+   ```python
+   async def test_lifecycle_function():
+       mock_settings = MagicMock()
+       with patch("module.path.Settings", new=MagicMock(return_value=mock_settings)):
+           await function_under_test()
+           # Verify expected interactions
+           assert some_dependency.method.called
+   ```
+
+### Decision Framework for Choosing the Right Approach
+
+- **Component behavior in isolation** → Local mock settings
+- **Integration between components** → Global test settings
+- **Method calls and interactions** → Complete mocking
+- **Complex scenarios with internal Settings creation** → Hybrid approach
+- **Need for realistic values** → Global test settings
+- **Testing error handling** → Local mock or complete mocking
+
+### Implementation Guidelines
+
+- Keep the global `test_settings` fixture in `conftest.py`
+- Use descriptive fixture names (`test_settings`, `mock_settings`, etc.)
+- Document the purpose of custom settings fixtures
+- Use appropriate fixture scope (`session` for global, `function` for mocks)
+- Be consistent within test modules
