@@ -7,10 +7,9 @@ import pytest
 from sqlalchemy import select
 
 from pythmata.core.config import Settings
-from pythmata.core.database import get_db
 from pythmata.core.events import EventBus
 from pythmata.core.state import StateManager
-from pythmata.core.utils.event_handlers import handle_process_started
+from pythmata.core.utils import handle_process_started
 from pythmata.models.process import ActivityLog, ProcessDefinition, ProcessInstance
 from tests.core.engine.base import BaseEngineTest
 
@@ -55,10 +54,20 @@ class TestProcessStartedHandler(BaseEngineTest):
             <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
                              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
                              xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+                             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
                              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-                             id="Definitions_1">
+                             id="Definitions_1"
+                             targetNamespace="http://bpmn.io/schema/bpmn"
+                             exporter="Pythmata"
+                             exporterVersion="1.0">
               <bpmn:process id="Process_1" isExecutable="true">
-                <bpmn:startEvent id="StartEvent_1" />
+                <bpmn:startEvent id="StartEvent_1">
+                  <bpmn:outgoing>Flow_1</bpmn:outgoing>
+                </bpmn:startEvent>
+                <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="EndEvent_1" />
+                <bpmn:endEvent id="EndEvent_1">
+                  <bpmn:incoming>Flow_1</bpmn:incoming>
+                </bpmn:endEvent>
               </bpmn:process>
             </bpmn:definitions>""",
             version=1,
@@ -72,7 +81,7 @@ class TestProcessStartedHandler(BaseEngineTest):
         # Only mock Settings and execute_process
         with (
             patch(
-                "pythmata.core.utils.event_handlers.Settings",
+                "pythmata.core.utils.service_utils.Settings",
                 return_value=self.test_settings,
             ),
             patch(
@@ -141,10 +150,20 @@ class TestProcessStartedHandler(BaseEngineTest):
             <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
                              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
                              xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+                             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
                              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-                             id="Definitions_1">
+                             id="Definitions_1"
+                             targetNamespace="http://bpmn.io/schema/bpmn"
+                             exporter="Pythmata"
+                             exporterVersion="1.0">
               <bpmn:process id="Process_1" isExecutable="true">
-                <bpmn:startEvent id="StartEvent_1" />
+                <bpmn:startEvent id="StartEvent_1">
+                  <bpmn:outgoing>Flow_1</bpmn:outgoing>
+                </bpmn:startEvent>
+                <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="EndEvent_1" />
+                <bpmn:endEvent id="EndEvent_1">
+                  <bpmn:incoming>Flow_1</bpmn:incoming>
+                </bpmn:endEvent>
               </bpmn:process>
             </bpmn:definitions>""",
             version=1,
@@ -170,7 +189,7 @@ class TestProcessStartedHandler(BaseEngineTest):
         # Only mock Settings and execute_process
         with (
             patch(
-                "pythmata.core.utils.event_handlers.Settings",
+                "pythmata.core.utils.service_utils.Settings",
                 return_value=self.test_settings,
             ),
             patch(
