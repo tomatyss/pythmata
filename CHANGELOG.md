@@ -16,11 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Form handling with React Hook Form
   - Real-time updates with WebSocket
   - Responsive layout and theming
+  - Timer event properties panel for configuring timer events
 - Backend Python application
   - BPMN execution engine
   - Process management
   - Event handling system
   - Script execution environment
+  - Robust timer event scheduler for automatically triggering timer start events
+    - Persistent job storage using Redis
+    - Efficient scheduling using APScheduler
+    - Support for all timer types (duration, date, cycle)
+    - Fault tolerance with automatic recovery
+    - Distributed timer execution support
 - Infrastructure
   - Docker containerization
   - PostgreSQL database
@@ -31,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Development setup guide
   - Contributing guidelines
   - Code of conduct
+  - Timer events configuration and usage guide
 
 ### Changed
 - None
@@ -43,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Activity logs not showing in UI by committing logs to database and passing instance_manager to token movement methods
+- Timer event validation issues with xsi:type attributes in BPMN XML by enhancing the validator to handle complex type substitutions and adding specific error categorization for known valid patterns
+- Foreign key violation in activity logs when triggered by timer events by ensuring process instance exists in database before creating activity logs
 
 ### Security
 - None

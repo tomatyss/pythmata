@@ -46,6 +46,22 @@
       ]
     },
     {
+      "name": "TimerEventConfig",
+      "superClass": ["ElementConfig"],
+      "properties": [
+        {
+          "name": "timerType",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "timerValue",
+          "isAttr": true,
+          "type": "String"
+        }
+      ]
+    },
+    {
       "name": "Properties",
       "properties": [
         {
