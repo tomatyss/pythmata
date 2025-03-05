@@ -76,7 +76,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentTab, setCurrentTab] = useState(0);
-  const [xmlPreview, setXmlPreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -290,10 +289,20 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // If XML is provided, set it for preview
-      if (response.xml) {
-        setXmlPreview(response.xml);
-        setCurrentTab(1); // Switch to XML tab
+      // If XML is provided, automatically apply it instead of showing preview
+      if (response.xml && onApplyXml) {
+        onApplyXml(response.xml);
+
+        // Add a system message confirming the changes were applied
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: 'system',
+            content: 'Changes have been automatically applied to the diagram.',
+            timestamp: new Date(),
+          },
+        ]);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -312,26 +321,9 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   };
 
-  const handleApplyXml = () => {
-    if (xmlPreview && onApplyXml) {
-      onApplyXml(xmlPreview);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: 'system',
-          content: 'XML changes have been applied to the diagram.',
-          timestamp: new Date(),
-        },
-      ]);
-      setXmlPreview(null);
-      setCurrentTab(0); // Switch back to chat
-    }
-  };
-
-  const handleCopyXml = () => {
-    if (xmlPreview) {
-      navigator.clipboard.writeText(xmlPreview);
+  const handleCopyXml = (xml: string) => {
+    if (xml) {
+      navigator.clipboard.writeText(xml);
       setCopied(true);
     }
   };
@@ -342,7 +334,110 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 
   // Render message content with markdown and code highlighting
   const renderMessageContent = (message: Message) => {
-    // Simple markdown-like rendering (could use a proper markdown library)
+    // For assistant messages with XML, filter out XML code blocks
+    if (message.role === 'assistant' && message.xml) {
+      // Split content by code blocks
+      const parts = message.content.split('```');
+      const filteredParts: string[] = [];
+      let xmlBlockRemoved = false;
+
+      // Process each part to filter out XML but keep explanations
+      for (let i = 0; i < parts.length; i++) {
+        if (i % 2 === 1) {
+          // This is a code block
+          // Skip XML code blocks but keep other code blocks
+          const codeBlock = parts[i] || '';
+          if (
+            codeBlock.startsWith('xml') ||
+            codeBlock.trim().startsWith('<?xml') ||
+            codeBlock.trim().startsWith('<bpmn:')
+          ) {
+            xmlBlockRemoved = true;
+            continue;
+          }
+        }
+        filteredParts.push(parts[i] || '');
+      }
+
+      // Reconstruct content without XML blocks
+      let filteredContent = filteredParts
+        .map((part, i) => {
+          if (i > 0 && i < filteredParts.length - 1) {
+            return '```' + part + '```';
+          }
+          return part;
+        })
+        .join('');
+
+      // Add a note about applied changes if XML was removed
+      if (xmlBlockRemoved) {
+        filteredContent +=
+          '\n\n(XML changes were automatically applied to the diagram)';
+      }
+
+      // Use the filtered content for rendering
+      const content = filteredContent.split('```').map((part, i) => {
+        if (i % 2 === 1) {
+          // This is a code block
+          const [, ...code] = part.split('\n');
+          return (
+            <Box
+              key={i}
+              sx={{
+                bgcolor: 'grey.900',
+                color: 'grey.100',
+                p: 1,
+                borderRadius: 1,
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                overflowX: 'auto',
+                my: 1,
+              }}
+            >
+              {code.join('\n')}
+            </Box>
+          );
+        } else {
+          // Regular text
+          return (
+            <Typography
+              key={i}
+              variant="body1"
+              component="div"
+              sx={{ whiteSpace: 'pre-wrap' }}
+            >
+              {part}
+            </Typography>
+          );
+        }
+      });
+
+      // Add a copy button if XML is available
+      return (
+        <>
+          {content}
+          {message.xml && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+              <Tooltip title={copied ? 'Copied!' : 'Copy XML'}>
+                <IconButton
+                  size="small"
+                  onClick={() => handleCopyXml(message.xml || '')}
+                  sx={{ opacity: 0.7 }}
+                >
+                  {copied ? (
+                    <CheckIcon fontSize="small" color="success" />
+                  ) : (
+                    <CopyIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </Tooltip>
+            </Box>
+          )}
+        </>
+      );
+    }
+
+    // For non-assistant messages or messages without XML, use the original rendering
     const content = message.content.split('```').map((part, i) => {
       if (i % 2 === 1) {
         // This is a code block
@@ -405,7 +500,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}
       >
         <Tab label="Chat" />
-        {xmlPreview && <Tab label="XML Preview" />}
         <Tab label="History" icon={<HistoryIcon />} iconPosition="start" />
       </Tabs>
 
@@ -495,52 +589,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             </Box>
           </Box>
         </>
-      ) : xmlPreview && currentTab === 1 ? (
-        // XML Preview tab
-        <Box
-          sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2 }}
-        >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h6">XML Preview</Typography>
-            <Box>
-              <Tooltip title={copied ? 'Copied!' : 'Copy XML'}>
-                <IconButton onClick={handleCopyXml}>
-                  {copied ? <CheckIcon color="success" /> : <CopyIcon />}
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
-
-          <Box
-            sx={{
-              flexGrow: 1,
-              overflow: 'auto',
-              mb: 2,
-              bgcolor: 'grey.900',
-              color: 'grey.100',
-              p: 2,
-              borderRadius: 1,
-              fontFamily: 'monospace',
-              whiteSpace: 'pre-wrap',
-            }}
-          >
-            {xmlPreview || ''}
-          </Box>
-
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-            <Button variant="outlined" onClick={() => setCurrentTab(0)}>
-              Back to Chat
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleApplyXml}
-              disabled={!xmlPreview}
-            >
-              Apply Changes
-            </Button>
-          </Box>
-        </Box>
       ) : (
         // History tab
         <Box

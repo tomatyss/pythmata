@@ -396,6 +396,7 @@ const ProcessDesigner = () => {
             onClick={handleCopyXml}
             disabled={loading || saving}
             sx={{ mr: 1 }}
+            title="Copy process XML to clipboard"
           >
             Copy XML
           </Button>
@@ -544,7 +545,20 @@ const ProcessDesigner = () => {
           onClose={() => setChatDrawerOpen(false)}
           onApplyXml={(xml) => {
             if (modelerRef.current) {
-              modelerRef.current.importXML(xml);
+              try {
+                // Apply the XML changes to the modeler
+                modelerRef.current
+                  .importXML(xml)
+                  .then(() => {
+                    console.log('XML changes applied successfully');
+                  })
+                  .catch((err) => {
+                    console.error('Error applying XML changes:', err);
+                    // You could add error handling here if needed
+                  });
+              } catch (error) {
+                console.error('Error applying XML changes:', error);
+              }
             }
           }}
         />
