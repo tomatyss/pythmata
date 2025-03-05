@@ -40,6 +40,7 @@ The frontend is built with modern React and TypeScript, following a component-ba
   - Real-time process monitoring
   - Visual BPMN process designer
   - Script editor for task automation
+  - Gateway condition configuration
   - Process instance management
   - Variable inspection and modification
 
