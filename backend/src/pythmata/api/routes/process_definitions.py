@@ -179,21 +179,18 @@ async def update_process(
 
 
 @router.delete("/{process_id}")
+@log_error(logger)
 async def delete_process(process_id: str, session: AsyncSession = Depends(get_session)):
-    """Delete a process definition."""
-    try:
-        result = await session.execute(
-            select(ProcessDefinitionModel).filter(
-                ProcessDefinitionModel.id == process_id
-            )
+    """Delete a process definition and all its related instances."""
+    result = await session.execute(
+        select(ProcessDefinitionModel).filter(
+            ProcessDefinitionModel.id == process_id
         )
-        process = result.scalar_one_or_none()
-        if not process:
-            raise HTTPException(status_code=404, detail="Process not found")
+    )
+    process = result.scalar_one_or_none()
+    if not process:
+        raise HTTPException(status_code=404, detail="Process not found")
 
-        await session.delete(process)
-        await session.commit()
-        return {"message": "Process deleted successfully"}
-    except Exception as e:
-        await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    await session.delete(process)
+    await session.commit()
+    return {"message": "Process deleted successfully"}

@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 from fastapi import FastAPI
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.routes import router
@@ -58,9 +59,15 @@ async def test_delete_process_definition(
     assert response.status_code == 200
     assert response.json() == {"message": "Process deleted successfully"}
     
+    # Store the ID before expiring the session
+    process_id = process_definition.id
+    
     # Verify process was deleted from database
-    result = await session.get(ProcessDefinition, process_definition.id)
-    assert result is None
+    session.expire_all()  # Expire all objects in session to get fresh data
+    result = await session.execute(
+        select(ProcessDefinition).filter(ProcessDefinition.id == process_id)
+    )
+    assert result.scalar_one_or_none() is None
 
 
 async def test_delete_nonexistent_process(async_client: AsyncClient):
@@ -75,10 +82,11 @@ async def test_delete_process_cascade_deletes_instances(
 ):
     """Test that deleting a process definition also deletes its instances."""
     process, instance_count = process_with_instances
+    from sqlalchemy import text
     
     # Verify instances exist before deletion
     instances_query = await session.execute(
-        "SELECT COUNT(*) FROM process_instances WHERE definition_id = :def_id",
+        text("SELECT COUNT(*) FROM process_instances WHERE definition_id = :def_id"),
         {"def_id": process.id}
     )
     assert instances_query.scalar_one() == instance_count
@@ -89,7 +97,7 @@ async def test_delete_process_cascade_deletes_instances(
     
     # Verify instances were also deleted
     instances_query = await session.execute(
-        "SELECT COUNT(*) FROM process_instances WHERE definition_id = :def_id",
+        text("SELECT COUNT(*) FROM process_instances WHERE definition_id = :def_id"),
         {"def_id": process.id}
     )
     assert instances_query.scalar_one() == 0
