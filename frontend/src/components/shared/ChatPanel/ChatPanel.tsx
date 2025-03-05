@@ -94,6 +94,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
       const timer = setTimeout(() => setCopied(false), 2000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [copied]);
 
   // Load existing chat session if process ID is provided
@@ -335,7 +336,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   };
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setCurrentTab(newValue);
   };
 
