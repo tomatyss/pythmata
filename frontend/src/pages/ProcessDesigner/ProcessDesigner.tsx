@@ -126,7 +126,7 @@ const ProcessDesigner = () => {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const propertiesPanelRef = useRef<HTMLDivElement>(null);
-  const modelerRef = useRef<ExtendedBpmnModeler | null>(null);
+  const modelerRef = useRef<ExtendedBpmnModeler | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [processName, setProcessName] = useState('');
   const [bpmnXml, setBpmnXml] = useState(emptyBpmn);
@@ -280,7 +280,7 @@ const ProcessDesigner = () => {
     return () => {
       if (modelerRef.current) {
         modelerRef.current.destroy();
-        modelerRef.current = null;
+        modelerRef.current = undefined;
       }
     };
   }, [loading, bpmnXml]); // Add bpmnXml as dependency to reinitialize when it changes
