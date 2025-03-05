@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import apiService from '@/services/api';
 import { formatDate } from '@/utils/date';
 import { ProcessDefinition } from '@/types/process';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import {
   Box,
   Button,
@@ -33,6 +34,7 @@ import ProcessVariablesDialog, {
 
 const ProcessList = () => {
   const navigate = useNavigate();
+  const { confirmDelete, ConfirmDialog } = useConfirmDialog();
   const [loading, setLoading] = useState(true);
   const [processes, setProcesses] = useState<
     (ProcessDefinition & {
@@ -113,9 +115,26 @@ const ProcessList = () => {
     navigate(`/processes/${processId}`);
   };
 
-  const handleDeleteProcess = (_processId: string) => {
-    // TODO: Implement process deletion
-    alert('Process deletion functionality not yet implemented');
+  const handleDeleteProcess = async (processId: string) => {
+    try {
+      const processName =
+        processes.find((p) => p.id === processId)?.name || 'this process';
+      const confirmed = await confirmDelete(`process "${processName}"`);
+
+      if (confirmed) {
+        await apiService.deleteProcessDefinition(processId);
+
+        // Refresh the process list
+        setProcesses(processes.filter((process) => process.id !== processId));
+      }
+    } catch (error) {
+      console.error('Failed to delete process:', error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('An unexpected error occurred while deleting the process');
+      }
+    }
   };
 
   if (loading) {
@@ -257,6 +276,7 @@ const ProcessList = () => {
         }}
         onSubmit={handleStartProcessSubmit}
       />
+      <ConfirmDialog />
     </Box>
   );
 };
