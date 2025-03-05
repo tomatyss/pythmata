@@ -29,8 +29,8 @@ class LlmService:
         self,
         messages: List[Dict[str, str]],
         model: str = "anthropic:claude-3-7-sonnet-latest",
-        temperature: float = 0.7,
-        max_tokens: int = 1000,
+        temperature: float = 0.5,
+        max_tokens: int = 8192,
         system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
