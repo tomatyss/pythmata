@@ -458,7 +458,13 @@ const ProcessDesigner = (): React.ReactElement => {
         </Box>
       ) : (
         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              overflow: 'auto',
+              maxHeight: 'calc(100% - 80px)',
+            }}
+          >
             <MonacoEditor
               language="xml"
               value={bpmnXml}
