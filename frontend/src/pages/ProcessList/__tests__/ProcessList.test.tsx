@@ -1,7 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ProcessList from '../ProcessList';
-import { useNavigate } from 'react-router-dom';
 import {
   ApiResponse,
   PaginatedResponse,
@@ -13,15 +11,13 @@ vi.mock('react-router-dom', () => ({
   useNavigate: vi.fn(),
 }));
 
-// Create a more comprehensive mock with correct types
-const mockApiService = {
-  getProcessDefinitions: vi.fn(),
-  deleteProcessDefinition: vi.fn(),
-  startProcessInstance: vi.fn(),
-};
-
+// Mock API service
 vi.mock('@/services/api', () => ({
-  default: mockApiService,
+  default: {
+    getProcessDefinitions: vi.fn(),
+    deleteProcessDefinition: vi.fn(),
+    startProcessInstance: vi.fn(),
+  },
 }));
 
 // Mock hook with confirmation dialog
@@ -31,6 +27,11 @@ vi.mock('@/hooks/useConfirmDialog', () => ({
     ConfirmDialog: () => <div data-testid="confirm-dialog" />,
   }),
 }));
+
+// Import after mocks are defined
+import ProcessList from '../ProcessList';
+import apiService from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 
 describe('ProcessList', () => {
   const mockNavigate = vi.fn();
@@ -74,7 +75,11 @@ describe('ProcessList', () => {
     (useNavigate as jest.MockedFunction<typeof useNavigate>).mockReturnValue(
       mockNavigate
     );
-    mockApiService.getProcessDefinitions.mockResolvedValue(mockProcesses);
+    (
+      apiService.getProcessDefinitions as jest.MockedFunction<
+        typeof apiService.getProcessDefinitions
+      >
+    ).mockResolvedValue(mockProcesses);
   });
 
   it('renders process list correctly', async () => {
@@ -98,8 +103,12 @@ describe('ProcessList', () => {
   });
 
   it('deletes a process successfully', async () => {
-    mockApiService.deleteProcessDefinition.mockResolvedValue({
-      data: { message: 'Process deleted successfully' },
+    (
+      apiService.deleteProcessDefinition as jest.MockedFunction<
+        typeof apiService.deleteProcessDefinition
+      >
+    ).mockResolvedValue({
+      data: undefined,
     });
 
     render(<ProcessList />);
@@ -118,7 +127,7 @@ describe('ProcessList', () => {
 
     // Should call delete API with correct process ID
     await waitFor(() => {
-      expect(mockApiService.deleteProcessDefinition).toHaveBeenCalledWith(
+      expect(apiService.deleteProcessDefinition).toHaveBeenCalledWith(
         'process-1'
       );
     });
@@ -141,9 +150,11 @@ describe('ProcessList', () => {
 
     // Mock API to throw an error
     const errorMessage = 'Failed to delete process';
-    mockApiService.deleteProcessDefinition.mockRejectedValue(
-      new Error(errorMessage)
-    );
+    (
+      apiService.deleteProcessDefinition as jest.MockedFunction<
+        typeof apiService.deleteProcessDefinition
+      >
+    ).mockRejectedValue(new Error(errorMessage));
 
     render(<ProcessList />);
 

@@ -45,7 +45,7 @@ build:
 # Run tests
 test:
 	@echo "Running frontend tests..."
-	cd frontend && npm test -- --coverage 
+	cd frontend && npm run test:coverage
 	@echo "Running backend tests..."
 	cd backend && pytest --cov=src/ tests/
 
