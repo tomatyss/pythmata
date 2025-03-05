@@ -12,7 +12,10 @@ import {
   Typography,
   Drawer,
   IconButton,
+  Tabs,
+  Tab,
 } from '@mui/material';
+import MonacoEditor from '@monaco-editor/react';
 import {
   Save as SaveIcon,
   Settings as SettingsIcon,
@@ -122,6 +125,9 @@ const emptyBpmn = `<?xml version="1.0" encoding="UTF-8"?>
 </bpmn:definitions>`;
 
 const ProcessDesigner = () => {
+  const [activeTab, setActiveTab] = useState<'modeler' | 'xmlEditor'>(
+    'modeler'
+  );
   const { id } = useParams();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -283,7 +289,7 @@ const ProcessDesigner = () => {
         modelerRef.current = undefined;
       }
     };
-  }, [loading, bpmnXml]); // Add bpmnXml as dependency to reinitialize when it changes
+  }, [loading, bpmnXml, activeTab]); // Reinitialize when activeTab changes
 
   const handleCopyXml = async () => {
     if (!modelerRef.current) return;
@@ -404,37 +410,82 @@ const ProcessDesigner = () => {
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-        {/* BPMN Canvas with overlaid Properties Panel */}
-        <Paper
-          sx={{
-            flexGrow: 1,
-            position: 'relative',
-            bgcolor: '#fff',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            ref={containerRef}
-            style={{
-              width: '100%',
-              height: '100%',
+      <Tabs
+        value={activeTab}
+        onChange={(e, newValue) => setActiveTab(newValue)}
+        indicatorColor="primary"
+        textColor="primary"
+        sx={{ borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab label="Modeler" value="modeler" />
+        <Tab label="XML Editor" value="xmlEditor" />
+      </Tabs>
+
+      {activeTab === 'modeler' && (
+        <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+          {/* BPMN Canvas with overlaid Properties Panel */}
+          <Paper
+            sx={{
+              flexGrow: 1,
               position: 'relative',
+              bgcolor: '#fff',
+              overflow: 'hidden',
             }}
           >
-            {/* Properties Panel as overlay */}
             <div
-              ref={propertiesPanelRef}
+              ref={containerRef}
               style={{
-                position: 'absolute',
-                right: '20px',
-                top: '20px',
-                zIndex: 100,
+                width: '100%',
+                height: '100%',
+                position: 'relative',
               }}
+            >
+              {/* Properties Panel as overlay */}
+              <div
+                ref={propertiesPanelRef}
+                style={{
+                  position: 'absolute',
+                  right: '20px',
+                  top: '20px',
+                  zIndex: 100,
+                }}
+              />
+            </div>
+          </Paper>
+        </Box>
+      )}
+
+      {activeTab === 'xmlEditor' && (
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+            <MonacoEditor
+              language="xml"
+              value={bpmnXml}
+              onChange={(newValue: string | undefined) =>
+                setBpmnXml(newValue || '')
+              }
+              options={{ theme: 'light', automaticLayout: true }}
+              height="100%"
             />
-          </div>
-        </Paper>
-      </Box>
+          </Box>
+          <Button
+            variant="contained"
+            onClick={() => {
+              try {
+                if (modelerRef.current) {
+                  modelerRef.current.importXML(bpmnXml);
+                }
+                alert('XML applied successfully');
+              } catch {
+                alert('Invalid XML. Please fix the errors and try again.');
+              }
+            }}
+            sx={{ mt: 2 }}
+          >
+            Apply XML
+          </Button>
+        </Box>
+      )}
 
       {/* Variables Drawer */}
       <Drawer

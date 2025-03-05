@@ -1,5 +1,5 @@
 # Build stage
-FROM node:22-slim as build
+FROM node:22-alpine as build
 
 # Set working directory
 WORKDIR /app
