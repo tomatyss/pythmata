@@ -36,8 +36,8 @@ import { convertDefinitionsToBackend } from '@/utils/variableTypeConverter';
 // Import styles
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
-import '@/components/BpmnModeler/palette-left.css';
-import '@/components/BpmnModeler/properties-panel-overlay.css';
+import '@/components/BpmnModeler/PaletteLeft.css';
+import '@/components/BpmnModeler/PropertiesPanelOverlay.css';
 
 // Import pythmata moddle extension for service tasks
 import pythmataModdleDescriptor from '@/components/BpmnModeler/moddle/pythmata.json';
