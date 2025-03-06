@@ -79,7 +79,11 @@ const GatewayPropertiesPanel = ({ element, modeler }) => {
     
     if (!modeler || !element) return;
     
+    console.log('handleDefaultFlowChange called with flowId:', flowId);
+    console.log('handleDefaultFlowChange triggered with flowId:', flowId);
     const modeling = modeler.get('modeling');
+    console.log('Modeling instance:', modeling);
+    console.log('modeling:', modeling);
     
     if (flowId) {
       // Find the flow element
@@ -88,13 +92,17 @@ const GatewayPropertiesPanel = ({ element, modeler }) => {
       
       if (flowElement) {
         // Set as default flow
+        console.log('Updating properties with default flow:', flowElement);
+        console.log('Setting default flow with properties:', flowElement);
         modeling.updateProperties(element, {
           'default': flowElement
         });
       }
     } else {
       // Remove default flow
-      modeling.updateProperties(element, {
+        console.log('Clearing default flow');
+        console.log('Clearing default flow');
+        modeling.updateProperties(element, {
         'default': null
       });
     }
@@ -140,6 +148,10 @@ const GatewayPropertiesPanel = ({ element, modeler }) => {
           value={defaultFlow}
           onChange={handleDefaultFlowChange}
           label="Default Flow"
+          MenuProps={{
+            container: () => document.body,
+            disablePortal: true
+          }}
         >
           <MenuItem value="">
             <em>None</em>

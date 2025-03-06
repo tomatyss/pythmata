@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import ServiceTaskPanel, { ExtendedBpmnModeler } from './ServiceTaskPanel';
@@ -116,6 +122,9 @@ describe('ServiceTaskPanel', () => {
   });
 
   it('renders loading state initially', () => {
+    const anchorEl = document.createElement('div');
+    document.body.appendChild(anchorEl);
+
     render(
       <ServiceTaskPanel
         elementId="test-element"
@@ -165,12 +174,16 @@ describe('ServiceTaskPanel', () => {
 
     // Select a task
     const selectElement = screen.getByRole('combobox');
-    fireEvent.mouseDown(selectElement);
+    act(() => {
+      fireEvent.mouseDown(selectElement);
+    });
     // Wait for the dropdown to appear
     await waitFor(() => {
       expect(screen.getByText('http')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('http'));
+    act(() => {
+      fireEvent.click(screen.getByText('http'));
+    });
 
     // Check that the task properties are displayed
     expect(screen.getByLabelText('URL')).toBeInTheDocument();
@@ -218,7 +231,9 @@ describe('ServiceTaskPanel', () => {
     });
 
     // Click the close button
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    });
 
     // Check that onClose was called
     expect(onCloseMock).toHaveBeenCalled();
@@ -309,7 +324,9 @@ describe('ServiceTaskPanel', () => {
     const saveButton = screen.getByTestId('save-service-task');
 
     // Click the save button
-    fireEvent.click(saveButton);
+    act(() => {
+      fireEvent.click(saveButton);
+    });
 
     // Wait for both the onClose to be called and updateProperties to be called
     await waitFor(() => {

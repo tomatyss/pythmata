@@ -1,12 +1,13 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import GatewayPropertiesPanel from './GatewayPropertiesPanel';
+import { vi } from 'vitest';
 
 // Mock data
 const mockModeler = {
-  get: jest.fn((module) => {
+  get: vi.fn((module: string) => {
     if (module === 'elementRegistry') {
       return {
-        get: jest.fn((id) => {
+        get: vi.fn((id: string) => {
           if (id === 'Flow_1') {
             return {
               id: 'Flow_1',
@@ -24,6 +25,13 @@ const mockModeler = {
                 name: 'Flow 2',
               },
             };
+            return {
+              id: 'Flow_2',
+              businessObject: {
+                id: 'Flow_2',
+                name: 'Flow 2',
+              },
+            };
           }
           return null;
         }),
@@ -31,7 +39,7 @@ const mockModeler = {
     }
     if (module === 'modeling') {
       return {
-        updateProperties: jest.fn(),
+        updateProperties: vi.fn(),
       };
     }
     return {};
@@ -81,7 +89,7 @@ describe('GatewayPropertiesPanel', () => {
 
     expect(screen.getByText(/Gateway Configuration/i)).toBeInTheDocument();
     expect(screen.getByText(/For exclusive gateways/i)).toBeInTheDocument();
-    expect(screen.getByText(/Default Flow/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Default Flow/i)).toBeInTheDocument();
     expect(screen.getByText(/Flow 1/i)).toBeInTheDocument();
     expect(screen.getByText(/Flow 2/i)).toBeInTheDocument();
   });
@@ -96,7 +104,7 @@ describe('GatewayPropertiesPanel', () => {
 
     expect(screen.getByText(/Gateway Configuration/i)).toBeInTheDocument();
     expect(screen.getByText(/For inclusive gateways/i)).toBeInTheDocument();
-    expect(screen.getByText(/Default Flow/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Default Flow/i)).toBeInTheDocument();
   });
 
   test('renders parallel gateway message', () => {
@@ -121,12 +129,22 @@ describe('GatewayPropertiesPanel', () => {
     );
 
     const select = screen.getByLabelText(/Default Flow/i);
-    fireEvent.change(select, { target: { value: 'Flow_2' } });
-
-    expect(mockModeler.get('modeling').updateProperties).toHaveBeenCalledWith(
-      mockExclusiveGateway,
-      { default: expect.anything() }
+    fireEvent.mouseDown(select, { container: document.body }); // Open the dropdown
+    const option = screen.getByText((content, _element) =>
+      content.includes('Flow 2')
     );
+    fireEvent.click(option, { container: document.body }); // Select an option
+    const modeling = mockModeler.get('modeling');
+    if (!modeling?.updateProperties) {
+      throw new Error(
+        'MockModeler.get("modeling") returned undefined or invalid'
+      );
+    }
+    const updatePropertiesSpy = modeling.updateProperties;
+    console.warn('Spy calls:', updatePropertiesSpy.mock.calls);
+    expect(updatePropertiesSpy).toHaveBeenCalledWith(mockExclusiveGateway, {
+      default: expect.anything(),
+    });
   });
 
   test('handles clearing default flow', () => {
@@ -138,11 +156,21 @@ describe('GatewayPropertiesPanel', () => {
     );
 
     const select = screen.getByLabelText(/Default Flow/i);
-    fireEvent.change(select, { target: { value: '' } });
-
-    expect(mockModeler.get('modeling').updateProperties).toHaveBeenCalledWith(
-      mockExclusiveGateway,
-      { default: null }
+    fireEvent.mouseDown(select); // Open the dropdown
+    const noneOption = screen.getByText((content, _element) =>
+      content.includes('None')
     );
+    fireEvent.click(noneOption, { container: document.body }); // Select "None"
+    const modeling = mockModeler.get('modeling');
+    if (!modeling?.updateProperties) {
+      throw new Error(
+        'MockModeler.get("modeling") returned undefined or invalid'
+      );
+    }
+    const updatePropertiesSpy = modeling.updateProperties;
+    console.warn('Spy calls:', updatePropertiesSpy.mock.calls);
+    expect(updatePropertiesSpy).toHaveBeenCalledWith(mockExclusiveGateway, {
+      default: null,
+    });
   });
 });

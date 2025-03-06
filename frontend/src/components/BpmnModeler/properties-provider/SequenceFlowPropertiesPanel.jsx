@@ -165,14 +165,14 @@ const SequenceFlowPropertiesPanel = ({ element, modeler, variables = [] }) => {
       // This is likely a Java/JUEL expression using .size() method
       // We'll do a basic check to see if the variable exists
       const variableName = actualExpression.split('.')[0].trim();
-      
+
       // Check if the variable is defined
       const variableExists = variables.some(v => v.name === variableName);
       if (!variableExists) {
         setValidationError(`Variable '${variableName}' is not defined. Define it in Process Settings.`);
         return false;
       }
-      
+
       // For Java/JUEL expressions, we'll skip the JavaScript validation
       setValidationError(null);
       return true;
@@ -186,38 +186,38 @@ const SequenceFlowPropertiesPanel = ({ element, modeler, variables = [] }) => {
         // Add each variable as a property with a dummy value based on its type
         mockVariables[variable.name] = variable.type === 'number' ? 0 : [];
       });
-      
+
       // Add common collection methods to mock variables
       Object.keys(mockVariables).forEach(key => {
         if (Array.isArray(mockVariables[key])) {
           // Add a size() method that returns length for Java compatibility
-          mockVariables[key].size = function() { return this.length; };
+          mockVariables[key].size = function () { return this.length; };
         }
       });
-      
+
       // Extract variable names from the expression
       const variablePattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*\()/g;
       const matches = actualExpression.match(variablePattern) || [];
       const uniqueVars = [...new Set(matches)];
-      
+
       // Check if all variables in the expression are defined
       const undefinedVars = uniqueVars.filter(v => !mockVariables[v] && !['true', 'false', 'null'].includes(v));
       if (undefinedVars.length > 0) {
         setValidationError(`Variable '${undefinedVars[0]}' is not defined. Define it in Process Settings.`);
         return false;
       }
-      
+
       // Create a function that evaluates the expression with the mock variables
       const variableNames = Object.keys(mockVariables);
-      
+
       // Convert Java/JUEL-style expressions to JavaScript
       let jsExpression = actualExpression;
       // Replace .size() with .length for arrays
       jsExpression = jsExpression.replace(/\.size\(\)/g, '.length');
-      
+
       // Pass the variables as arguments to the function
       new Function(...variableNames, `return (${jsExpression})`);
-      
+
       setValidationError(null);
       return true;
     } catch (e) {
@@ -248,7 +248,7 @@ const SequenceFlowPropertiesPanel = ({ element, modeler, variables = [] }) => {
       updateConditionExpression(newExpression);
       return;
     }
-    
+
     // If expression doesn't have ${} wrapper, add it
     if (!conditionExpression.startsWith('${') || !conditionExpression.endsWith('}')) {
       const newExpression = "${" + variableName + "}";
@@ -256,7 +256,7 @@ const SequenceFlowPropertiesPanel = ({ element, modeler, variables = [] }) => {
       updateConditionExpression(newExpression);
       return;
     }
-    
+
     // Insert variable at cursor position or append to expression
     const expressionContent = conditionExpression.substring(2, conditionExpression.length - 1);
     const newExpression = "${" + expressionContent + " " + variableName + "}";
@@ -307,11 +307,13 @@ const SequenceFlowPropertiesPanel = ({ element, modeler, variables = [] }) => {
       <FormControlLabel
         control={
           <Checkbox
+            id={`default-flow-checkbox-${element.id}`}
             checked={isDefaultFlow}
             onChange={handleDefaultFlowChange}
           />
         }
         label="Use as default flow (taken when no conditions are true)"
+        htmlFor={`default-flow-checkbox-${element.id}`}
         sx={{ mb: 2 }}
       />
 
@@ -329,7 +331,7 @@ const SequenceFlowPropertiesPanel = ({ element, modeler, variables = [] }) => {
               placeholder="Example: ${variable > value}"
             />
             <FormHelperText>
-              Use dollar sign with curly braces format, e.g. '${positions.length > 0}' or '${positions.size() > 0}'
+              Enter a valid condition expression.
             </FormHelperText>
             {validationError && (
               <Alert severity="error" sx={{ mt: 1 }}>

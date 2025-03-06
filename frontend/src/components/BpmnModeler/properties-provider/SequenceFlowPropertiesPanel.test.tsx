@@ -2,11 +2,13 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import SequenceFlowPropertiesPanel from './SequenceFlowPropertiesPanel';
 
 // Mock data
+import { vi } from 'vitest';
+
 const mockModeler = {
-  get: jest.fn((module) => {
+  get: vi.fn((module: string) => {
     if (module === 'elementRegistry') {
       return {
-        get: jest.fn((id) => {
+        get: vi.fn((id: string) => {
           if (id === 'Gateway_1') {
             return {
               type: 'bpmn:ExclusiveGateway',
@@ -23,12 +25,15 @@ const mockModeler = {
     }
     if (module === 'modeling') {
       return {
-        updateProperties: jest.fn(),
+        updateProperties: vi.fn(),
       };
     }
     if (module === 'moddle') {
       return {
-        create: jest.fn((type, props) => ({ ...props, $type: type })),
+        create: vi.fn((type: string, props: Record<string, unknown>) => ({
+          ...props,
+          $type: type,
+        })),
       };
     }
     return {};
@@ -170,9 +175,8 @@ describe('SequenceFlowPropertiesPanel', () => {
     fireEvent.change(input, { target: { value: 'invalid expression' } });
     fireEvent.blur(input);
 
-    expect(
-      screen.getByText(/Expression must be wrapped in \$\{...\}/i)
-    ).toBeInTheDocument();
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent("Expression must be wrapped in '${...}'");
   });
 
   test('handles variable references in expressions without errors', () => {
@@ -216,11 +220,40 @@ describe('SequenceFlowPropertiesPanel', () => {
       />
     );
 
+    // Mock elementRegistry.get before rendering the component
+    const elementRegistry = mockModeler.get('elementRegistry');
+    if (!elementRegistry?.get) {
+      throw new Error('Element registry or its get method is undefined');
+    }
+    elementRegistry.get.mockReturnValue({
+      type: 'bpmn:ExclusiveGateway',
+      id: 'Gateway_1',
+      businessObject: {
+        id: 'Gateway_1',
+        name: 'Test Gateway',
+      },
+    });
+
+    render(
+      <SequenceFlowPropertiesPanel
+        element={mockElement}
+        modeler={mockModeler}
+        variables={mockVariables}
+      />
+    );
+
     const checkbox = screen.getByLabelText(/Use as default flow/i);
+
+    // Verify sourceElement is correctly retrieved
+    const sourceElement = elementRegistry?.get?.('Gateway_1') ?? null;
+    expect(sourceElement).not.toBeNull();
+
+    // Simulate checkbox click
     fireEvent.click(checkbox);
 
+    // Verify updateProperties is called with the correct arguments
     expect(mockModeler.get('modeling').updateProperties).toHaveBeenCalledWith(
-      expect.anything(),
+      sourceElement,
       { default: mockElement }
     );
   });
