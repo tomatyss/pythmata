@@ -71,6 +71,8 @@ Schedule activities or handle timeouts:
 </bpmn:intermediateCatchEvent>
 ```
 
+For detailed information on configuring and using timer events, see the [Timer Events](timer-events.md) documentation.
+
 ### Message Correlation
 Handle asynchronous communication between processes:
 

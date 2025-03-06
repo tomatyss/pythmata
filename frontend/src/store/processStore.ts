@@ -6,6 +6,11 @@ import {
   ProcessStats,
 } from '@/types/process';
 import apiService from '@/services/api';
+import { ProcessVariableValue } from '@/types/process';
+import {
+  prepareVariablesForBackend,
+  VariableValidationError,
+} from '@/utils/validateVariables';
 
 interface ProcessState {
   // Process Definitions
@@ -40,7 +45,7 @@ interface ProcessState {
   fetchInstance: (id: string) => Promise<void>;
   startInstance: (
     definitionId: string,
-    variables?: Record<string, string | number | boolean | null>
+    variables?: Record<string, ProcessVariableValue>
   ) => Promise<void>;
   suspendInstance: (id: string) => Promise<void>;
   resumeInstance: (id: string) => Promise<void>;
@@ -99,10 +104,10 @@ const useProcessStore = create<ProcessState>()(
       }
     },
 
-    createDefinition: async (name: string, bpmn_xml: string) => {
+    createDefinition: async (name: string, bpmnXml: string) => {
       try {
         set({ definitionsLoading: true, definitionsError: null });
-        await apiService.createProcessDefinition({ name, bpmn_xml });
+        await apiService.createProcessDefinition({ name, bpmnXml });
         await get().fetchDefinitions();
       } catch {
         set({
@@ -112,10 +117,10 @@ const useProcessStore = create<ProcessState>()(
       }
     },
 
-    updateDefinition: async (id: string, name: string, bpmn_xml: string) => {
+    updateDefinition: async (id: string, name: string, bpmnXml: string) => {
       try {
         set({ definitionsLoading: true, definitionsError: null });
-        await apiService.updateProcessDefinition(id, { name, bpmn_xml });
+        await apiService.updateProcessDefinition(id, { name, bpmnXml });
         await get().fetchDefinitions();
       } catch {
         set({
@@ -138,7 +143,12 @@ const useProcessStore = create<ProcessState>()(
       }
     },
 
-    fetchInstances: async (definitionId?: string) => {
+    fetchInstances: async (definitionId?: {
+      definitionId?: string;
+      page?: number;
+      pageSize?: number;
+      status?: string;
+    }) => {
       try {
         set({ instancesLoading: true, instancesError: null });
         const response = await apiService.getProcessInstances(definitionId);
@@ -172,17 +182,37 @@ const useProcessStore = create<ProcessState>()(
 
     startInstance: async (
       definitionId: string,
-      variables?: Record<string, string | number | boolean | null>
+      variables?: Record<string, ProcessVariableValue>
     ) => {
       try {
         set({ instancesLoading: true, instancesError: null });
-        await apiService.startProcessInstance({ definitionId, variables });
-        await get().fetchInstances();
-      } catch {
-        set({
-          instancesLoading: false,
-          instancesError: 'Failed to start process instance',
+
+        // Validate and prepare variables for backend
+        const preparedVariables = variables
+          ? prepareVariablesForBackend(variables)
+          : undefined;
+
+        // Start the process instance with validated variables
+        await apiService.startProcessInstance({
+          definitionId,
+          variables: preparedVariables,
         });
+        await get().fetchInstances();
+      } catch (error) {
+        console.error('Error starting process instance:', error);
+
+        // Handle validation errors specifically
+        if (error instanceof VariableValidationError) {
+          set({
+            instancesLoading: false,
+            instancesError: `Variable validation error: ${error.message}`,
+          });
+        } else {
+          set({
+            instancesLoading: false,
+            instancesError: 'Failed to start process instance',
+          });
+        }
       }
     },
 

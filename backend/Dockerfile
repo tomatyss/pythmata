@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install poetry==1.6.1
+RUN pip install poetry
 
 # Copy poetry files
 COPY pyproject.toml poetry.lock* ./
@@ -21,11 +21,14 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry config virtualenvs.create false
 
 # Copy scripts first and make executable
-COPY scripts/start.sh /app/scripts/
-RUN chmod +x /app/scripts/start.sh
+COPY scripts/start.sh scripts/install_plugin_deps.sh /app/scripts/
+RUN chmod +x /app/scripts/start.sh /app/scripts/install_plugin_deps.sh
 
 # Copy the rest of the application
 COPY . .
+
+# Create plugin directory
+RUN mkdir -p /app/plugins
 
 # Install dependencies and package in development mode
 RUN poetry install --no-interaction --no-ansi

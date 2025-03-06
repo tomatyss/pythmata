@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.params import Depends as FastAPIDepends
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import and_
 
@@ -17,6 +17,7 @@ from pythmata.api.dependencies import (
     get_state_manager,
 )
 from pythmata.api.schemas import (
+    ActivityLogResponse,
     ApiResponse,
     PaginatedResponse,
     ProcessInstanceCreate,
@@ -28,6 +29,7 @@ from pythmata.core.engine.instance import ProcessInstanceError, ProcessInstanceM
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.events import EventBus
 from pythmata.core.types import Event, EventType
+from pythmata.models.process import ActivityLog
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
@@ -152,23 +154,46 @@ async def get_instance(
     session: AsyncSession = Depends(get_session),
 ):
     """Get a specific process instance."""
-    result = await session.execute(
-        select(
-            ProcessInstanceModel, ProcessDefinitionModel.name.label("definition_name")
+    try:
+        # Get instance with definition name
+        result = await session.execute(
+            select(
+                ProcessInstanceModel,
+                ProcessDefinitionModel.name.label("definition_name"),
+            )
+            .join(
+                ProcessDefinitionModel,
+                ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
+                isouter=False,
+            )
+            .where(ProcessInstanceModel.id == instance_id)
         )
-        .join(
-            ProcessDefinitionModel,
-            ProcessInstanceModel.definition_id == ProcessDefinitionModel.id,
-            isouter=False,
+        row = result.one_or_none()
+        if not row:
+            logger.info(f"[NotFound] Process instance {instance_id} not found")
+            raise HTTPException(status_code=404, detail="Process instance not found")
+
+        instance = row[0]
+        instance.definition_name = row[1]
+
+        # Get activities
+        activities_result = await session.execute(
+            select(ActivityLog)
+            .where(ActivityLog.instance_id == instance_id)
+            .order_by(desc(ActivityLog.timestamp))
         )
-        .where(ProcessInstanceModel.id == instance_id)
-    )
-    row = result.one_or_none()
-    if not row:
-        raise HTTPException(status_code=404, detail="Process instance not found")
-    instance = row[0]
-    instance.definition_name = row[1]
-    return {"data": instance}
+        activities = activities_result.scalars().all()
+
+        # Add activities to instance response
+        response_data = instance.__dict__
+        response_data["activities"] = activities
+
+        return {"data": response_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting instance details: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post(
@@ -183,6 +208,7 @@ async def create_instance(
 ):
     """Create a new process instance."""
     try:
+        logger.info("[Transaction] Starting process instance creation")
         # Verify process definition exists
         result = await session.execute(
             select(ProcessDefinitionModel).filter(
@@ -208,8 +234,11 @@ async def create_instance(
             status=ProcessStatus.RUNNING,
             start_time=datetime.now(timezone.utc),
         )
+        logger.info("[Transaction] Adding instance to session")
         session.add(instance)
-        await session.flush()  # Get the ID without committing
+        logger.info("[Transaction] Committing instance to database")
+        await session.commit()  # Commit immediately to ensure instance exists
+        logger.info(f"[Transaction] Instance committed with ID: {instance.id}")
 
         # Convert variables to storage format
         variables = {}
@@ -220,14 +249,12 @@ async def create_instance(
 
         try:
             # Start process execution
+            logger.info("[Transaction] Starting process execution")
             instance = await instance_manager.start_instance(
                 instance=instance,
                 bpmn_xml=definition.bpmn_xml,
                 variables=variables,
             )
-
-            # Commit the transaction to save the instance
-            await session.commit()
 
             # Publish process.started event with just IDs
             await event_bus.publish(
@@ -323,6 +350,35 @@ async def resume_instance(
     "/{instance_id}/tokens",
     response_model=ApiResponse[List[TokenResponse]],
 )
+@router.get(
+    "/{instance_id}/activities",
+    response_model=ApiResponse[List[ActivityLogResponse]],
+)
+async def get_instance_activities(
+    instance_id: UUID,
+    session: AsyncSession = Depends(get_session),
+):
+    """Get activity logs for a process instance."""
+    try:
+        # First verify instance exists
+        instance = await session.get(ProcessInstanceModel, instance_id)
+        if not instance:
+            raise HTTPException(status_code=404, detail="Process instance not found")
+
+        # Get activities ordered by timestamp descending
+        result = await session.execute(
+            select(ActivityLog)
+            .where(ActivityLog.instance_id == instance_id)
+            .order_by(desc(ActivityLog.timestamp))
+        )
+        activities = result.scalars().all()
+
+        return {"data": activities}
+    except Exception as e:
+        logger.error(f"Error getting instance activities: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 async def get_instance_tokens(
     instance_id: UUID,
     state_manager=Depends(get_state_manager),

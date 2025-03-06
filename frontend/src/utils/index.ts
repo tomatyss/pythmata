@@ -1,16 +1,5 @@
 import { ProcessStatus } from '@/types/process';
 
-// Format date string to locale string with options
-export const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
 // Get color based on process status
 export const getStatusColor = (status: ProcessStatus): string => {
   switch (status) {

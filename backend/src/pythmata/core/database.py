@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
 
 from pythmata.core.common.connections import ConnectionManager, ensure_connected
 from pythmata.core.config import Settings
-from pythmata.models.process import Base
+from pythmata.models.base import Base
 from pythmata.utils.logger import get_logger
 
 logger = get_logger(__name__)

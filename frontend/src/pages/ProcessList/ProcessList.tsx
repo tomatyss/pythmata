@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '@/services/api';
-import { formatDate } from '@/utils/date';
+import { formatDate } from '@/utils/dateUtils';
 import { ProcessDefinition } from '@/types/process';
+import {
+  prepareVariablesForBackend,
+  VariableValidationError,
+} from '@/utils/validateVariables';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import {
   Box,
   Button,
@@ -33,6 +38,7 @@ import ProcessVariablesDialog, {
 
 const ProcessList = () => {
   const navigate = useNavigate();
+  const { confirmDelete, ConfirmDialog } = useConfirmDialog();
   const [loading, setLoading] = useState(true);
   const [processes, setProcesses] = useState<
     (ProcessDefinition & {
@@ -75,7 +81,9 @@ const ProcessList = () => {
         navigate(`/processes/${process.id}/instances/${response.data.id}`);
       } catch (error) {
         console.error('Failed to start process:', error);
-        if (error instanceof Error) {
+        if (error instanceof VariableValidationError) {
+          alert(`Variable validation error: ${error.message}`);
+        } else if (error instanceof Error) {
           alert(error.message);
         } else {
           alert('An unexpected error occurred');
@@ -93,15 +101,21 @@ const ProcessList = () => {
     if (!selectedProcess) return;
 
     try {
+      // Validate and prepare variables for backend
+      const preparedVariables = prepareVariablesForBackend(variables);
+
       const response = await apiService.startProcessInstance({
         definitionId: selectedProcess.id,
-        variables,
+        variables: preparedVariables,
       });
+
       navigate(
         `/processes/${selectedProcess.id}/instances/${response.data.id}`
       );
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof VariableValidationError) {
+        alert(`Variable validation error: ${error.message}`);
+      } else if (error instanceof Error) {
         alert(error.message);
       } else {
         alert('An unexpected error occurred');
@@ -113,9 +127,26 @@ const ProcessList = () => {
     navigate(`/processes/${processId}`);
   };
 
-  const handleDeleteProcess = (_processId: string) => {
-    // TODO: Implement process deletion
-    alert('Process deletion functionality not yet implemented');
+  const handleDeleteProcess = async (processId: string) => {
+    try {
+      const processName =
+        processes.find((p) => p.id === processId)?.name || 'this process';
+      const confirmed = await confirmDelete(`process "${processName}"`);
+
+      if (confirmed) {
+        await apiService.deleteProcessDefinition(processId);
+
+        // Refresh the process list
+        setProcesses(processes.filter((process) => process.id !== processId));
+      }
+    } catch (error) {
+      console.error('Failed to delete process:', error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('An unexpected error occurred while deleting the process');
+      }
+    }
   };
 
   if (loading) {
@@ -257,6 +288,7 @@ const ProcessList = () => {
         }}
         onSubmit={handleStartProcessSubmit}
       />
+      <ConfirmDialog />
     </Box>
   );
 };

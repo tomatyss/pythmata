@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import apiService from '@/services/api';
 import ProcessDiagramViewer from '@/components/shared/ProcessDiagramViewer';
@@ -50,57 +50,77 @@ const ProcessDiagram = (): React.ReactElement => {
   const [showFinishedInstances, setShowFinishedInstances] = useState(false);
   const navigate = useNavigate();
 
-  // Get IDs of running instances
-  const runningInstanceIds = activeInstances
-    .filter((instance) => instance.status === ProcessStatus.RUNNING)
-    .map((instance) => instance.id);
+  // Get IDs of running instances - memoize to prevent unnecessary recalculations
+  const runningInstanceIds = useMemo(
+    () =>
+      activeInstances
+        .filter((instance) => instance.status === ProcessStatus.RUNNING)
+        .map((instance) => instance.id),
+    [activeInstances]
+  );
 
   // Use the useProcessTokens hook with all running instance IDs
   const { tokens: allTokens, error: tokensError } = useProcessTokens({
     instanceId: runningInstanceIds,
+    // Only enable when on Active Instances tab and there are running instances
     enabled: tabValue === 1 && runningInstanceIds.length > 0,
     pollingInterval: 2000,
   });
 
   // Fetch active instances
-  useEffect(() => {
-    const fetchActiveInstances = async (): Promise<void> => {
-      if (!id) return undefined;
+  const fetchActiveInstances = useCallback(async (): Promise<void> => {
+    if (!id) return;
 
-      try {
-        const response = await apiService.getProcessInstances({
-          definitionId: id,
-          page: 1,
-          pageSize: 100,
-        });
+    try {
+      const response = await apiService.getProcessInstances({
+        definitionId: id,
+        page: 1,
+        pageSize: 100,
+      });
 
-        if (!response.data?.items) {
-          throw new Error('Invalid API response format');
-        }
-
-        const instances = response.data.items.filter(
-          (instance) =>
-            showFinishedInstances || instance?.status === ProcessStatus.RUNNING
-        );
-
-        setActiveInstances(instances);
-
-        // Auto-select Active Instances tab if there are instances
-        if (instances.length > 0 && tabValue === 0) {
-          setTabValue(1);
-        }
-      } catch (error) {
-        console.error('Failed to fetch active instances:', error);
+      if (!response.data?.items) {
+        throw new Error('Invalid API response format');
       }
-    };
 
+      const instances = response.data.items.filter(
+        (instance) =>
+          showFinishedInstances || instance?.status === ProcessStatus.RUNNING
+      );
+
+      setActiveInstances(instances);
+    } catch (error) {
+      console.error('Failed to fetch active instances:', error);
+    }
+  }, [id, showFinishedInstances]);
+
+  // Handle auto-select of Active Instances tab - only on initial load
+  useEffect(() => {
+    const hasInstances = activeInstances.length > 0;
+    const isInitialTab = tabValue === 0;
+
+    if (hasInstances && isInitialTab) {
+      // Use a timeout to ensure this happens after other state updates
+      const timeoutId = setTimeout(() => {
+        setTabValue(1);
+      }, 0);
+
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [activeInstances.length]); // Only depend on instances length, not tabValue
+
+  // Setup polling for active instances
+  useEffect(() => {
+    // Initial fetch
     fetchActiveInstances();
-    // Set up polling for active instances list
+
+    // Only poll when on the Active Instances tab
     if (tabValue === 1) {
       const interval = setInterval(fetchActiveInstances, 2000);
       return () => clearInterval(interval);
     }
-  }, [id, tabValue, showFinishedInstances]);
+    return undefined;
+  }, [tabValue, fetchActiveInstances]);
 
   useEffect(() => {
     const fetchProcess = async () => {

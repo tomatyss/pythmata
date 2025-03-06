@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import toml
-from pydantic import AmqpDsn, BaseModel, ConfigDict, PostgresDsn, RedisDsn
-from pydantic_settings import BaseSettings
+from pydantic import AmqpDsn, BaseModel, PostgresDsn, RedisDsn
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from pythmata.utils.logger import get_logger
 

@@ -12,23 +12,48 @@ import {
   Typography,
   Drawer,
   IconButton,
+  Tabs,
+  Tab,
 } from '@mui/material';
+import MonacoEditor from '@monaco-editor/react';
 import {
   Save as SaveIcon,
   Settings as SettingsIcon,
   ContentCopy as ContentCopyIcon,
+  Chat as ChatIcon,
 } from '@mui/icons-material';
-import VariableDefinitionsPanel from '@/components/shared/VariableDefinitionsPanel/VariableDefinitionsPanel';
-import { ProcessVariableDefinition } from '@/types/process';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
+
+// Import components
+import ChatPanel from '@/components/shared/ChatPanel';
+import VariableDefinitionsPanel from '@/components/shared/VariableDefinitionsPanel/VariableDefinitionsPanel';
+import ElementPanel from '@/components/shared/ElementPanel';
+
+// Import types
+import { ProcessVariableDefinition } from '@/types/process';
+import { convertDefinitionsToBackend } from '@/utils/variableTypeConverter';
+
+// Import styles
 import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
+import '@/components/BpmnModeler/PaletteLeft.css';
+import '@/components/BpmnModeler/PropertiesPanelOverlay.css';
 
-// Default empty BPMN diagram
-const emptyBpmn = `<?xml version="1.0" encoding="UTF-8"?>
+// Import pythmata moddle extension for service tasks
+import pythmataModdleDescriptor from '@/components/BpmnModeler/moddle/pythmata.json';
+
+// Import types
+import * as BpmnTypes from './types';
+
+// Constants
+const DRAWER_WIDTH = 400;
+const CHAT_DRAWER_WIDTH = 450;
+const DEFAULT_EMPTY_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   id="Definitions_1"
                   targetNamespace="http://bpmn.io/schema/bpmn">
   <bpmn:process id="Process_1" isExecutable="true">
@@ -43,21 +68,55 @@ const emptyBpmn = `<?xml version="1.0" encoding="UTF-8"?>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>`;
 
-const ProcessDesigner = () => {
-  const { id } = useParams();
+/**
+ * ProcessDesigner component
+ *
+ * A component for designing BPMN processes with a visual modeler and XML editor.
+ *
+ * @returns ProcessDesigner component
+ */
+/**
+ * ProcessDesigner component
+ *
+ * Optimized for maintainability and scalability.
+ *
+ * @returns ProcessDesigner component
+ */
+const ProcessDesigner: React.FC = () => {
+  // Router hooks
+  const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
+
+  // Refs
   const containerRef = useRef<HTMLDivElement>(null);
-  const modelerRef = useRef<BpmnModeler | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [processName, setProcessName] = useState('');
-  const [bpmnXml, setBpmnXml] = useState(emptyBpmn);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const propertiesPanelRef = useRef<HTMLDivElement>(null);
+  const modelerRef = useRef<BpmnTypes.ExtendedBpmnModeler | undefined>(
+    undefined
+  );
+
+  // State - Process data
+  const [processName, setProcessName] = useState<string>('');
+  const [bpmnXml, setBpmnXml] = useState<string>(DEFAULT_EMPTY_BPMN);
   const [variableDefinitions, setVariableDefinitions] = useState<
     ProcessVariableDefinition[]
   >([]);
 
+  // State - UI
+  const [activeTab, setActiveTab] = useState<'modeler' | 'xmlEditor'>(
+    'modeler'
+  );
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // State - Drawers
+  const [variablesDrawerOpen, setVariablesDrawerOpen] =
+    useState<boolean>(false);
+  const [elementDrawerOpen, setElementDrawerOpen] = useState<boolean>(false);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState<boolean>(false);
+  const [selectedElement, setSelectedElement] = useState<string | null>(null);
+
+  // Load process data
   useEffect(() => {
     const loadProcess = async () => {
       if (id) {
@@ -74,7 +133,7 @@ const ProcessDesigner = () => {
         }
       } else {
         setProcessName('New Process');
-        setBpmnXml(emptyBpmn);
+        setBpmnXml(DEFAULT_EMPTY_BPMN);
       }
       setLoading(false);
     };
@@ -82,6 +141,7 @@ const ProcessDesigner = () => {
     loadProcess();
   }, [id]);
 
+  // Initialize BPMN modeler
   useEffect(() => {
     if (loading || !containerRef.current) return;
 
@@ -89,11 +149,35 @@ const ProcessDesigner = () => {
       try {
         if (!containerRef.current) return;
 
+        // Create modeler instance
         modelerRef.current = new BpmnModeler({
-          container: containerRef.current as HTMLElement,
-        });
+          container: containerRef.current,
+          // Use type assertion to include custom properties
+          moddleExtensions: {
+            pythmata: pythmataModdleDescriptor,
+          },
+          // Configure palette to appear on the left side
+          palette: {
+            open: true,
+          },
+        } as BpmnTypes.BpmnModelerOptions) as BpmnTypes.ExtendedBpmnModeler;
 
+        // Apply CSS classes for styling
+        if (containerRef.current) {
+          containerRef.current.classList.add(
+            'bpmn-container-with-left-palette',
+            'bpmn-container-with-overlay-panels'
+          );
+        }
+
+        // Import XML to the modeler
         await modelerRef.current.importXML(bpmnXml);
+
+        // Set up event listeners
+        setupEventListeners();
+
+        // Position the palette on the left
+        positionPalette();
       } catch (error) {
         console.error('Failed to initialize modeler:', error);
         setError(
@@ -104,14 +188,81 @@ const ProcessDesigner = () => {
 
     initializeModeler();
 
+    // Cleanup function
     return () => {
       if (modelerRef.current) {
         modelerRef.current.destroy();
-        modelerRef.current = null;
+        modelerRef.current = undefined;
       }
     };
-  }, [loading, bpmnXml]); // Add bpmnXml as dependency to reinitialize when it changes
+  }, [loading, bpmnXml, activeTab]);
 
+  // Set up event listeners for the modeler
+  const setupEventListeners = () => {
+    if (!modelerRef.current) return;
+
+    const eventBus = modelerRef.current.get('eventBus');
+
+    // Listen for element selection
+    eventBus.on(
+      'selection.changed',
+      (e: { newSelection: Array<BpmnTypes.BpmnElement> }) => {
+        const selection = e.newSelection;
+        if (selection.length === 1) {
+          const element = selection[0];
+          if (element) {
+            setSelectedElement(element.id);
+          } else {
+            setElementDrawerOpen(false);
+          }
+        } else {
+          setElementDrawerOpen(false);
+        }
+      }
+    );
+
+    // Listen for element double-click to open properties panel
+    eventBus.on('element.dblclick', (e: { element: BpmnTypes.BpmnElement }) => {
+      if (e.element) {
+        setSelectedElement(e.element.id);
+        setElementDrawerOpen(true);
+      }
+    });
+  };
+
+  // Position the palette on the left side
+  const positionPalette = () => {
+    setTimeout(() => {
+      const paletteElement = document.querySelector('.djs-palette');
+      if (paletteElement) {
+        (paletteElement as HTMLElement).style.left = '20px';
+        (paletteElement as HTMLElement).style.right = 'auto';
+      }
+
+      // Set up a MutationObserver to ensure the palette stays on the left
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach(() => {
+          const palette = document.querySelector('.djs-palette');
+          if (palette) {
+            (palette as HTMLElement).style.left = '20px';
+            (palette as HTMLElement).style.right = 'auto';
+          }
+        });
+      });
+
+      // Start observing the container for changes
+      if (containerRef.current) {
+        observer.observe(containerRef.current, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['style'],
+        });
+      }
+    }, 100);
+  };
+
+  // Copy XML to clipboard
   const handleCopyXml = async () => {
     if (!modelerRef.current) return;
 
@@ -125,6 +276,7 @@ const ProcessDesigner = () => {
     }
   };
 
+  // Save process
   const handleSave = async () => {
     if (!modelerRef.current || !processName) return;
 
@@ -132,20 +284,24 @@ const ProcessDesigner = () => {
       setSaving(true);
       const { xml } = await modelerRef.current.saveXML({ format: true });
 
+      // Convert variable definitions to backend format
+      const convertedVariableDefinitions =
+        convertDefinitionsToBackend(variableDefinitions);
+
+      const processData = {
+        name: processName,
+        bpmnXml: xml,
+        variableDefinitions: convertedVariableDefinitions,
+      };
+
       if (id) {
         // Update existing process
-        await apiService.updateProcessDefinition(id, {
-          name: processName,
-          bpmnXml: xml,
-          variableDefinitions: variableDefinitions,
-        });
+        await apiService.updateProcessDefinition(id, processData);
       } else {
         // Create new process
         await apiService.createProcessDefinition({
-          name: processName,
-          bpmnXml: xml,
+          ...processData,
           version: 1,
-          variableDefinitions: variableDefinitions,
         });
       }
 
@@ -159,6 +315,40 @@ const ProcessDesigner = () => {
     }
   };
 
+  // Apply XML from editor to modeler
+  const applyXmlChanges = () => {
+    try {
+      if (modelerRef.current) {
+        modelerRef.current.importXML(bpmnXml);
+        alert('XML applied successfully');
+      }
+    } catch (error) {
+      alert(
+        'Invalid XML. Please fix the errors and try again. See console for details.'
+      );
+      console.error('Error applying XML changes:', error);
+    }
+  };
+
+  // Handle XML changes from chat panel
+  const handleApplyXmlFromChat = (xml: string) => {
+    if (modelerRef.current) {
+      try {
+        modelerRef.current
+          .importXML(xml)
+          .then(() => {
+            console.warn('XML changes applied successfully');
+          })
+          .catch((err: Error) => {
+            console.error('Error applying XML changes:', err);
+          });
+      } catch (importError) {
+        console.error('Error applying XML changes:', importError);
+      }
+    }
+  };
+
+  // Loading state
   if (loading) {
     return (
       <Box
@@ -188,6 +378,7 @@ const ProcessDesigner = () => {
         flexDirection: 'column',
       }}
     >
+      {/* Toolbar */}
       <AppBar position="static" color="default" elevation={0}>
         <Toolbar sx={{ gap: 2 }}>
           <TextField
@@ -199,10 +390,17 @@ const ProcessDesigner = () => {
           />
           <IconButton
             color="primary"
-            onClick={() => setDrawerOpen(true)}
-            title="Process Settings"
+            onClick={() => setVariablesDrawerOpen(true)}
+            title="Process Variables"
           >
             <SettingsIcon />
+          </IconButton>
+          <IconButton
+            color="primary"
+            onClick={() => setChatDrawerOpen(true)}
+            title="Process Assistant"
+          >
+            <ChatIcon />
           </IconButton>
           <Button
             variant="outlined"
@@ -210,6 +408,7 @@ const ProcessDesigner = () => {
             onClick={handleCopyXml}
             disabled={loading || saving}
             sx={{ mr: 1 }}
+            title="Copy process XML to clipboard"
           >
             Copy XML
           </Button>
@@ -224,31 +423,84 @@ const ProcessDesigner = () => {
         </Toolbar>
       </AppBar>
 
-      <Paper
-        sx={{
-          flexGrow: 1,
-          position: 'relative',
-          bgcolor: '#fff',
-          overflow: 'hidden',
-          mr: 'var(--palette-width)', // Space for palette
-        }}
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onChange={(_e, newValue: 'modeler' | 'xmlEditor') =>
+          setActiveTab(newValue)
+        }
+        indicatorColor="primary"
+        textColor="primary"
+        sx={{ borderBottom: 1, borderColor: 'divider' }}
       >
-        <div
-          ref={containerRef}
-          style={{
-            width: '100%',
-            height: '100%',
-          }}
-        />
-      </Paper>
+        <Tab label="Modeler" value="modeler" />
+        <Tab label="XML Editor" value="xmlEditor" />
+      </Tabs>
 
+      {/* Content */}
+      {activeTab === 'modeler' ? (
+        <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+          <Paper
+            sx={{
+              flexGrow: 1,
+              position: 'relative',
+              bgcolor: '#fff',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              ref={containerRef}
+              style={{
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+              }}
+            >
+              <div
+                ref={propertiesPanelRef}
+                style={{
+                  position: 'absolute',
+                  right: '20px',
+                  top: '20px',
+                  zIndex: 100,
+                }}
+              />
+            </div>
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              overflow: 'auto',
+              maxHeight: 'calc(100% - 80px)',
+            }}
+          >
+            <MonacoEditor
+              language="xml"
+              value={bpmnXml}
+              onChange={(newValue: string | undefined): void =>
+                setBpmnXml(newValue || '')
+              }
+              options={{ theme: 'light', automaticLayout: true }}
+              height="100%"
+            />
+          </Box>
+          <Button variant="contained" onClick={applyXmlChanges} sx={{ mt: 2 }}>
+            Apply XML
+          </Button>
+        </Box>
+      )}
+
+      {/* Variables Drawer */}
       <Drawer
         anchor="right"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        open={variablesDrawerOpen}
+        onClose={() => setVariablesDrawerOpen(false)}
         sx={{
           '& .MuiDrawer-paper': {
-            width: '400px',
+            width: `${DRAWER_WIDTH}px`,
             p: 3,
           },
         }}
@@ -256,6 +508,47 @@ const ProcessDesigner = () => {
         <VariableDefinitionsPanel
           variables={variableDefinitions}
           onChange={setVariableDefinitions}
+        />
+      </Drawer>
+
+      {/* Element Properties Drawer */}
+      <Drawer
+        anchor="right"
+        open={elementDrawerOpen}
+        onClose={() => setElementDrawerOpen(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: `${DRAWER_WIDTH}px`,
+            p: 0,
+          },
+        }}
+      >
+        {selectedElement && modelerRef.current && (
+          <ElementPanel
+            elementId={selectedElement}
+            modeler={modelerRef.current}
+            onClose={() => setElementDrawerOpen(false)}
+          />
+        )}
+      </Drawer>
+
+      {/* Chat Drawer */}
+      <Drawer
+        anchor="right"
+        open={chatDrawerOpen}
+        onClose={() => setChatDrawerOpen(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: `${CHAT_DRAWER_WIDTH}px`,
+            p: 0,
+          },
+        }}
+      >
+        <ChatPanel
+          processId={id}
+          modeler={modelerRef.current}
+          onClose={() => setChatDrawerOpen(false)}
+          onApplyXml={handleApplyXmlFromChat}
         />
       </Drawer>
     </Box>

@@ -7,11 +7,9 @@ from sqlalchemy import JSON, DateTime
 from sqlalchemy import Enum as SQLAEnum
 from sqlalchemy import ForeignKey, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
-class Base(DeclarativeBase):
-    """Base class for all models."""
+from pythmata.models.base import Base
 
 
 class ProcessStatus(str, Enum):
@@ -21,6 +19,20 @@ class ProcessStatus(str, Enum):
     COMPLETED = "COMPLETED"
     SUSPENDED = "SUSPENDED"
     ERROR = "ERROR"
+
+
+class ActivityType(str, Enum):
+    """Process instance activity types."""
+
+    INSTANCE_CREATED = "INSTANCE_CREATED"
+    INSTANCE_STARTED = "INSTANCE_STARTED"
+    NODE_ENTERED = "NODE_ENTERED"
+    NODE_COMPLETED = "NODE_COMPLETED"
+    SERVICE_TASK_EXECUTED = "SERVICE_TASK_EXECUTED"
+    INSTANCE_SUSPENDED = "INSTANCE_SUSPENDED"
+    INSTANCE_RESUMED = "INSTANCE_RESUMED"
+    INSTANCE_COMPLETED = "INSTANCE_COMPLETED"
+    INSTANCE_ERROR = "INSTANCE_ERROR"
 
 
 class ProcessVariableDefinition(TypeDecorator):
@@ -74,6 +86,10 @@ class ProcessDefinition(Base):
     )
     scripts: Mapped[list["Script"]] = relationship(
         "Script", back_populates="process_definition", cascade="all, delete-orphan"
+    )
+    # Use string reference to avoid circular import
+    chat_sessions: Mapped[list["ChatSession"]] = relationship(
+        "ChatSession", back_populates="process_definition", cascade="all, delete-orphan"
     )
 
 
@@ -196,6 +212,39 @@ class ScriptExecution(Base):
     )
 
 
+class ActivityLog(Base):
+    """Activity log for process instances."""
+
+    __tablename__ = "activity_logs"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    instance_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("process_instances.id"), nullable=False
+    )
+    activity_type: Mapped[ActivityType] = mapped_column(
+        SQLAEnum(ActivityType), nullable=False
+    )
+    node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    details: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    instance: Mapped[ProcessInstance] = relationship(
+        "ProcessInstance", back_populates="activities"
+    )
+
+
 class Variable(Base):
     """Process variable with history."""
 
@@ -222,3 +271,12 @@ class Variable(Base):
     instance: Mapped[ProcessInstance] = relationship(
         "ProcessInstance", back_populates="variables"
     )
+
+
+# Update ProcessInstance relationships
+ProcessInstance.activities: Mapped[list["ActivityLog"]] = relationship(
+    "ActivityLog", back_populates="instance", cascade="all, delete-orphan"
+)
+
+# Import ChatSession at the end to avoid circular imports
+from pythmata.models.chat import ChatSession  # noqa

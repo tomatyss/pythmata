@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ApiError } from '@/lib/errors';
 import { convertKeysToCamel, convertKeysToSnake } from '@/utils/case';
 import {
+  ActivityLog,
   ApiResponse,
   PaginatedResponse,
   ProcessDefinition,
@@ -13,6 +14,70 @@ import {
   StartProcessInstanceRequest,
   UpdateScriptRequest,
 } from '@/types/process';
+
+// Chat and LLM types
+interface ChatSession {
+  id: string;
+  processDefinitionId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ChatMessage {
+  id: string;
+  role: string;
+  content: string;
+  xmlContent?: string;
+  model?: string;
+  createdAt: string;
+}
+
+interface ChatRequest {
+  messages: Array<{ role: string; content: string }>;
+  processId?: string;
+  currentXml?: string;
+  model?: string;
+  sessionId?: string;
+}
+
+interface ChatResponse {
+  message: string;
+  xml?: string;
+  model: string;
+  sessionId?: string;
+}
+
+interface XmlGenerationRequest {
+  description: string;
+  model?: string;
+}
+
+interface XmlModificationRequest {
+  request: string;
+  currentXml: string;
+  model?: string;
+}
+
+interface XmlResponse {
+  xml: string;
+  explanation: string;
+}
+
+// Define a type for service tasks
+interface ServiceTask {
+  name: string;
+  description: string;
+  properties: Array<{
+    name: string;
+    label: string;
+    type: string;
+    required: boolean;
+    default?: unknown;
+    options?: string[];
+    description?: string;
+  }>;
+}
 
 class ApiService {
   private client: AxiosInstance;
@@ -147,6 +212,11 @@ class ApiService {
     return response.data;
   }
 
+  async getInstanceActivities(id: string): Promise<ApiResponse<ActivityLog[]>> {
+    const response = await this.client.get(`/instances/${id}/activities`);
+    return response.data;
+  }
+
   async getInstanceTokens(id: string): Promise<
     ApiResponse<
       {
@@ -194,6 +264,66 @@ class ApiService {
   // Statistics
   async getProcessStats(): Promise<ApiResponse<ProcessStats>> {
     const response = await this.client.get('/stats');
+    return response.data;
+  }
+
+  // Service Tasks
+  async getServiceTasks(): Promise<ApiResponse<ServiceTask[]>> {
+    try {
+      const response = await this.client.get('/services/tasks');
+
+      // Ensure the response is properly formatted
+      if (Array.isArray(response.data)) {
+        return { data: response.data };
+      } else if (response.data && Array.isArray(response.data.data)) {
+        return response.data;
+      } else {
+        console.error('Invalid service tasks response format:', response.data);
+        return { data: [] };
+      }
+    } catch (error) {
+      console.error('Error fetching service tasks:', error);
+      throw error;
+    }
+  }
+
+  // Chat and LLM methods
+  async sendChatMessage(data: ChatRequest): Promise<ChatResponse> {
+    const response = await this.client.post('/llm/chat', data);
+    return response.data;
+  }
+
+  async generateXml(
+    data: XmlGenerationRequest
+  ): Promise<ApiResponse<XmlResponse>> {
+    const response = await this.client.post('/llm/generate-xml', data);
+    return response.data;
+  }
+
+  async modifyXml(
+    data: XmlModificationRequest
+  ): Promise<ApiResponse<XmlResponse>> {
+    const response = await this.client.post('/llm/modify-xml', data);
+    return response.data;
+  }
+
+  async createChatSession(data: {
+    process_definition_id: string;
+    title?: string;
+  }): Promise<ChatSession> {
+    const response = await this.client.post('/llm/sessions', data);
+    return response.data;
+  }
+
+  async listChatSessions(processId: string): Promise<ChatSession[]> {
+    const response = await this.client.get(`/llm/sessions/${processId}`);
+    return response.data;
+  }
+
+  async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
+    const response = await this.client.get(
+      `/llm/sessions/${sessionId}/messages`
+    );
     return response.data;
   }
 }

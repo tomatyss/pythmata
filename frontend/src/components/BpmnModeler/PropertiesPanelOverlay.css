@@ -1,0 +1,18 @@
+/* Style the properties panel as an overlay */
+.bpmn-container-with-overlay-panels .djs-properties-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background-color: #f8f8f8;
+  border-left: 1px solid #ccc;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 500;
+}
+
+/* Add some spacing to the container to accommodate the palette */
+.bpmn-container-with-left-palette {
+  padding-left: 0; /* Removed the 100px padding that was creating the extra space */
+}

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '@/services/api';
-import { formatDate } from '@/utils/date';
+import { formatDate } from '@/utils/dateUtils';
 import ProcessDiagramViewer from '@/components/shared/ProcessDiagramViewer';
 import { useProcessTokens } from '@/hooks/useProcessTokens';
 import {
@@ -18,6 +18,17 @@ import {
   ListItemText,
   Paper,
 } from '@mui/material';
+import {
+  PlayArrow as StartIcon,
+  Stop as StopIcon,
+  Pause as PauseIcon,
+  PlayCircle as ResumeIcon,
+  Error as ErrorIcon,
+  CheckCircle as CompletedIcon,
+  ArrowForward as NodeIcon,
+  Add as CreateIcon,
+  Settings as ServiceIcon,
+} from '@mui/icons-material';
 
 interface ProcessVariable {
   name: string;
@@ -27,14 +38,7 @@ interface ProcessVariable {
   updatedAt: string;
 }
 
-interface ActivityLog {
-  id: string;
-  type: string;
-  nodeId: string;
-  status: string;
-  timestamp: string;
-  details?: string;
-}
+import { ActivityLog, ActivityType } from '@/types/process';
 
 interface ProcessInstanceDetails {
   id: string;
@@ -53,9 +57,15 @@ const ProcessInstance = () => {
   const [loading, setLoading] = useState(true);
   const [instance, setInstance] = useState<ProcessInstanceDetails | null>(null);
 
+  // Memoize the enabled state to prevent unnecessary hook re-runs
+  const isPollingEnabled = useMemo(
+    () => !!instanceId && instance?.status === 'RUNNING',
+    [instanceId, instance?.status]
+  );
+
   const { tokens } = useProcessTokens({
     instanceId: instanceId || '',
-    enabled: !!instanceId && instance?.status === 'RUNNING',
+    enabled: isPollingEnabled,
     pollingInterval: 2000,
   });
 
@@ -65,12 +75,14 @@ const ProcessInstance = () => {
 
       try {
         setLoading(true);
-        // First get the instance data to get the definition ID
-        const instanceResponse =
-          await apiService.getProcessInstance(instanceId);
+        // Get instance data, definition, and activities
+        const [instanceResponse, activitiesResponse] = await Promise.all([
+          apiService.getProcessInstance(instanceId),
+          apiService.getInstanceActivities(instanceId),
+        ]);
         const instanceData = instanceResponse.data;
 
-        // Then get the process definition using the correct definition ID
+        // Get process definition
         const definitionResponse = await apiService.getProcessDefinition(
           instanceData.definitionId
         );
@@ -84,7 +96,7 @@ const ProcessInstance = () => {
           startTime: instanceData.startTime,
           endTime: instanceData.endTime,
           variables: [],
-          activities: [],
+          activities: activitiesResponse.data,
           bpmnXml: definitionData.bpmnXml,
         });
       } catch (error) {
@@ -233,40 +245,118 @@ const ProcessInstance = () => {
                       <Box
                         sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
                       >
-                        <Typography>{activity.type}</Typography>
-                        <Chip
-                          label={activity.status}
-                          size="small"
-                          color={
-                            activity.status === 'completed'
-                              ? 'success'
-                              : activity.status === 'running'
-                                ? 'primary'
-                                : 'default'
-                          }
-                        />
+                        {activity.activityType ===
+                          ActivityType.INSTANCE_CREATED && (
+                          <CreateIcon color="primary" />
+                        )}
+                        {activity.activityType ===
+                          ActivityType.INSTANCE_STARTED && (
+                          <StartIcon color="primary" />
+                        )}
+                        {activity.activityType ===
+                          ActivityType.NODE_ENTERED && (
+                          <NodeIcon color="primary" />
+                        )}
+                        {activity.activityType ===
+                          ActivityType.NODE_COMPLETED && (
+                          <CompletedIcon color="success" />
+                        )}
+                        {activity.activityType ===
+                          ActivityType.INSTANCE_SUSPENDED && (
+                          <PauseIcon color="warning" />
+                        )}
+                        {activity.activityType ===
+                          ActivityType.INSTANCE_RESUMED && (
+                          <ResumeIcon color="primary" />
+                        )}
+                        {activity.activityType ===
+                          ActivityType.INSTANCE_COMPLETED && (
+                          <StopIcon color="success" />
+                        )}
+                        {activity.activityType ===
+                          ActivityType.INSTANCE_ERROR && (
+                          <ErrorIcon color="error" />
+                        )}
+                        {activity.activityType ===
+                          ActivityType.SERVICE_TASK_EXECUTED && (
+                          <ServiceIcon
+                            color={
+                              activity.details?.status === 'ERROR'
+                                ? 'error'
+                                : 'success'
+                            }
+                          />
+                        )}
+                        <Typography>
+                          {activity.activityType
+                            .split('_')
+                            .map(
+                              (word) =>
+                                word.charAt(0) + word.slice(1).toLowerCase()
+                            )
+                            .join(' ')}
+                        </Typography>
                       </Box>
                     }
                     secondary={
                       <>
-                        <Typography component="span" variant="body2">
-                          Node: {activity.nodeId}
-                        </Typography>
-                        <br />
-                        {activity.details && (
+                        {activity.nodeId && (
                           <>
                             <Typography component="span" variant="body2">
-                              {activity.details}
+                              Node: {activity.nodeId}
                             </Typography>
                             <br />
                           </>
                         )}
+
+                        {/* Service Task Executed details */}
+                        {activity.activityType ===
+                          ActivityType.SERVICE_TASK_EXECUTED &&
+                          activity.details && (
+                            <>
+                              <Typography component="span" variant="body2">
+                                Service: {String(activity.details.service_task)}
+                              </Typography>
+                              <br />
+                              {activity.details.status === 'ERROR' ? (
+                                <Typography
+                                  component="span"
+                                  variant="body2"
+                                  color="error"
+                                >
+                                  Error: {String(activity.details.error)}
+                                </Typography>
+                              ) : (
+                                <Typography component="span" variant="body2">
+                                  Result:{' '}
+                                  {JSON.stringify(
+                                    activity.details.result || {}
+                                  )}
+                                </Typography>
+                              )}
+                              <br />
+                            </>
+                          )}
+
+                        {/* Other activity details */}
+                        {activity.activityType !==
+                          ActivityType.SERVICE_TASK_EXECUTED &&
+                          activity.details && (
+                            <>
+                              <Typography component="span" variant="body2">
+                                Details: {JSON.stringify(activity.details)}
+                              </Typography>
+                              <br />
+                            </>
+                          )}
+
                         <Typography
                           component="span"
                           variant="body2"
                           color="textSecondary"
                         >
-                          {formatDate(activity.timestamp)}
+                          {formatDate(activity.timestamp)} (
+                          {formatDate(activity.createdAt)})
                         </Typography>
                       </>
                     }

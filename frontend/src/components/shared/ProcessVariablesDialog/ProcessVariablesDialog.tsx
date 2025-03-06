@@ -19,6 +19,7 @@ import { useState, useEffect } from 'react';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { ProcessVariableValue } from '@/types/process';
 
 export interface ProcessVariableDefinition {
   name: string;
@@ -35,10 +36,8 @@ export interface ProcessVariableDefinition {
   description?: string;
 }
 
-export type ProcessVariableValue = {
-  type: 'string' | 'number' | 'boolean' | 'date';
-  value: string | number | boolean | string; // date is stored as ISO string
-};
+// Re-export ProcessVariableValue for convenience
+export type { ProcessVariableValue };
 
 export interface ProcessVariables {
   [key: string]: ProcessVariableValue;
@@ -166,8 +165,9 @@ const ProcessVariablesDialog = ({
             processedValue = Boolean(rawValue);
             break;
           case 'date':
+            // Keep Date objects as Date objects for the ProcessVariableValue
             processedValue =
-              rawValue instanceof Date ? rawValue.toISOString() : rawValue;
+              rawValue instanceof Date ? rawValue : new Date(String(rawValue));
             break;
           default:
             processedValue = rawValue;
@@ -175,7 +175,7 @@ const ProcessVariablesDialog = ({
 
         acc[def.name] = {
           type: def.type,
-          value: processedValue as string | number | boolean,
+          value: processedValue,
         };
       }
       return acc;

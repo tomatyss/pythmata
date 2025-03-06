@@ -156,6 +156,39 @@ EXTENSION_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
   </bpmn:process>
 </bpmn:definitions>"""
 
+# Sample BPMN XML for testing service task config
+SERVICE_TASK_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  id="Definitions_5"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_5" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_1">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <pythmata:serviceTaskConfig taskName="logger">
+          <pythmata:properties>
+            <pythmata:property name="level" value="info" />
+            <pythmata:property name="message" value="Test message" />
+            <pythmata:property name="include_variables" value="true" />
+            <pythmata:property name="variable_filter" value="var1,var2" />
+          </pythmata:properties>
+        </pythmata:serviceTaskConfig>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_1">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_1" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="EndEvent_1" />
+  </bpmn:process>
+</bpmn:definitions>"""
+
 
 @pytest.mark.asyncio
 class TestBPMNParser:
@@ -310,3 +343,26 @@ class TestBPMNParser:
         assert task.output_variables is not None
         assert len(task.output_variables) == 1
         assert task.output_variables["result"] == "integer"
+
+    async def test_parse_service_task_config(self, parser):
+        """Test parsing of service task configuration."""
+        # Parse process with service task config XML
+        result = parser.parse(SERVICE_TASK_PROCESS_XML)
+
+        nodes = result["nodes"]
+
+        # Test service task with service task config
+        task = next(n for n in nodes if isinstance(n, Task) and n.type == "serviceTask")
+        assert task.id == "Task_1"
+
+        # Test service task config
+        assert "serviceTaskConfig" in task.extensions
+        service_config = task.extensions["serviceTaskConfig"]
+        assert service_config["task_name"] == "logger"
+
+        # Test properties
+        properties = service_config["properties"]
+        assert properties["level"] == "info"
+        assert properties["message"] == "Test message"
+        assert properties["include_variables"] == "true"
+        assert properties["variable_filter"] == "var1,var2"

@@ -68,16 +68,25 @@ export interface ProcessVariable {
 }
 
 // Activity Types
+export enum ActivityType {
+  INSTANCE_CREATED = 'INSTANCE_CREATED',
+  INSTANCE_STARTED = 'INSTANCE_STARTED',
+  NODE_ENTERED = 'NODE_ENTERED',
+  NODE_COMPLETED = 'NODE_COMPLETED',
+  SERVICE_TASK_EXECUTED = 'SERVICE_TASK_EXECUTED',
+  INSTANCE_SUSPENDED = 'INSTANCE_SUSPENDED',
+  INSTANCE_RESUMED = 'INSTANCE_RESUMED',
+  INSTANCE_COMPLETED = 'INSTANCE_COMPLETED',
+  INSTANCE_ERROR = 'INSTANCE_ERROR',
+}
+
 export interface ActivityLog {
   id: string;
   instanceId: string;
-  nodeId: string;
-  activityType: string;
-  status: string;
-  startTime: string;
-  endTime?: string;
-  result?: Record<string, unknown>;
-  errorMessage?: string;
+  activityType: ActivityType;
+  nodeId?: string;
+  details?: Record<string, unknown>;
+  timestamp: string;
   createdAt: string;
 }
 
@@ -142,7 +151,7 @@ export interface UpdateProcessDefinitionRequest {
 }
 
 export interface ProcessVariableValue {
-  type: 'string' | 'number' | 'boolean' | 'date';
+  type: 'string' | 'number' | 'boolean' | 'date' | 'integer' | 'float' | 'json';
   value: string | number | boolean | Date | null;
 }
 
