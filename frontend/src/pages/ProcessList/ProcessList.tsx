@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '@/services/api';
-import { formatDate } from '@/utils/date';
+import { formatDate } from '@/utils/dateUtils';
 import { ProcessDefinition } from '@/types/process';
 import {
   prepareVariablesForBackend,

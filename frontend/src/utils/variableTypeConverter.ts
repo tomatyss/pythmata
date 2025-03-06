@@ -15,16 +15,19 @@ import { ProcessVariableDefinition } from '@/types/process';
 export const convertTypeToBackend = (
   type: string,
   value?: number | string | boolean | Date | null
-): string => {
+): 'string' | 'number' | 'boolean' | 'date' => {
   if (type === 'number') {
     // If value is provided, check if it's an integer
     if (value !== undefined && value !== null) {
-      return Number.isInteger(Number(value)) ? 'integer' : 'float';
+      return 'number';
     }
-    // Default to integer if no value is provided
-    return 'integer';
+    // Default to 'number' if no value is provided
+    return 'number';
   }
-  return type;
+  if (type === 'string' || type === 'boolean' || type === 'date') {
+    return type;
+  }
+  return 'number'; // Default to 'number' for unsupported types
 };
 
 /**
@@ -59,6 +62,10 @@ export const convertDefinitionToBackend = (
  */
 export const convertDefinitionsToBackend = (
   definitions: ProcessVariableDefinition[]
-): Record<string, unknown>[] => {
-  return definitions.map(convertDefinitionToBackend);
+): ProcessVariableDefinition[] => {
+  return definitions.map((definition) => ({
+    ...definition,
+    type: convertTypeToBackend(definition.type, definition.defaultValue),
+    defaultValue: definition.defaultValue,
+  }));
 };

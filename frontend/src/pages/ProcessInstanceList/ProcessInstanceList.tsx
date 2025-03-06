@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import apiService from '@/services/api';
-import { formatDate } from '@/utils/date';
+import { formatDate } from '@/utils/dateUtils';
 import {
   Box,
   Typography,

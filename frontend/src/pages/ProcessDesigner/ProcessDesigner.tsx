@@ -75,7 +75,14 @@ const DEFAULT_EMPTY_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
  *
  * @returns ProcessDesigner component
  */
-const ProcessDesigner = (): React.ReactElement => {
+/**
+ * ProcessDesigner component
+ *
+ * Optimized for maintainability and scalability.
+ *
+ * @returns ProcessDesigner component
+ */
+const ProcessDesigner: React.FC = () => {
   // Router hooks
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
@@ -111,7 +118,7 @@ const ProcessDesigner = (): React.ReactElement => {
 
   // Load process data
   useEffect(() => {
-    const loadProcess = async (): Promise<void> => {
+    const loadProcess = async () => {
       if (id) {
         try {
           const response = await apiService.getProcessDefinition(id);
@@ -138,7 +145,7 @@ const ProcessDesigner = (): React.ReactElement => {
   useEffect(() => {
     if (loading || !containerRef.current) return;
 
-    const initializeModeler = async (): Promise<void> => {
+    const initializeModeler = async () => {
       try {
         if (!containerRef.current) return;
 
@@ -191,7 +198,7 @@ const ProcessDesigner = (): React.ReactElement => {
   }, [loading, bpmnXml, activeTab]);
 
   // Set up event listeners for the modeler
-  const setupEventListeners = (): void => {
+  const setupEventListeners = () => {
     if (!modelerRef.current) return;
 
     const eventBus = modelerRef.current.get('eventBus');
@@ -224,7 +231,7 @@ const ProcessDesigner = (): React.ReactElement => {
   };
 
   // Position the palette on the left side
-  const positionPalette = (): void => {
+  const positionPalette = () => {
     setTimeout(() => {
       const paletteElement = document.querySelector('.djs-palette');
       if (paletteElement) {
@@ -256,7 +263,7 @@ const ProcessDesigner = (): React.ReactElement => {
   };
 
   // Copy XML to clipboard
-  const handleCopyXml = async (): Promise<void> => {
+  const handleCopyXml = async () => {
     if (!modelerRef.current) return;
 
     try {
@@ -270,7 +277,7 @@ const ProcessDesigner = (): React.ReactElement => {
   };
 
   // Save process
-  const handleSave = async (): Promise<void> => {
+  const handleSave = async () => {
     if (!modelerRef.current || !processName) return;
 
     try {
@@ -309,7 +316,7 @@ const ProcessDesigner = (): React.ReactElement => {
   };
 
   // Apply XML from editor to modeler
-  const applyXmlChanges = (): void => {
+  const applyXmlChanges = () => {
     try {
       if (modelerRef.current) {
         modelerRef.current.importXML(bpmnXml);
@@ -324,7 +331,7 @@ const ProcessDesigner = (): React.ReactElement => {
   };
 
   // Handle XML changes from chat panel
-  const handleApplyXmlFromChat = (xml: string): void => {
+  const handleApplyXmlFromChat = (xml: string) => {
     if (modelerRef.current) {
       try {
         modelerRef.current
