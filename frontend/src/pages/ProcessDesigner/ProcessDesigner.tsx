@@ -31,6 +31,7 @@ import ElementPanel from '@/components/shared/ElementPanel';
 
 // Import types
 import { ProcessVariableDefinition } from '@/types/process';
+import { convertDefinitionsToBackend } from '@/utils/variableTypeConverter';
 
 // Import styles
 import 'bpmn-js/dist/assets/diagram-js.css';
@@ -276,10 +277,14 @@ const ProcessDesigner = (): React.ReactElement => {
       setSaving(true);
       const { xml } = await modelerRef.current.saveXML({ format: true });
 
+      // Convert variable definitions to backend format
+      const convertedVariableDefinitions =
+        convertDefinitionsToBackend(variableDefinitions);
+
       const processData = {
         name: processName,
         bpmnXml: xml,
-        variableDefinitions: variableDefinitions,
+        variableDefinitions: convertedVariableDefinitions,
       };
 
       if (id) {

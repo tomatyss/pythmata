@@ -7,6 +7,10 @@ import {
 } from '@/types/process';
 import apiService from '@/services/api';
 import { ProcessVariableValue } from '@/types/process';
+import {
+  prepareVariablesForBackend,
+  VariableValidationError,
+} from '@/utils/validateVariables';
 
 interface ProcessState {
   // Process Definitions
@@ -182,13 +186,33 @@ const useProcessStore = create<ProcessState>()(
     ) => {
       try {
         set({ instancesLoading: true, instancesError: null });
-        await apiService.startProcessInstance({ definitionId, variables });
-        await get().fetchInstances();
-      } catch {
-        set({
-          instancesLoading: false,
-          instancesError: 'Failed to start process instance',
+
+        // Validate and prepare variables for backend
+        const preparedVariables = variables
+          ? prepareVariablesForBackend(variables)
+          : undefined;
+
+        // Start the process instance with validated variables
+        await apiService.startProcessInstance({
+          definitionId,
+          variables: preparedVariables,
         });
+        await get().fetchInstances();
+      } catch (error) {
+        console.error('Error starting process instance:', error);
+
+        // Handle validation errors specifically
+        if (error instanceof VariableValidationError) {
+          set({
+            instancesLoading: false,
+            instancesError: `Variable validation error: ${error.message}`,
+          });
+        } else {
+          set({
+            instancesLoading: false,
+            instancesError: 'Failed to start process instance',
+          });
+        }
       }
     },
 
