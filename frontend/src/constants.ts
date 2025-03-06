@@ -114,12 +114,12 @@ export const API_ENDPOINTS = {
     ME: '/auth/me',
   },
   PROCESS: {
-    LIST: '/api/processes',
-    CREATE: '/api/processes',
-    GET: (id: string) => `/api/processes/${id}`,
-    UPDATE: (id: string) => `/api/processes/${id}`,
-    DELETE: (id: string) => `/api/processes/${id}`,
-    INSTANCES: (id: string) => `/api/processes/${id}/instances`,
+    LIST: '/processes',
+    CREATE: '/processes',
+    GET: (id: string) => `/processes/${id}`,
+    UPDATE: (id: string) => `/processes/${id}`,
+    DELETE: (id: string) => `/processes/${id}`,
+    INSTANCES: (id: string) => `/processes/${id}/instances`,
   },
 } as const;
 

@@ -1,4 +1,5 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { AxiosInstance, AxiosResponse } from 'axios';
+import axiosInstance from '@/lib/axios';
 import { ApiError } from '@/lib/errors';
 import { convertKeysToCamel, convertKeysToSnake } from '@/utils/case';
 import {
@@ -83,12 +84,8 @@ class ApiService {
   private client: AxiosInstance;
 
   constructor() {
-    this.client = axios.create({
-      baseURL: '/api',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Use the existing axios instance that's already configured with auth token
+    this.client = axiosInstance;
 
     // Add request interceptor to convert camelCase to snake_case
     this.client.interceptors.request.use(
