@@ -151,7 +151,7 @@ export interface UpdateProcessDefinitionRequest {
 }
 
 export interface ProcessVariableValue {
-  type: 'string' | 'number' | 'boolean' | 'date';
+  type: 'string' | 'number' | 'boolean' | 'date' | 'integer' | 'float' | 'json';
   value: string | number | boolean | Date | null;
 }
 

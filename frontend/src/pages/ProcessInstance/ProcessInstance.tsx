@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import apiService from '@/services/api';
-import { formatDate } from '@/utils/date';
+import { formatDate } from '@/utils/dateUtils';
 import ProcessDiagramViewer from '@/components/shared/ProcessDiagramViewer';
 import { useProcessTokens } from '@/hooks/useProcessTokens';
 import {

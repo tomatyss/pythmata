@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '@/services/api';
-import { formatDate } from '@/utils/date';
+import { formatDate } from '@/utils/dateUtils';
 import { ProcessDefinition } from '@/types/process';
+import {
+  prepareVariablesForBackend,
+  VariableValidationError,
+} from '@/utils/validateVariables';
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import {
   Box,
@@ -77,7 +81,9 @@ const ProcessList = () => {
         navigate(`/processes/${process.id}/instances/${response.data.id}`);
       } catch (error) {
         console.error('Failed to start process:', error);
-        if (error instanceof Error) {
+        if (error instanceof VariableValidationError) {
+          alert(`Variable validation error: ${error.message}`);
+        } else if (error instanceof Error) {
           alert(error.message);
         } else {
           alert('An unexpected error occurred');
@@ -95,15 +101,21 @@ const ProcessList = () => {
     if (!selectedProcess) return;
 
     try {
+      // Validate and prepare variables for backend
+      const preparedVariables = prepareVariablesForBackend(variables);
+
       const response = await apiService.startProcessInstance({
         definitionId: selectedProcess.id,
-        variables,
+        variables: preparedVariables,
       });
+
       navigate(
         `/processes/${selectedProcess.id}/instances/${response.data.id}`
       );
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof VariableValidationError) {
+        alert(`Variable validation error: ${error.message}`);
+      } else if (error instanceof Error) {
         alert(error.message);
       } else {
         alert('An unexpected error occurred');
