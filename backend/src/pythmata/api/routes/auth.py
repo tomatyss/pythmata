@@ -76,17 +76,17 @@ async def register(
         )
         session.add(db_user)
         await session.flush()  # Ensure user is created before commit
-        
+
     # Commit the outer transaction
     await session.commit()
-    
+
     # Load the user with relationships
     stmt = select(UserModel).where(UserModel.id == db_user.id).options(
         selectinload(UserModel.roles)
     )
     result = await session.execute(stmt)
     db_user = result.scalar_one()
-    
+
     # Return through Pydantic model validation
     return User.model_validate(db_user)
 

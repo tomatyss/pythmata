@@ -12,7 +12,6 @@ from pythmata.api.routes.stats import router as stats_router
 router = APIRouter()
 
 # Include all sub-routers
-router.include_router(auth_router)
 router.include_router(process_definitions_router)
 router.include_router(process_instances_router)
 router.include_router(scripts_router)

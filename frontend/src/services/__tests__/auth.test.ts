@@ -56,7 +56,7 @@ describe('AuthService', () => {
 
     it('should throw error on invalid credentials', async () => {
       const error = new AxiosError();
-      error.response = { status: 401 } as any;
+      error.response = { status: 401 } as import('axios').AxiosResponse;
       mockPost.mockRejectedValueOnce(error);
 
       await expect(authService.login(credentials)).rejects.toThrow(
@@ -87,12 +87,13 @@ describe('AuthService', () => {
       const result = await authService.register(registerData);
 
       expect(mockPost).toHaveBeenCalledWith('/auth/register', registerData);
+      // Authorization header should not be included for registration
       expect(result).toEqual(mockUser);
     });
 
     it('should throw error on duplicate email', async () => {
       const error = new AxiosError();
-      error.response = { status: 400 } as any;
+      error.response = { status: 400 } as import('axios').AxiosResponse;
       mockPost.mockRejectedValueOnce(error);
 
       await expect(authService.register(registerData)).rejects.toThrow(
@@ -122,7 +123,7 @@ describe('AuthService', () => {
 
     it('should throw error on unauthorized access', async () => {
       const error = new AxiosError();
-      error.response = { status: 401 } as any;
+      error.response = { status: 401 } as import('axios').AxiosResponse;
       mockGet.mockRejectedValueOnce(error);
 
       await expect(authService.getCurrentUser()).rejects.toThrow(

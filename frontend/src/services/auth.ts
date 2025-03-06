@@ -14,13 +14,19 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<void> {
     try {
-      const formData = new FormData();
-      formData.append('username', credentials.username);
-      formData.append('password', credentials.password);
+      // Use URLSearchParams instead of FormData for OAuth2 password flow
+      const params = new URLSearchParams();
+      params.append('username', credentials.username);
+      params.append('password', credentials.password);
 
       const response = await axiosInstance.post<AuthResponse>(
         API_ENDPOINTS.AUTH.LOGIN,
-        formData
+        params,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
       );
 
       localStorage.setItem(AUTH_TOKEN_KEY, response.data.access_token);
@@ -28,8 +34,12 @@ class AuthService {
       if (err instanceof AxiosError) {
         if (err.response?.status === 401) {
           throw new Error(ERROR_MESSAGES.INVALID_CREDENTIALS);
+        } else if (err.response?.status === 422) {
+          console.error('Validation error:', err.response.data);
+          throw new Error(ERROR_MESSAGES.VALIDATION);
         }
       }
+      console.error('Login error:', err);
       throw new Error(ERROR_MESSAGES.GENERIC);
     }
   }
@@ -48,8 +58,12 @@ class AuthService {
       if (err instanceof AxiosError) {
         if (err.response?.status === 400) {
           throw new Error(ERROR_MESSAGES.EMAIL_EXISTS);
+        } else if (err.response?.status === 422) {
+          console.error('Validation error:', err.response.data);
+          throw new Error(ERROR_MESSAGES.VALIDATION);
         }
       }
+      console.error('Registration error:', err);
       throw new Error(ERROR_MESSAGES.GENERIC);
     }
   }
@@ -65,18 +79,26 @@ class AuthService {
       if (err instanceof AxiosError) {
         if (err.response?.status === 401) {
           throw new Error(ERROR_MESSAGES.UNAUTHORIZED);
+        } else if (err.response?.status === 422) {
+          console.error('Validation error:', err.response.data);
+          throw new Error(ERROR_MESSAGES.VALIDATION);
         }
       }
+      console.error('Get user error:', err);
       throw new Error(ERROR_MESSAGES.GENERIC);
     }
   }
 
   /**
-   * Logout user
+   * Logout user - removes token from storage
+   * Uses try-finally to ensure token is removed even if server request fails
    */
   async logout(): Promise<void> {
     try {
       await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT);
+    } catch (err) {
+      console.error('Logout server request failed:', err);
+      // We continue to remove the token even if the server request fails
     } finally {
       localStorage.removeItem(AUTH_TOKEN_KEY);
     }

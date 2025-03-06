@@ -1,11 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import App from './App';
 import theme from './theme';
-import routes from './routes';
 import './index.css';
 
 // Create React Query client
@@ -19,9 +18,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Create router
-const router = createBrowserRouter(routes);
-
 // Create root element
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -34,7 +30,7 @@ ReactDOM.createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <RouterProvider router={router} />
+        <App />
       </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>
