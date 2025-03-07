@@ -68,7 +68,15 @@ const useWebSocket = ({
       ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          onMessage?.(message);
+          if (message.type === 'VARIABLE_UPDATED') {
+            // Handle token updates
+            // Ensure setUpdates is defined or passed as a parameter
+            console.warn(
+              'setUpdates is not defined. Please ensure it is passed or declared.'
+            );
+          } else {
+            onMessage?.(message);
+          }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
         }

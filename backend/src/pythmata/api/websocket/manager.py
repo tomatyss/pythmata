@@ -67,7 +67,12 @@ class ConnectionManager:
         if instance_id not in self.active_connections:
             return
 
-        message = WebSocketMessage(type=message_type, payload=data)
+        # Include token details in the payload if available
+        token_details = data.get("tokens", [])
+        message = WebSocketMessage(
+            type=message_type,
+            payload={**data, "tokens": token_details},
+        )
         disconnected = set()
 
         for connection in self.active_connections[instance_id]:
