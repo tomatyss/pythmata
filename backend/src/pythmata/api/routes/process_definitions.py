@@ -129,15 +129,19 @@ async def create_process(
         version = (existing_version or 0) + 1 if data.version is None else data.version
 
         # Log variable definitions for debugging
-        logger.info(f"Creating process with {len(data.variable_definitions or [])} variable definitions")
+        logger.info(
+            f"Creating process with {len(data.variable_definitions or [])} variable definitions"
+        )
         if data.variable_definitions:
             logger.debug(f"Variable definitions: {data.variable_definitions}")
-            
+
         process = ProcessDefinitionModel(
-            name=data.name, 
-            bpmn_xml=data.bpmn_xml, 
+            name=data.name,
+            bpmn_xml=data.bpmn_xml,
             version=version,
-            variable_definitions=[definition.dict() for definition in data.variable_definitions or []]
+            variable_definitions=[
+                definition.dict() for definition in data.variable_definitions or []
+            ],
         )
         session.add(process)
         await session.commit()
@@ -178,9 +182,13 @@ async def update_process(
         else:
             process.version += 1  # Auto-increment version if not specified
         if data.variable_definitions is not None:
-            logger.info(f"Updating process with {len(data.variable_definitions)} variable definitions")
+            logger.info(
+                f"Updating process with {len(data.variable_definitions)} variable definitions"
+            )
             logger.debug(f"Variable definitions: {data.variable_definitions}")
-            process.variable_definitions = [definition.model_dump() for definition in data.variable_definitions]
+            process.variable_definitions = [
+                definition.model_dump() for definition in data.variable_definitions
+            ]
         process.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
@@ -197,9 +205,7 @@ async def update_process(
 async def delete_process(process_id: str, session: AsyncSession = Depends(get_session)):
     """Delete a process definition and all its related instances."""
     result = await session.execute(
-        select(ProcessDefinitionModel).filter(
-            ProcessDefinitionModel.id == process_id
-        )
+        select(ProcessDefinitionModel).filter(ProcessDefinitionModel.id == process_id)
     )
     process = result.scalar_one_or_none()
     if not process:

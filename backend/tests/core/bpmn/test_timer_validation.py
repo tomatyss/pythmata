@@ -1,6 +1,5 @@
 """Tests for BPMN timer event validation."""
 
-
 import pytest
 
 from pythmata.core.bpmn.validator import BPMNValidator

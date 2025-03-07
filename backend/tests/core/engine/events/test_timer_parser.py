@@ -39,9 +39,11 @@ class TestTimerParser:
         """Test parsing duration timer definitions."""
         # Setup mock datetime with context manager for better isolation
         now = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        with patch("pythmata.core.engine.events.timer_parser.datetime") as mock_datetime:
+        with patch(
+            "pythmata.core.engine.events.timer_parser.datetime"
+        ) as mock_datetime:
             mock_datetime.now.return_value = now
-            
+
             # Test duration timer
             timer_def = parse_timer_definition("PT1H")
             assert timer_def is not None
@@ -54,7 +56,9 @@ class TestTimerParser:
         """Test parsing cycle timer definitions."""
         # Setup mock datetime with context manager for better isolation
         now = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
-        with patch("pythmata.core.engine.events.timer_parser.datetime") as mock_datetime:
+        with patch(
+            "pythmata.core.engine.events.timer_parser.datetime"
+        ) as mock_datetime:
             mock_datetime.now.return_value = now
 
             # Test cycle timer
@@ -128,11 +132,17 @@ class TestTimerParser:
         </bpmn:definitions>
         """
 
-        with patch("pythmata.core.engine.events.timer_parser.extract_timer_definition") as mock_extract:
+        with patch(
+            "pythmata.core.engine.events.timer_parser.extract_timer_definition"
+        ) as mock_extract:
             # Setup mock
             mock_extract.return_value = "PT1H"
-            
+
             # Test finding timer events
             timer_events = find_timer_events_in_definition(bpmn_xml, "prefix:", "def1")
             assert len(timer_events) == 1
-            assert timer_events[0] == ("prefix:def1:StartEvent_1", "StartEvent_1", "PT1H")
+            assert timer_events[0] == (
+                "prefix:def1:StartEvent_1",
+                "StartEvent_1",
+                "PT1H",
+            )

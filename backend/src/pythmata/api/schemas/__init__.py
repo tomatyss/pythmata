@@ -18,7 +18,29 @@ from pythmata.api.schemas.process import (
 from pythmata.api.schemas.script import ScriptContent, ScriptResponse
 from pythmata.api.schemas.token import TokenResponse
 
+from .auth import (
+    Role,
+    RoleCreate,
+    RoleUpdate,
+    Token,
+    TokenData,
+    User,
+    UserCreate,
+    UserInDB,
+    UserUpdate,
+)
+
 __all__ = [
+    # Auth schemas
+    "Token",
+    "TokenData",
+    "User",
+    "UserCreate",
+    "UserUpdate",
+    "Role",
+    "RoleCreate",
+    "RoleUpdate",
+    "UserInDB",
     # Activity schemas
     "ActivityLogResponse",
     # Base schemas

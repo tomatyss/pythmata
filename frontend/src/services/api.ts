@@ -1,6 +1,8 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { AxiosInstance, AxiosResponse } from 'axios';
+import axiosInstance from '@/lib/axios';
 import { ApiError } from '@/lib/errors';
 import { convertKeysToCamel, convertKeysToSnake } from '@/utils/case';
+import { API_ENDPOINTS } from '@/constants';
 import {
   ActivityLog,
   ApiResponse,
@@ -83,12 +85,8 @@ class ApiService {
   private client: AxiosInstance;
 
   constructor() {
-    this.client = axios.create({
-      baseURL: '/api',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Use the existing axios instance that's already configured with auth token
+    this.client = axiosInstance;
 
     // Add request interceptor to convert camelCase to snake_case
     this.client.interceptors.request.use(
@@ -176,12 +174,40 @@ class ApiService {
     pageSize?: number;
     status?: string;
   }): Promise<ApiResponse<PaginatedResponse<ProcessInstance>>> {
+    // Create common params object without definitionId
     const params = {
-      ...(options?.definitionId ? { definition_id: options.definitionId } : {}),
       ...(options?.page ? { page: options.page } : {}),
       ...(options?.pageSize ? { page_size: options.pageSize } : {}),
       ...(options?.status ? { status: this.statusMap[options.status] } : {}),
     };
+
+    // If definitionId is provided, use the process-specific endpoint
+    if (options?.definitionId) {
+      try {
+        // Use the endpoint from constants that matches the frontend route
+        const response = await this.client.get(
+          API_ENDPOINTS.PROCESS.INSTANCES(options.definitionId),
+          { params }
+        );
+        return response.data;
+      } catch (error) {
+        // If the new endpoint fails, fall back to the original endpoint
+        console.warn(
+          'Failed to fetch instances from process-specific endpoint, falling back to generic endpoint',
+          error
+        );
+        return this.client
+          .get('/instances', {
+            params: {
+              ...params,
+              definition_id: options.definitionId,
+            },
+          })
+          .then((response) => response.data);
+      }
+    }
+
+    // If no definitionId, use the original endpoint
     const response = await this.client.get('/instances', { params });
     return response.data;
   }

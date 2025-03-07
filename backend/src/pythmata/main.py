@@ -6,10 +6,12 @@ and defines the API endpoints. It serves as the main entry point for the
 Pythmata workflow engine.
 """
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from pythmata.api.routes import router as process_router
+from pythmata.api.routes.auth import router as auth_router
+from pythmata.core.auth import get_current_active_user
 from pythmata.core.utils import lifespan
 from pythmata.utils.logger import get_logger
 
@@ -40,4 +42,7 @@ async def health_check():
 
 
 # Import and include routers
-app.include_router(process_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(
+    process_router, prefix="/api", dependencies=[Depends(get_current_active_user)]
+)

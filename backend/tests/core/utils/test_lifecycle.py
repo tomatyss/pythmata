@@ -26,7 +26,10 @@ async def test_lifespan():
             "pythmata.core.utils.lifecycle.StateManager",
             return_value=mock_state_manager,
         ),
-        patch("pythmata.core.utils.lifecycle.Settings", new=MagicMock(return_value=mock_settings)),
+        patch(
+            "pythmata.core.utils.lifecycle.Settings",
+            new=MagicMock(return_value=mock_settings),
+        ),
         patch("pythmata.core.utils.lifecycle.get_db", return_value=mock_db),
         patch("pythmata.core.utils.lifecycle.init_db"),
         patch(
@@ -34,8 +37,12 @@ async def test_lifespan():
             return_value=mock_timer_scheduler,
         ),
         patch("pythmata.core.utils.lifecycle.discover_and_load_plugins"),
-        patch("pythmata.core.utils.lifecycle.register_event_handlers") as mock_register_handlers,
-        patch("pythmata.core.utils.lifecycle.get_service_task_registry") as mock_registry,
+        patch(
+            "pythmata.core.utils.lifecycle.register_event_handlers"
+        ) as mock_register_handlers,
+        patch(
+            "pythmata.core.utils.lifecycle.get_service_task_registry"
+        ) as mock_registry,
     ):
         # Configure mock registry to return some tasks
         mock_registry.return_value.list_tasks.return_value = [
@@ -80,7 +87,10 @@ async def test_lifespan_error_handling():
             "pythmata.core.utils.lifecycle.StateManager",
             return_value=mock_state_manager,
         ),
-        patch("pythmata.core.utils.lifecycle.Settings", new=MagicMock(return_value=mock_settings)),
+        patch(
+            "pythmata.core.utils.lifecycle.Settings",
+            new=MagicMock(return_value=mock_settings),
+        ),
         patch("pythmata.core.utils.lifecycle.get_db", return_value=mock_db),
         patch("pythmata.core.utils.lifecycle.init_db"),
         patch(
@@ -89,7 +99,9 @@ async def test_lifespan_error_handling():
         ),
         patch("pythmata.core.utils.lifecycle.discover_and_load_plugins"),
         patch("pythmata.core.utils.lifecycle.register_event_handlers"),
-        patch("pythmata.core.utils.lifecycle.get_service_task_registry") as mock_registry,
+        patch(
+            "pythmata.core.utils.lifecycle.get_service_task_registry"
+        ) as mock_registry,
     ):
         # Configure mock registry to return some tasks
         mock_registry.return_value.list_tasks.return_value = [
