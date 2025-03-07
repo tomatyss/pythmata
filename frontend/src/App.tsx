@@ -7,6 +7,8 @@ import Dashboard from '@/pages/Dashboard';
 import ProcessList from '@/pages/ProcessList';
 import ProcessDesigner from '@/pages/ProcessDesigner';
 import ProcessInstance from '@/pages/ProcessInstance';
+import ProcessInstanceList from '@/pages/ProcessInstanceList';
+import ProcessDiagram from '@/pages/ProcessDiagram';
 import NotFound from '@/pages/NotFound';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -40,10 +42,11 @@ const App = () => {
                 <Route path="new" element={<ProcessDesigner />} />
                 <Route path=":id">
                   <Route index element={<ProcessDesigner />} />
-                  <Route
-                    path="instances/:instanceId"
-                    element={<ProcessInstance />}
-                  />
+                  <Route path="diagram" element={<ProcessDiagram />} />
+                  <Route path="instances">
+                    <Route index element={<ProcessInstanceList />} />
+                    <Route path=":instanceId" element={<ProcessInstance />} />
+                  </Route>
                 </Route>
               </Route>
 
