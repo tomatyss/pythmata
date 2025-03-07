@@ -141,15 +141,12 @@ describe('GatewayPropertiesPanel', () => {
         'MockModeler.get("elementRegistry") returned undefined or invalid'
       );
     }
-    const flowElement = elementRegistry.get('Flow_2');
-    console.log('Flow Element:', flowElement);
     if (!modeling?.updateProperties) {
       throw new Error(
         'MockModeler.get("modeling") returned undefined or invalid'
       );
     }
     const updatePropertiesSpy = modeling.updateProperties;
-    console.log('Spy calls before assertion:', updatePropertiesSpy.mock.calls);
     console.warn('Spy calls:', updatePropertiesSpy.mock.calls);
     expect(updatePropertiesSpy).toHaveBeenCalledWith(mockExclusiveGateway, {
       default: expect.anything(),

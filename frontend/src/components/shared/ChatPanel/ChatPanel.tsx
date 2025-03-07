@@ -96,20 +96,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     return undefined;
   }, [copied]);
 
-  // Load existing chat session if process ID is provided
-  useEffect(() => {
-    if (processId) {
-      loadChatSessions();
-    }
-  }, [processId]);
-
   const loadChatSessions = async () => {
     if (!processId) return;
 
     try {
-      console.log('Loading chat sessions for process:', processId);
       const response = await apiService.listChatSessions(processId);
-      console.log('Chat sessions response:', response);
 
       if (response && response.length > 0) {
         // Format and store all sessions
@@ -120,7 +111,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           updatedAt: new Date(session.updatedAt),
         }));
 
-        console.log('Formatted sessions:', formattedSessions);
         setChatSessions(formattedSessions);
 
         // Use the most recent session
@@ -130,7 +120,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           await loadMessagesForSession(mostRecentSession.id);
         }
       } else {
-        console.log('No chat sessions found or empty response');
         setChatSessions([]);
 
         // Create a new session if none exists
@@ -144,11 +133,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     }
   };
 
+  // Load existing chat session if process ID is provided
+  useEffect(() => {
+    if (processId) {
+      loadChatSessions();
+    }
+  }, [processId, loadChatSessions]);
+
   const loadMessagesForSession = async (sessionId: string) => {
     setLoadingMessages(true);
     try {
       const messagesResponse = await apiService.getChatMessages(sessionId);
-      console.log('Messages response:', messagesResponse);
 
       if (messagesResponse && messagesResponse.length > 0) {
         const formattedMessages = messagesResponse.map((msg) => ({

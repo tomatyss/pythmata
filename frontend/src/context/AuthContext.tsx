@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import type { AuthContextType } from './auth-utils';
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 // Main Provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {

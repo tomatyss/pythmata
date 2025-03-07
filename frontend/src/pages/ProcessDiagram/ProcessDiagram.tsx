@@ -120,7 +120,7 @@ const ProcessDiagram = (): React.ReactElement => {
       return () => clearInterval(interval);
     }
     return undefined;
-  }, [tabValue, fetchActiveInstances]);
+  }, [tabValue, fetchActiveInstances, tabValue]);
 
   useEffect(() => {
     const fetchProcess = async () => {

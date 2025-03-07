@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { useLocation, Navigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { PrivateRoute } from '../PrivateRoute';
 import { useAuthContext } from '@/context/AuthContext';
 import { ROUTES } from '@/constants';

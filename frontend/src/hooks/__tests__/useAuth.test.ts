@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../useAuth';
 import authService from '@/services/auth';
-import { ROUTES, ERROR_MESSAGES } from '@/constants';
+import { ROUTES } from '@/constants';
 import type { User } from '@/types/auth';
 
 // Mock dependencies
@@ -93,7 +93,7 @@ describe('useAuth', () => {
     await act(async () => {
       try {
         await result.current.login(credentials);
-      } catch (e) {
+      } catch {
         // Expected error
       }
     });
@@ -144,7 +144,7 @@ describe('useAuth', () => {
     await act(async () => {
       try {
         await result.current.register(registerData);
-      } catch (e) {
+      } catch {
         // Expected error
       }
     });

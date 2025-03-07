@@ -2,7 +2,6 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuthContext } from '../AuthContext';
-import { ROUTES } from '@/constants';
 import type { User } from '@/types/auth';
 import type { AuthContextType } from '../auth-utils';
 
