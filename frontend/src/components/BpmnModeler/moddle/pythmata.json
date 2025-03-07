@@ -1,0 +1,90 @@
+{
+  "name": "Pythmata",
+  "uri": "http://pythmata.org/schema/1.0/bpmn",
+  "prefix": "pythmata",
+  "xml": {
+    "tagAlias": "lowerCase"
+  },
+  "types": [
+    {
+      "name": "ElementConfig",
+      "superClass": ["Element"],
+      "properties": [
+        {
+          "name": "displayName",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "documentation",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "inputs",
+          "type": "Properties"
+        },
+        {
+          "name": "outputs",
+          "type": "Properties"
+        }
+      ]
+    },
+    {
+      "name": "ServiceTaskConfig",
+      "superClass": ["ElementConfig"],
+      "properties": [
+        {
+          "name": "taskName",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "properties",
+          "type": "Properties"
+        }
+      ]
+    },
+    {
+      "name": "TimerEventConfig",
+      "superClass": ["ElementConfig"],
+      "properties": [
+        {
+          "name": "timerType",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "timerValue",
+          "isAttr": true,
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "Properties",
+      "properties": [
+        {
+          "name": "values",
+          "isMany": true,
+          "type": "Property"
+        }
+      ]
+    },
+    {
+      "name": "Property",
+      "properties": [
+        {
+          "name": "name",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "value",
+          "isAttr": true,
+          "type": "String"
+        }
+      ]
+    }
+  ]
+}

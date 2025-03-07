@@ -3,8 +3,10 @@ import { RouteObject } from 'react-router-dom';
 import { ROUTES } from '@/constants';
 import Layout from '@/components/Layout';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import ProtectedRoute from '@/components/shared/ProtectedRoute';
 
 // Lazy load components
+const Login = lazy(() => import('@/pages/Login'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const ProcessList = lazy(() => import('@/pages/ProcessList'));
 const ProcessDesigner = lazy(() => import('@/pages/ProcessDesigner'));
@@ -23,8 +25,16 @@ const withSuspense = (Component: React.ComponentType) => (
 // Define routes configuration
 const routes: RouteObject[] = [
   {
+    path: ROUTES.LOGIN,
+    element: withSuspense(Login),
+  },
+  {
     path: ROUTES.HOME,
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

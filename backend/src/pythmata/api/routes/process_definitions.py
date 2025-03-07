@@ -128,8 +128,20 @@ async def create_process(
         # If process exists, increment version
         version = (existing_version or 0) + 1 if data.version is None else data.version
 
+        # Log variable definitions for debugging
+        logger.info(
+            f"Creating process with {len(data.variable_definitions or [])} variable definitions"
+        )
+        if data.variable_definitions:
+            logger.debug(f"Variable definitions: {data.variable_definitions}")
+
         process = ProcessDefinitionModel(
-            name=data.name, bpmn_xml=data.bpmn_xml, version=version
+            name=data.name,
+            bpmn_xml=data.bpmn_xml,
+            version=version,
+            variable_definitions=[
+                definition.dict() for definition in data.variable_definitions or []
+            ],
         )
         session.add(process)
         await session.commit()
@@ -137,6 +149,7 @@ async def create_process(
         return {"data": process}
     except Exception as e:
         await session.rollback()
+        logger.error(f"Error updating process: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -168,6 +181,14 @@ async def update_process(
             process.version = data.version
         else:
             process.version += 1  # Auto-increment version if not specified
+        if data.variable_definitions is not None:
+            logger.info(
+                f"Updating process with {len(data.variable_definitions)} variable definitions"
+            )
+            logger.debug(f"Variable definitions: {data.variable_definitions}")
+            process.variable_definitions = [
+                definition.model_dump() for definition in data.variable_definitions
+            ]
         process.updated_at = datetime.now(timezone.utc)
 
         await session.commit()
@@ -175,25 +196,21 @@ async def update_process(
         return {"data": process}
     except Exception as e:
         await session.rollback()
+        logger.error(f"Error updating process: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/{process_id}")
+@log_error(logger)
 async def delete_process(process_id: str, session: AsyncSession = Depends(get_session)):
-    """Delete a process definition."""
-    try:
-        result = await session.execute(
-            select(ProcessDefinitionModel).filter(
-                ProcessDefinitionModel.id == process_id
-            )
-        )
-        process = result.scalar_one_or_none()
-        if not process:
-            raise HTTPException(status_code=404, detail="Process not found")
+    """Delete a process definition and all its related instances."""
+    result = await session.execute(
+        select(ProcessDefinitionModel).filter(ProcessDefinitionModel.id == process_id)
+    )
+    process = result.scalar_one_or_none()
+    if not process:
+        raise HTTPException(status_code=404, detail="Process not found")
 
-        await session.delete(process)
-        await session.commit()
-        return {"message": "Process deleted successfully"}
-    except Exception as e:
-        await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    await session.delete(process)
+    await session.commit()
+    return {"message": "Process deleted successfully"}

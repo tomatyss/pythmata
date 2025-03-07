@@ -7,11 +7,9 @@ from sqlalchemy import JSON, DateTime
 from sqlalchemy import Enum as SQLAEnum
 from sqlalchemy import ForeignKey, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
-class Base(DeclarativeBase):
-    """Base class for all models."""
+from pythmata.models.base import Base
 
 
 class ProcessStatus(str, Enum):
@@ -30,6 +28,7 @@ class ActivityType(str, Enum):
     INSTANCE_STARTED = "INSTANCE_STARTED"
     NODE_ENTERED = "NODE_ENTERED"
     NODE_COMPLETED = "NODE_COMPLETED"
+    SERVICE_TASK_EXECUTED = "SERVICE_TASK_EXECUTED"
     INSTANCE_SUSPENDED = "INSTANCE_SUSPENDED"
     INSTANCE_RESUMED = "INSTANCE_RESUMED"
     INSTANCE_COMPLETED = "INSTANCE_COMPLETED"
@@ -87,6 +86,10 @@ class ProcessDefinition(Base):
     )
     scripts: Mapped[list["Script"]] = relationship(
         "Script", back_populates="process_definition", cascade="all, delete-orphan"
+    )
+    # Use string reference to avoid circular import
+    chat_sessions: Mapped[list["ChatSession"]] = relationship(
+        "ChatSession", back_populates="process_definition", cascade="all, delete-orphan"
     )
 
 
@@ -274,3 +277,6 @@ class Variable(Base):
 ProcessInstance.activities: Mapped[list["ActivityLog"]] = relationship(
     "ActivityLog", back_populates="instance", cascade="all, delete-orphan"
 )
+
+# Import ChatSession at the end to avoid circular imports
+from pythmata.models.chat import ChatSession  # noqa

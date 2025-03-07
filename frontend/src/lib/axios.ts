@@ -10,9 +10,7 @@ import {
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Removed default Content-Type header to allow each request to set its own
 });
 
 // Request interceptor
@@ -21,8 +19,14 @@ axiosInstance.interceptors.request.use(
     // Get token from storage
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
 
-    // Add auth header if token exists
-    if (token) {
+    // Don't add auth header for authentication endpoints
+    const isAuthEndpoint =
+      config.url &&
+      (config.url.includes('/auth/register') ||
+        config.url.includes('/auth/login'));
+
+    // Add auth header if token exists and not an auth endpoint
+    if (token && !isAuthEndpoint) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 

@@ -32,6 +32,7 @@ def upgrade() -> None:
                 "INSTANCE_STARTED",
                 "NODE_ENTERED",
                 "NODE_COMPLETED",
+                "SERVICE_TASK_EXECUTED",
                 "INSTANCE_SUSPENDED",
                 "INSTANCE_RESUMED",
                 "INSTANCE_COMPLETED",

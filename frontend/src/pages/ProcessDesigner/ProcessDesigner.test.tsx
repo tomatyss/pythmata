@@ -5,6 +5,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ProcessDesigner from './ProcessDesigner';
 import apiService from '@/services/api';
 
+// Define types for mocks
+type MockFunction = ReturnType<typeof vi.fn>;
+type MockBpmnModeler = {
+  importXML: MockFunction;
+  saveXML: MockFunction;
+  destroy: MockFunction;
+  get: MockFunction;
+};
+
 // Mock the API service
 vi.mock('@/services/api', () => ({
   default: {
@@ -28,11 +37,57 @@ vi.mock('react-router-dom', async () => {
 
 // Mock bpmn-js
 vi.mock('bpmn-js/lib/Modeler', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    importXML: vi.fn().mockResolvedValue({}),
-    saveXML: vi.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
-    destroy: vi.fn(),
-  })),
+  default: vi.fn().mockImplementation(() => {
+    const eventCallbacks: Record<
+      string,
+      (payload: Record<string, unknown>) => void
+    > = {};
+    return {
+      importXML: vi.fn().mockResolvedValue({}),
+      saveXML: vi.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
+      destroy: vi.fn(),
+      get: vi.fn().mockImplementation((module: string) => {
+        if (module === 'eventBus') {
+          return {
+            on: vi.fn(
+              (
+                event: string,
+                callback: (payload: Record<string, unknown>) => void
+              ) => {
+                eventCallbacks[event] = callback;
+              }
+            ),
+            fire: vi.fn((event: string, payload: Record<string, unknown>) => {
+              if (eventCallbacks[event]) {
+                eventCallbacks[event](payload);
+              }
+            }),
+          };
+        }
+        if (module === 'elementRegistry') {
+          return {
+            get: vi.fn().mockImplementation((id: string) => ({
+              id,
+              type: 'bpmn:ServiceTask',
+              businessObject: {
+                extensionElements: {
+                  values: [],
+                },
+              },
+            })),
+          };
+        }
+        return null;
+      }),
+    };
+  }),
+}));
+
+// Mock ElementPanel component
+vi.mock('@/components/shared/ElementPanel', () => ({
+  default: vi
+    .fn()
+    .mockImplementation(() => <div data-testid="mock-element-panel" />),
 }));
 
 describe('ProcessDesigner', () => {
@@ -54,7 +109,7 @@ describe('ProcessDesigner', () => {
     vi.clearAllMocks();
     // Reset useNavigate mock and provide default implementation
     const mockNavigate = vi.fn();
-    (useNavigate as any).mockReturnValue(mockNavigate);
+    (useNavigate as MockFunction).mockReturnValue(mockNavigate);
     // Set up window.alert mock
     window.alert = mockAlert;
   });
@@ -66,7 +121,7 @@ describe('ProcessDesigner', () => {
 
   it('loads existing process when editing', async () => {
     // Mock the API call
-    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as MockFunction).mockResolvedValueOnce({
       data: mockProcess,
     });
 
@@ -95,7 +150,7 @@ describe('ProcessDesigner', () => {
 
   it('shows error message when loading fails', async () => {
     // Mock API error
-    (apiService.getProcessDefinition as any).mockRejectedValueOnce(
+    (apiService.getProcessDefinition as MockFunction).mockRejectedValueOnce(
       new Error('Failed to load')
     );
 
@@ -131,7 +186,8 @@ describe('ProcessDesigner', () => {
 
     // Should initialize modeler with empty diagram
     await waitFor(() => {
-      const modelerInstance = (BpmnModeler as any).mock.results[0]?.value;
+      const modelerInstance = (BpmnModeler as MockFunction).mock.results[0]
+        ?.value as MockBpmnModeler;
       expect(modelerInstance?.importXML).toHaveBeenCalledWith(
         expect.stringContaining('<bpmn:startEvent')
       );
@@ -146,7 +202,7 @@ describe('ProcessDesigner', () => {
     };
 
     // Mock the API call
-    (apiService.createProcessDefinition as any).mockResolvedValueOnce({
+    (apiService.createProcessDefinition as MockFunction).mockResolvedValueOnce({
       data: newProcess,
     });
 
@@ -184,14 +240,14 @@ describe('ProcessDesigner', () => {
     const destroyMock = vi.fn();
 
     // Setup modeler mock with destroy function
-    (BpmnModeler as any).mockImplementation(() => ({
+    (BpmnModeler as MockFunction).mockImplementation(() => ({
       importXML: vi.fn().mockResolvedValue({}),
       saveXML: vi.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
       destroy: destroyMock,
     }));
 
     // Mock the API call
-    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as MockFunction).mockResolvedValueOnce({
       data: mockProcess,
     });
 
@@ -220,13 +276,13 @@ describe('ProcessDesigner', () => {
   it('handles navigation after save', async () => {
     const user = userEvent.setup();
     const mockNavigate = vi.fn();
-    (useNavigate as any).mockReturnValue(mockNavigate);
+    (useNavigate as MockFunction).mockReturnValue(mockNavigate);
 
     // Mock the API calls
-    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as MockFunction).mockResolvedValueOnce({
       data: mockProcess,
     });
-    (apiService.updateProcessDefinition as any).mockResolvedValueOnce({
+    (apiService.updateProcessDefinition as MockFunction).mockResolvedValueOnce({
       data: mockProcess,
     });
 
@@ -257,10 +313,10 @@ describe('ProcessDesigner', () => {
     const user = userEvent.setup();
 
     // Mock the API calls
-    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as MockFunction).mockResolvedValueOnce({
       data: mockProcess,
     });
-    (apiService.updateProcessDefinition as any).mockResolvedValueOnce({
+    (apiService.updateProcessDefinition as MockFunction).mockResolvedValueOnce({
       data: mockProcess,
     });
 
@@ -297,10 +353,10 @@ describe('ProcessDesigner', () => {
     const mockError = new Error('Save failed');
 
     // Mock the API calls
-    (apiService.getProcessDefinition as any).mockResolvedValueOnce({
+    (apiService.getProcessDefinition as MockFunction).mockResolvedValueOnce({
       data: mockProcess,
     });
-    (apiService.updateProcessDefinition as any).mockRejectedValueOnce(
+    (apiService.updateProcessDefinition as MockFunction).mockRejectedValueOnce(
       mockError
     );
 
@@ -326,6 +382,93 @@ describe('ProcessDesigner', () => {
       expect(mockAlert).toHaveBeenCalledWith(
         expect.stringContaining('Failed to save process')
       );
+    });
+  });
+
+  it('opens element panel on double-click', async () => {
+    // Create a mock with the event bus
+    const eventCallbacks: Record<
+      string,
+      (payload: Record<string, unknown>) => void
+    > = {};
+    const eventBusMock = {
+      on: vi.fn(
+        (
+          event: string,
+          callback: (payload: Record<string, unknown>) => void
+        ) => {
+          eventCallbacks[event] = callback;
+        }
+      ),
+      fire: vi.fn((event: string, payload: Record<string, unknown>) => {
+        if (eventCallbacks[event]) {
+          eventCallbacks[event](payload);
+        }
+      }),
+    };
+
+    // Override the BpmnModeler mock for this test
+    const { default: BpmnModeler } = await import('bpmn-js/lib/Modeler');
+    (BpmnModeler as MockFunction).mockImplementation(() => ({
+      importXML: vi.fn().mockResolvedValue({}),
+      saveXML: vi.fn().mockResolvedValue({ xml: '<mock-xml/>' }),
+      destroy: vi.fn(),
+      get: vi.fn().mockImplementation((module: string) => {
+        if (module === 'eventBus') return eventBusMock;
+        if (module === 'elementRegistry') {
+          return {
+            get: vi.fn().mockImplementation((id: string) => ({
+              id,
+              type: 'bpmn:ServiceTask',
+              businessObject: {
+                extensionElements: {
+                  values: [],
+                },
+              },
+            })),
+          };
+        }
+        return null;
+      }),
+    }));
+
+    // Mock the API call
+    (apiService.getProcessDefinition as MockFunction).mockResolvedValueOnce({
+      data: mockProcess,
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/processes/${mockProcess.id}`]}>
+        <Routes>
+          <Route path="/processes/:id" element={<ProcessDesigner />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // Wait for process to load
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(mockProcess.name)).toBeInTheDocument();
+    });
+
+    // Wait for the event listeners to be registered
+    await waitFor(() => {
+      expect(eventBusMock.on).toHaveBeenCalledWith(
+        'element.dblclick',
+        expect.any(Function)
+      );
+    });
+
+    // Simulate double-click on an element
+    const callback = eventCallbacks['element.dblclick'];
+    if (callback) {
+      callback({ element: { id: 'test-element', type: 'bpmn:ServiceTask' } });
+    } else {
+      throw new Error('element.dblclick callback not registered');
+    }
+
+    // Check that the element panel is opened
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-element-panel')).toBeInTheDocument();
     });
   });
 });

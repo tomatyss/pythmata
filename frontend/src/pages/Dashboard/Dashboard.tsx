@@ -4,7 +4,6 @@ import {
   Box,
   Card,
   CardContent,
-  Grid,
   Typography,
   Button,
   CircularProgress,
@@ -122,7 +121,7 @@ const Dashboard = () => {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       <Box
         sx={{
           display: 'flex',
@@ -141,62 +140,61 @@ const Dashboard = () => {
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Total Processes"
-            value={stats.totalInstances}
-            icon={AddIcon}
-            color="#1976d2"
-            tooltip="Total number of process instances"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Active"
-            value={stats.activeInstances}
-            icon={PlayArrowIcon}
-            color="#2e7d32"
-            tooltip="Currently running process instances"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Completed"
-            value={stats.statusCounts[ProcessStatus.COMPLETED] || 0}
-            icon={CheckCircleIcon}
-            color="#1976d2"
-            tooltip="Successfully completed process instances"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Errors"
-            value={stats.statusCounts[ProcessStatus.ERROR] || 0}
-            icon={ErrorIcon}
-            color="#d32f2f"
-            tooltip="Process instances that encountered errors"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Avg. Completion Time"
-            value={formatDuration(stats.averageCompletionTime)}
-            icon={AccessTimeIcon}
-            color="#f57c00"
-            tooltip="Average time to complete a process"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Error Rate"
-            value={`${stats.errorRate.toFixed(1)}%`}
-            icon={AssessmentIcon}
-            color="#7b1fa2"
-            tooltip="Percentage of processes that resulted in errors"
-          />
-        </Grid>
-      </Grid>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, 1fr)',
+            md: 'repeat(3, 1fr)',
+          },
+          gap: 3,
+          width: '100%',
+        }}
+      >
+        <StatCard
+          title="Total Processes"
+          value={stats.totalInstances}
+          icon={AddIcon}
+          color="#1976d2"
+          tooltip="Total number of process instances"
+        />
+        <StatCard
+          title="Active"
+          value={stats.activeInstances}
+          icon={PlayArrowIcon}
+          color="#2e7d32"
+          tooltip="Currently running process instances"
+        />
+        <StatCard
+          title="Completed"
+          value={stats.statusCounts[ProcessStatus.COMPLETED] || 0}
+          icon={CheckCircleIcon}
+          color="#1976d2"
+          tooltip="Successfully completed process instances"
+        />
+        <StatCard
+          title="Errors"
+          value={stats.statusCounts[ProcessStatus.ERROR] || 0}
+          icon={ErrorIcon}
+          color="#d32f2f"
+          tooltip="Process instances that encountered errors"
+        />
+        <StatCard
+          title="Avg. Completion Time"
+          value={formatDuration(stats.averageCompletionTime)}
+          icon={AccessTimeIcon}
+          color="#f57c00"
+          tooltip="Average time to complete a process"
+        />
+        <StatCard
+          title="Error Rate"
+          value={`${stats.errorRate.toFixed(1)}%`}
+          icon={AssessmentIcon}
+          color="#7b1fa2"
+          tooltip="Percentage of processes that resulted in errors"
+        />
+      </Box>
 
       {/* TODO: Add recent activities list */}
       <Box sx={{ mt: 4 }}>

@@ -106,6 +106,7 @@ const ProcessDiagram = (): React.ReactElement => {
 
       return () => clearTimeout(timeoutId);
     }
+    return undefined;
   }, [activeInstances.length]); // Only depend on instances length, not tabValue
 
   // Setup polling for active instances
@@ -118,7 +119,8 @@ const ProcessDiagram = (): React.ReactElement => {
       const interval = setInterval(fetchActiveInstances, 2000);
       return () => clearInterval(interval);
     }
-  }, [tabValue, fetchActiveInstances]);
+    return undefined;
+  }, [tabValue, fetchActiveInstances, tabValue]);
 
   useEffect(() => {
     const fetchProcess = async () => {

@@ -1,6 +1,8 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { AxiosInstance, AxiosResponse } from 'axios';
+import axiosInstance from '@/lib/axios';
 import { ApiError } from '@/lib/errors';
 import { convertKeysToCamel, convertKeysToSnake } from '@/utils/case';
+import { API_ENDPOINTS } from '@/constants';
 import {
   ActivityLog,
   ApiResponse,
@@ -15,16 +17,76 @@ import {
   UpdateScriptRequest,
 } from '@/types/process';
 
+// Chat and LLM types
+interface ChatSession {
+  id: string;
+  processDefinitionId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ChatMessage {
+  id: string;
+  role: string;
+  content: string;
+  xmlContent?: string;
+  model?: string;
+  createdAt: string;
+}
+
+interface ChatRequest {
+  messages: Array<{ role: string; content: string }>;
+  processId?: string;
+  currentXml?: string;
+  model?: string;
+  sessionId?: string;
+}
+
+interface ChatResponse {
+  message: string;
+  xml?: string;
+  model: string;
+  sessionId?: string;
+}
+
+interface XmlGenerationRequest {
+  description: string;
+  model?: string;
+}
+
+interface XmlModificationRequest {
+  request: string;
+  currentXml: string;
+  model?: string;
+}
+
+interface XmlResponse {
+  xml: string;
+  explanation: string;
+}
+
+// Define a type for service tasks
+interface ServiceTask {
+  name: string;
+  description: string;
+  properties: Array<{
+    name: string;
+    label: string;
+    type: string;
+    required: boolean;
+    default?: unknown;
+    options?: string[];
+    description?: string;
+  }>;
+}
+
 class ApiService {
   private client: AxiosInstance;
 
   constructor() {
-    this.client = axios.create({
-      baseURL: '/api',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    // Use the existing axios instance that's already configured with auth token
+    this.client = axiosInstance;
 
     // Add request interceptor to convert camelCase to snake_case
     this.client.interceptors.request.use(
@@ -112,12 +174,40 @@ class ApiService {
     pageSize?: number;
     status?: string;
   }): Promise<ApiResponse<PaginatedResponse<ProcessInstance>>> {
+    // Create common params object without definitionId
     const params = {
-      ...(options?.definitionId ? { definition_id: options.definitionId } : {}),
       ...(options?.page ? { page: options.page } : {}),
       ...(options?.pageSize ? { page_size: options.pageSize } : {}),
       ...(options?.status ? { status: this.statusMap[options.status] } : {}),
     };
+
+    // If definitionId is provided, use the process-specific endpoint
+    if (options?.definitionId) {
+      try {
+        // Use the endpoint from constants that matches the frontend route
+        const response = await this.client.get(
+          API_ENDPOINTS.PROCESS.INSTANCES(options.definitionId),
+          { params }
+        );
+        return response.data;
+      } catch (error) {
+        // If the new endpoint fails, fall back to the original endpoint
+        console.warn(
+          'Failed to fetch instances from process-specific endpoint, falling back to generic endpoint',
+          error
+        );
+        return this.client
+          .get('/instances', {
+            params: {
+              ...params,
+              definition_id: options.definitionId,
+            },
+          })
+          .then((response) => response.data);
+      }
+    }
+
+    // If no definitionId, use the original endpoint
     const response = await this.client.get('/instances', { params });
     return response.data;
   }
@@ -200,6 +290,66 @@ class ApiService {
   // Statistics
   async getProcessStats(): Promise<ApiResponse<ProcessStats>> {
     const response = await this.client.get('/stats');
+    return response.data;
+  }
+
+  // Service Tasks
+  async getServiceTasks(): Promise<ApiResponse<ServiceTask[]>> {
+    try {
+      const response = await this.client.get('/services/tasks');
+
+      // Ensure the response is properly formatted
+      if (Array.isArray(response.data)) {
+        return { data: response.data };
+      } else if (response.data && Array.isArray(response.data.data)) {
+        return response.data;
+      } else {
+        console.error('Invalid service tasks response format:', response.data);
+        return { data: [] };
+      }
+    } catch (error) {
+      console.error('Error fetching service tasks:', error);
+      throw error;
+    }
+  }
+
+  // Chat and LLM methods
+  async sendChatMessage(data: ChatRequest): Promise<ChatResponse> {
+    const response = await this.client.post('/llm/chat', data);
+    return response.data;
+  }
+
+  async generateXml(
+    data: XmlGenerationRequest
+  ): Promise<ApiResponse<XmlResponse>> {
+    const response = await this.client.post('/llm/generate-xml', data);
+    return response.data;
+  }
+
+  async modifyXml(
+    data: XmlModificationRequest
+  ): Promise<ApiResponse<XmlResponse>> {
+    const response = await this.client.post('/llm/modify-xml', data);
+    return response.data;
+  }
+
+  async createChatSession(data: {
+    process_definition_id: string;
+    title?: string;
+  }): Promise<ChatSession> {
+    const response = await this.client.post('/llm/sessions', data);
+    return response.data;
+  }
+
+  async listChatSessions(processId: string): Promise<ChatSession[]> {
+    const response = await this.client.get(`/llm/sessions/${processId}`);
+    return response.data;
+  }
+
+  async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
+    const response = await this.client.get(
+      `/llm/sessions/${sessionId}/messages`
+    );
     return response.data;
   }
 }

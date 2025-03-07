@@ -72,6 +72,10 @@ export const ERROR_MESSAGES = {
   VALIDATION: 'Please check your input and try again.',
   NOT_FOUND: 'The requested resource was not found.',
   SERVER_ERROR: 'Server error. Please try again later.',
+  INVALID_CREDENTIALS: 'Invalid email or password.',
+  EMAIL_EXISTS: 'An account with this email already exists.',
+  WEAK_PASSWORD:
+    'Password must be at least 8 characters long and include numbers and special characters.',
 } as const;
 
 // Success Messages
@@ -83,17 +87,40 @@ export const SUCCESS_MESSAGES = {
   INSTANCE_SUSPENDED: 'Process instance suspended successfully',
   INSTANCE_RESUMED: 'Process instance resumed successfully',
   SCRIPT_UPDATED: 'Script updated successfully',
+  LOGIN_SUCCESS: 'Logged in successfully',
+  REGISTER_SUCCESS: 'Registration successful',
+  LOGOUT_SUCCESS: 'Logged out successfully',
 } as const;
 
 // Routes
 export const ROUTES = {
   HOME: '/',
   DASHBOARD: '/dashboard',
+  LOGIN: '/login',
+  REGISTER: '/register',
   PROCESSES: '/processes',
   NEW_PROCESS: '/processes/new',
   PROCESS_DETAILS: (id: string) => `/processes/${id}`,
   PROCESS_INSTANCE: (id: string, instanceId: string) =>
     `/processes/${id}/instances/${instanceId}`,
+} as const;
+
+// API Endpoints
+export const API_ENDPOINTS = {
+  AUTH: {
+    LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
+    LOGOUT: '/auth/logout',
+    ME: '/auth/me',
+  },
+  PROCESS: {
+    LIST: '/processes',
+    CREATE: '/processes',
+    GET: (id: string) => `/processes/${id}`,
+    UPDATE: (id: string) => `/processes/${id}`,
+    DELETE: (id: string) => `/processes/${id}`,
+    INSTANCES: (id: string) => `/processes/${id}/instances`,
+  },
 } as const;
 
 // Local Storage Keys
@@ -107,3 +134,19 @@ export const STORAGE_KEYS = {
 export const DRAWER_WIDTH = 240;
 export const HEADER_HEIGHT = 64;
 export const FOOTER_HEIGHT = 48;
+
+// Validation Rules
+export const VALIDATION_RULES = {
+  PASSWORD_MIN_LENGTH: 8,
+  PASSWORD_PATTERN:
+    /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/,
+  EMAIL_PATTERN: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+} as const;
+
+// Public Routes (don't require authentication)
+export const PUBLIC_ROUTES = [
+  ROUTES.LOGIN,
+  ROUTES.REGISTER,
+  '/forgot-password',
+  '/reset-password',
+] as const;

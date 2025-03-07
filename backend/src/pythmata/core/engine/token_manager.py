@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pythmata.core.engine.token import Token, TokenState
 from pythmata.core.state import StateManager
-from pythmata.models.process import ProcessInstance, ProcessStatus
+from pythmata.models.process import ActivityType, ProcessInstance, ProcessStatus
 from pythmata.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -194,6 +194,17 @@ class TokenManager:
             # Verify token state
             await self._verify_token_state(token)
 
+            # Create activity log for node completion if instance manager is provided
+            if instance_manager:
+                logger.info(
+                    f"[ActivityLog] Creating NODE_COMPLETED log for {token.node_id}"
+                )
+                await instance_manager._create_activity_log(
+                    UUID(token.instance_id),
+                    ActivityType.NODE_COMPLETED,
+                    token.node_id,
+                )
+
             # Handle transaction boundaries if instance manager is provided
             if instance_manager:
                 if target_node_id == "Transaction_End":
@@ -255,6 +266,17 @@ class TokenManager:
                 )
                 logger.debug(
                     f"[TokenMovement] Final token state: {new_token.to_dict()}"
+                )
+
+            # Create activity log for node entry if instance manager is provided
+            if instance_manager:
+                logger.info(
+                    f"[ActivityLog] Creating NODE_ENTERED log for {target_node_id}"
+                )
+                await instance_manager._create_activity_log(
+                    UUID(token.instance_id),
+                    ActivityType.NODE_ENTERED,
+                    target_node_id,
                 )
 
             # Handle process completion if moving to end event
@@ -325,7 +347,7 @@ class TokenManager:
             await self.state_manager.release_lock(token.instance_id)
 
     async def split_token(
-        self, token: Token, target_node_ids: List[str]
+        self, token: Token, target_node_ids: List[str], instance_manager=None
     ) -> List[Token]:
         """
         Split a token into multiple tokens (e.g., at a parallel gateway).
@@ -333,6 +355,7 @@ class TokenManager:
         Args:
             token: The token to split
             target_node_ids: IDs of the target nodes
+            instance_manager: Optional instance manager for activity logging
 
         Returns:
             List of new tokens
@@ -347,6 +370,17 @@ class TokenManager:
         try:
             # Verify token state before operation
             await self._verify_token_state(token)
+
+            # Create activity log for node completion if instance manager is provided
+            if instance_manager:
+                logger.info(
+                    f"[ActivityLog] Creating NODE_COMPLETED log for {token.node_id}"
+                )
+                await instance_manager._create_activity_log(
+                    UUID(token.instance_id),
+                    ActivityType.NODE_COMPLETED,
+                    token.node_id,
+                )
 
             # Use Redis transaction for atomic split
             async with self.state_manager.redis.pipeline(transaction=True) as pipe:
@@ -379,6 +413,18 @@ class TokenManager:
                 logger.info(
                     f"Token split completed successfully, created {len(new_tokens)} new tokens"
                 )
+
+            # Create activity logs for node entries if instance manager is provided
+            if instance_manager:
+                for node_id in target_node_ids:
+                    logger.info(
+                        f"[ActivityLog] Creating NODE_ENTERED log for {node_id}"
+                    )
+                    await instance_manager._create_activity_log(
+                        UUID(token.instance_id),
+                        ActivityType.NODE_ENTERED,
+                        node_id,
+                    )
 
             return new_tokens
         except Exception as e:

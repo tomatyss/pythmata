@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import App from './App';
 
@@ -106,11 +105,7 @@ vi.mock('@mui/icons-material', () => ({
 
 describe('App', () => {
   it('renders without crashing', () => {
-    render(
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    );
+    render(<App />);
     expect(screen.getByTestId('app-bar')).toBeInTheDocument();
     // We expect to find two drawers (mobile and desktop)
     expect(screen.getAllByTestId('drawer')).toHaveLength(2);

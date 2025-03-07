@@ -16,11 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Form handling with React Hook Form
   - Real-time updates with WebSocket
   - Responsive layout and theming
+  - Timer event properties panel for configuring timer events
+  - Gateway condition editor for configuring sequence flow conditions
+    - Support for exclusive and inclusive gateways
+    - Expression validation and syntax highlighting
+    - Default flow configuration
+    - Process variable integration
+  - Gateway properties panel for configuring gateway-specific settings
+    - Default flow selection for exclusive and inclusive gateways
+    - Informational guidance for different gateway types
 - Backend Python application
   - BPMN execution engine
   - Process management
   - Event handling system
   - Script execution environment
+  - Robust timer event scheduler for automatically triggering timer start events
+    - Persistent job storage using Redis
+    - Efficient scheduling using APScheduler
+    - Support for all timer types (duration, date, cycle)
+    - Fault tolerance with automatic recovery
+    - Distributed timer execution support
 - Infrastructure
   - Docker containerization
   - PostgreSQL database
@@ -31,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Development setup guide
   - Contributing guidelines
   - Code of conduct
+  - Timer events configuration and usage guide
+  - Gateway conditions configuration and usage guide
 
 ### Changed
 - None
@@ -42,7 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - None
 
 ### Fixed
-- None
+- Activity logs not showing in UI by committing logs to database and passing instance_manager to token movement methods
+- Timer event validation issues with xsi:type attributes in BPMN XML by enhancing the validator to handle complex type substitutions and adding specific error categorization for known valid patterns
+- Foreign key violation in activity logs when triggered by timer events by ensuring process instance exists in database before creating activity logs
+- "Can't find variable: amount" error in Sequence Flow Properties Panel by improving expression validation to use mock variables instead of evaluating expressions directly
 
 ### Security
 - None

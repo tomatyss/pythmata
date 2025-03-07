@@ -4,6 +4,10 @@ from typing import Dict, List, Optional
 
 import xmlschema
 
+from pythmata.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class ValidationError:
     def __init__(self, code: str, message: str, element_id: Optional[str] = None):
@@ -57,6 +61,12 @@ class BPMNValidator:
             schema_dir / "pythmata.xsd", validation="lax"
         )
 
+        # Define known validation issues to skip
+        self.known_validation_patterns = [
+            "tFormalExpression",
+            "global xs:simpleType/xs:complexType 'bpmn:tFormalExpression' not found",
+        ]
+
     def validate(self, xml: str) -> ValidationResult:
         """
         Validates a BPMN XML string against the BPMN 2.0 schema and additional rules.
@@ -82,12 +92,27 @@ class BPMNValidator:
                 result.add_error("XML_PARSE_ERROR", str(e))
                 return result
 
+            # Define namespaces for validation
+            namespaces = {
+                "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
+                "xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            }
+
             # Validate against BPMN schema with relaxed extension validation
             validation_errors = []
-            for error in self.bpmn_schema.iter_errors(doc):
+            for error in self.bpmn_schema.iter_errors(doc, namespaces=namespaces):
                 # Skip errors related to extension elements
                 if "extensionElements" not in str(error):
-                    validation_errors.append(error)
+                    # Check if this is a known validation issue to skip
+                    should_skip = False
+                    for pattern in self.known_validation_patterns:
+                        if pattern in str(error):
+                            logger.debug(f"Skipping known validation issue: {error}")
+                            should_skip = True
+                            break
+
+                    if not should_skip:
+                        validation_errors.append(error)
 
             if validation_errors:
                 for error in validation_errors:

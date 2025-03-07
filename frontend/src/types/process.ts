@@ -73,6 +73,7 @@ export enum ActivityType {
   INSTANCE_STARTED = 'INSTANCE_STARTED',
   NODE_ENTERED = 'NODE_ENTERED',
   NODE_COMPLETED = 'NODE_COMPLETED',
+  SERVICE_TASK_EXECUTED = 'SERVICE_TASK_EXECUTED',
   INSTANCE_SUSPENDED = 'INSTANCE_SUSPENDED',
   INSTANCE_RESUMED = 'INSTANCE_RESUMED',
   INSTANCE_COMPLETED = 'INSTANCE_COMPLETED',
@@ -150,7 +151,7 @@ export interface UpdateProcessDefinitionRequest {
 }
 
 export interface ProcessVariableValue {
-  type: 'string' | 'number' | 'boolean' | 'date';
+  type: 'string' | 'number' | 'boolean' | 'date' | 'integer' | 'float' | 'json';
   value: string | number | boolean | Date | null;
 }
 

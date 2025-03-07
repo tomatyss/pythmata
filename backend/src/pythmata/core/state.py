@@ -128,7 +128,7 @@ class StateManager:
             # Get variables in current scope
             for var_key, value in all_vars.items():
                 if var_key.startswith(f"{scope_id}:"):
-                    name = var_key[len(f"{scope_id}:"):] # Remove scope prefix
+                    name = var_key[len(f"{scope_id}:") :]  # Remove scope prefix
                     data = json.loads(value)
                     result[name] = ProcessVariableValue.from_storage_format(data)
 
@@ -138,15 +138,20 @@ class StateManager:
                 while scope_parts:
                     scope_parts.pop()
                     parent_scope = "/".join(scope_parts)
-                    
+
                     # Add variables from parent scope if not already present
                     for var_key, value in all_vars.items():
                         prefix = f"{parent_scope}:" if parent_scope else ""
-                        if var_key.startswith(prefix) and ":" not in var_key[len(prefix):]:
-                            name = var_key[len(prefix):]
+                        if (
+                            var_key.startswith(prefix)
+                            and ":" not in var_key[len(prefix) :]
+                        ):
+                            name = var_key[len(prefix) :]
                             if name not in result:
                                 data = json.loads(value)
-                                result[name] = ProcessVariableValue.from_storage_format(data)
+                                result[name] = ProcessVariableValue.from_storage_format(
+                                    data
+                                )
         else:
             # Get root scope variables
             for var_key, value in all_vars.items():
