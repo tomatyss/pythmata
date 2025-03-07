@@ -242,7 +242,9 @@ describe('SequenceFlowPropertiesPanel', () => {
       />
     );
 
-    const checkbox = screen.getByLabelText(/Use as default flow/i);
+    const checkbox = screen.getByLabelText(/Use as default flow/i, {
+      selector: 'input#default-flow-checkbox-Flow_1',
+    });
 
     // Verify sourceElement is correctly retrieved
     const sourceElement = elementRegistry?.get?.('Gateway_1') ?? null;

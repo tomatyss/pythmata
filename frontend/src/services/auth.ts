@@ -152,7 +152,7 @@ class AuthService {
       });
     } catch (err) {
       console.error('Logout server request failed:', err);
-      // We continue to remove the token even if the server request fails
+      throw err; // Rethrow the error to ensure the method rejects
     } finally {
       localStorage.removeItem(AUTH_TOKEN_KEY);
     }

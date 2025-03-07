@@ -1,25 +1,63 @@
 import { vi } from 'vitest';
 
-const mockPost = vi.hoisted(() => vi.fn());
-const mockGet = vi.hoisted(() => vi.fn());
-
-vi.mock('axios', async () => {
-  const actual = await vi.importActual('axios');
-  return {
-    ...actual,
-    default: {
-      create: vi.fn().mockReturnValue({
-        defaults: {},
-        interceptors: {
-          request: { use: vi.fn(), eject: vi.fn() },
-          response: { use: vi.fn(), eject: vi.fn() },
+const mockPost = vi.hoisted(() =>
+  vi.fn((url, data, config) => {
+    if (url.includes('/auth/login') && data instanceof FormData) {
+      return Promise.resolve({
+        data: { access_token: 'test-token', token_type: 'bearer' },
+        config,
+        headers: config?.headers || {},
+      });
+    }
+    if (url.includes('/auth/register')) {
+      return Promise.resolve({
+        data: {
+          id: '1',
+          email: data.email,
+          full_name: data.full_name,
+          is_active: true,
+          roles: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
-        get: mockGet,
-        post: mockPost,
-      }),
+        config,
+        headers: config?.headers || {},
+      });
+    }
+    return Promise.reject(new Error('Unhandled POST request'));
+  })
+);
+const mockGet = vi.hoisted(() =>
+  vi.fn((url, config) => {
+    if (url.includes('/auth/me')) {
+      return Promise.resolve({
+        data: {
+          id: '1',
+          email: 'test@example.com',
+          full_name: 'Test User',
+          is_active: true,
+          roles: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        config,
+        headers: config?.headers || {},
+      });
+    }
+    return Promise.reject(new Error('Unhandled GET request'));
+  })
+);
+
+vi.mock('@/lib/axios', () => ({
+  default: {
+    get: mockGet,
+    post: mockPost,
+    interceptors: {
+      request: { use: vi.fn(), eject: vi.fn() },
+      response: { use: vi.fn(), eject: vi.fn() },
     },
-  };
-});
+  },
+}));
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AxiosError } from 'axios';
@@ -42,6 +80,8 @@ describe('AuthService', () => {
     it('should store token on successful login', async () => {
       const mockResponse = {
         data: { access_token: 'test-token', token_type: 'bearer' },
+        config: {},
+        headers: {},
       };
       mockPost.mockResolvedValueOnce(mockResponse);
 
@@ -82,7 +122,11 @@ describe('AuthService', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      mockPost.mockResolvedValueOnce({ data: mockUser });
+      mockPost.mockResolvedValueOnce({
+        data: mockUser,
+        config: {},
+        headers: {},
+      });
 
       const result = await authService.register(registerData);
 
@@ -113,7 +157,11 @@ describe('AuthService', () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      mockGet.mockResolvedValueOnce({ data: mockUser });
+      mockGet.mockResolvedValueOnce({
+        data: mockUser,
+        config: {},
+        headers: {},
+      });
 
       const result = await authService.getCurrentUser();
 
@@ -135,7 +183,11 @@ describe('AuthService', () => {
   describe('logout', () => {
     it('should clear token on logout', async () => {
       localStorage.setItem(AUTH_TOKEN_KEY, 'test-token');
-      mockPost.mockResolvedValueOnce({});
+      mockPost.mockResolvedValueOnce({
+        data: {},
+        config: {},
+        headers: {},
+      });
 
       await authService.logout();
 
