@@ -53,7 +53,6 @@ class RoleBase(BaseModel):
 class RoleCreate(RoleBase):
     """Role creation schema."""
 
-    pass
 
 
 class RoleUpdate(RoleBase):

@@ -1,6 +1,7 @@
 """Simplified test for timer callback function."""
 
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from pythmata.core.engine.events.timer_scheduler import timer_callback
@@ -21,4 +22,6 @@ def test_timer_callback_simple(mock_asyncio):
 
     # Check that set_event_loop was called twice:
     # First with the new loop, then with None at the end
-    assert mock_asyncio.set_event_loop.call_count == 2, "set_event_loop should be called twice"
+    assert (
+        mock_asyncio.set_event_loop.call_count == 2
+    ), "set_event_loop should be called twice"

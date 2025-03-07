@@ -6,7 +6,7 @@ and defines the API endpoints. It serves as the main entry point for the
 Pythmata workflow engine.
 """
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from pythmata.api.routes import router as process_router

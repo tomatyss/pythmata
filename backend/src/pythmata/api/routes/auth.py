@@ -72,7 +72,7 @@ async def register(
             email=user_create.email,
             hashed_password=hashed_password,
             full_name=user_create.full_name,
-            roles=[]  # Initialize empty roles list
+            roles=[],  # Initialize empty roles list
         )
         session.add(db_user)
         await session.flush()  # Ensure user is created before commit
@@ -81,8 +81,10 @@ async def register(
     await session.commit()
 
     # Load the user with relationships
-    stmt = select(UserModel).where(UserModel.id == db_user.id).options(
-        selectinload(UserModel.roles)
+    stmt = (
+        select(UserModel)
+        .where(UserModel.id == db_user.id)
+        .options(selectinload(UserModel.roles))
     )
     result = await session.execute(stmt)
     db_user = result.scalar_one()

@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 
-from pythmata.api.routes.auth import router as auth_router
 from pythmata.api.routes.llm import router as llm_router
 from pythmata.api.routes.process_definitions import router as process_definitions_router
 from pythmata.api.routes.process_instances import router as process_instances_router

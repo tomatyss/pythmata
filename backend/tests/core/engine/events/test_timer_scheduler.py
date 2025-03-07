@@ -4,7 +4,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -138,10 +138,10 @@ class TestTimerScheduler:
         timer_definition = MagicMock(spec=TimerDefinition)
         timer_definition.timer_type = "duration"
         timer_definition.trigger = MagicMock()
-        
+
         # Ensure the Redis mock won't raise exceptions
         state_manager.redis.set = AsyncMock()
-        
+
         with patch(
             "pythmata.core.engine.events.timer_scheduler.parse_timer_definition",
             return_value=timer_definition,
@@ -156,20 +156,34 @@ class TestTimerScheduler:
             # Assert
             assert timer_id in scheduler._scheduled_timer_ids
             state_manager.redis.set.assert_called_once()
-            
+
             # Check if add_job was called
             assert scheduler._scheduler.add_job.called, "add_job was not called"
-            
+
             # Check essential arguments rather than exact matching
             call_args = scheduler._scheduler.add_job.call_args
-            assert call_args[0][0] == timer_callback, "First arg should be timer_callback"
-            assert call_args[1]['id'] == timer_id, "id parameter should match timer_id"
-            assert call_args[1]['replace_existing'] is True, "replace_existing should be True"
-            assert call_args[1]['kwargs']['timer_id'] == timer_id, "timer_id in kwargs should match"
-            assert call_args[1]['kwargs']['definition_id'] == definition_id, "definition_id in kwargs should match"
-            assert call_args[1]['kwargs']['node_id'] == node_id, "node_id in kwargs should match"
-            assert call_args[1]['kwargs']['timer_type'] == timer_definition.timer_type, "timer_type in kwargs should match"
-            assert call_args[1]['kwargs']['timer_def'] == timer_def, "timer_def in kwargs should match"
+            assert (
+                call_args[0][0] == timer_callback
+            ), "First arg should be timer_callback"
+            assert call_args[1]["id"] == timer_id, "id parameter should match timer_id"
+            assert (
+                call_args[1]["replace_existing"] is True
+            ), "replace_existing should be True"
+            assert (
+                call_args[1]["kwargs"]["timer_id"] == timer_id
+            ), "timer_id in kwargs should match"
+            assert (
+                call_args[1]["kwargs"]["definition_id"] == definition_id
+            ), "definition_id in kwargs should match"
+            assert (
+                call_args[1]["kwargs"]["node_id"] == node_id
+            ), "node_id in kwargs should match"
+            assert (
+                call_args[1]["kwargs"]["timer_type"] == timer_definition.timer_type
+            ), "timer_type in kwargs should match"
+            assert (
+                call_args[1]["kwargs"]["timer_def"] == timer_def
+            ), "timer_def in kwargs should match"
 
     @pytest.mark.asyncio
     async def test_remove_timer(self, scheduler, state_manager):
@@ -191,19 +205,24 @@ class TestTimerScheduler:
 # Import the module directly to ensure correct patching
 import pythmata.core.engine.events.timer_scheduler
 
+
 def test_timer_callback():
     """Test the timer callback function."""
     # Setup mocks
     mock_loop = MagicMock()
-    
+
     # Use context managers for patching instead of decorators
-    with patch("pythmata.core.config.Settings") as mock_settings, \
-         patch("pythmata.core.state.StateManager") as mock_state_manager, \
-         patch("pythmata.core.events.EventBus") as mock_event_bus, \
-         patch("pythmata.core.database.get_db") as mock_get_db, \
-         patch.object(pythmata.core.engine.events.timer_scheduler, 'asyncio') as mock_asyncio, \
-         patch("uuid.uuid4", return_value=uuid.uuid4()):
-        
+    with (
+        patch("pythmata.core.config.Settings") as mock_settings,
+        patch("pythmata.core.state.StateManager") as mock_state_manager,
+        patch("pythmata.core.events.EventBus") as mock_event_bus,
+        patch("pythmata.core.database.get_db") as mock_get_db,
+        patch.object(
+            pythmata.core.engine.events.timer_scheduler, "asyncio"
+        ) as mock_asyncio,
+        patch("uuid.uuid4", return_value=uuid.uuid4()),
+    ):
+
         # Configure mocks
         mock_asyncio.new_event_loop.return_value = mock_loop
         mock_asyncio.set_event_loop = MagicMock()
@@ -224,15 +243,23 @@ def test_timer_callback():
 
         # Assert
         mock_asyncio.new_event_loop.assert_called_once()
-        
+
         # Check that set_event_loop was called twice:
         # First with the new loop, then with None at the end
-        assert mock_asyncio.set_event_loop.call_count == 2, "set_event_loop should be called twice"
-        assert mock_asyncio.set_event_loop.call_args_list[0] == call(mock_loop), "First call should set the new loop"
-        assert mock_asyncio.set_event_loop.call_args_list[1] == call(None), "Second call should set None"
+        assert (
+            mock_asyncio.set_event_loop.call_count == 2
+        ), "set_event_loop should be called twice"
+        assert mock_asyncio.set_event_loop.call_args_list[0] == call(
+            mock_loop
+        ), "First call should set the new loop"
+        assert mock_asyncio.set_event_loop.call_args_list[1] == call(
+            None
+        ), "Second call should set None"
 
         # Check that run_until_complete was called for connect, publish, and disconnect
-        assert mock_loop.run_until_complete.call_count == 3, f"Expected 3 calls to run_until_complete, got {mock_loop.run_until_complete.call_count}"
+        assert (
+            mock_loop.run_until_complete.call_count == 3
+        ), f"Expected 3 calls to run_until_complete, got {mock_loop.run_until_complete.call_count}"
 
         # Check loop was closed
         mock_loop.close.assert_called_once()

@@ -90,7 +90,7 @@ class TestEventHandlers(BaseEngineTest):
             patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,
-            ) as mock_execute
+            ) as mock_execute,
         ):
             # Call the handle_process_started function with our test data
             await handle_process_started(
@@ -176,7 +176,7 @@ class TestEventHandlers(BaseEngineTest):
             patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,
-            ) as mock_execute
+            ) as mock_execute,
         ):
             # Call the handle_process_started function and expect a ValueError
             with pytest.raises(ValueError, match="Invalid BPMN XML"):
@@ -228,7 +228,7 @@ class TestEventHandlers(BaseEngineTest):
             patch(
                 "pythmata.core.engine.executor.ProcessExecutor.execute_process",
                 new_callable=AsyncMock,
-            ) as mock_execute
+            ) as mock_execute,
         ):
             # Call the handle_process_started function and expect a ValueError
             with pytest.raises(ValueError, match="Invalid BPMN XML"):

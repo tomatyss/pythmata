@@ -100,9 +100,7 @@ async def get_current_user(
             raise credentials_exception
 
         # Get user with roles relationship loaded
-        stmt = select(User).where(User.id == user_id).options(
-            selectinload(User.roles)
-        )
+        stmt = select(User).where(User.id == user_id).options(selectinload(User.roles))
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
