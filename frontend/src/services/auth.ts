@@ -1,5 +1,10 @@
-import { AxiosError } from 'axios';
-import { API_ENDPOINTS, AUTH_TOKEN_KEY, ERROR_MESSAGES } from '@/constants';
+import axios, { AxiosError } from 'axios';
+import {
+  API_BASE_URL,
+  API_ENDPOINTS,
+  AUTH_TOKEN_KEY,
+  ERROR_MESSAGES,
+} from '@/constants';
 import axiosInstance from '@/lib/axios';
 import type {
   AuthResponse,
@@ -14,14 +19,32 @@ class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<void> {
     try {
-      // Use URLSearchParams instead of FormData for OAuth2 password flow
-      const params = new URLSearchParams();
-      params.append('username', credentials.username);
-      params.append('password', credentials.password);
+      // Create a function to serialize the data in the format FastAPI expects
+      const serialize = (obj: Record<string, unknown>) => {
+        const str = [];
+        for (const p in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, p)) {
+            const value = obj[p];
+            if (
+              typeof value === 'string' ||
+              typeof value === 'number' ||
+              typeof value === 'boolean'
+            ) {
+              str.push(encodeURIComponent(p) + '=' + encodeURIComponent(value));
+            }
+          }
+        }
+        return str.join('&');
+      };
 
-      const response = await axiosInstance.post<AuthResponse>(
-        API_ENDPOINTS.AUTH.LOGIN,
-        params,
+      const data = {
+        username: credentials.username,
+        password: credentials.password,
+      };
+
+      const response = await axios.post<AuthResponse>(
+        `${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`,
+        serialize(data),
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -35,8 +58,26 @@ class AuthService {
         if (err.response?.status === 401) {
           throw new Error(ERROR_MESSAGES.INVALID_CREDENTIALS);
         } else if (err.response?.status === 422) {
-          console.error('Validation error:', err.response.data);
-          throw new Error(ERROR_MESSAGES.VALIDATION);
+          console.error(
+            'Validation error details:',
+            JSON.stringify(err.response.data, null, 2)
+          );
+
+          // Extract specific validation errors if available
+          if (
+            err.response.data?.detail &&
+            Array.isArray(err.response.data.detail)
+          ) {
+            const errorDetails = err.response.data.detail
+              .map(
+                (detail: { loc: string[]; msg: string }) =>
+                  `${detail.loc.join('.')}: ${detail.msg}`
+              )
+              .join(', ');
+            throw new Error(`Validation error: ${errorDetails}`);
+          } else {
+            throw new Error(ERROR_MESSAGES.VALIDATION);
+          }
         }
       }
       console.error('Login error:', err);
@@ -51,7 +92,12 @@ class AuthService {
     try {
       const response = await axiosInstance.post<User>(
         API_ENDPOINTS.AUTH.REGISTER,
-        data
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
       );
       return response.data;
     } catch (err: unknown) {
@@ -73,7 +119,11 @@ class AuthService {
    */
   async getCurrentUser(): Promise<User> {
     try {
-      const response = await axiosInstance.get<User>(API_ENDPOINTS.AUTH.ME);
+      const response = await axiosInstance.get<User>(API_ENDPOINTS.AUTH.ME, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       return response.data;
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
@@ -95,7 +145,11 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
-      await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT);
+      await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT, null, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
     } catch (err) {
       console.error('Logout server request failed:', err);
       // We continue to remove the token even if the server request fails

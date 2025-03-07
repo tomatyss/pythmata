@@ -10,9 +10,7 @@ import {
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Removed default Content-Type header to allow each request to set its own
 });
 
 // Request interceptor
