@@ -88,7 +88,7 @@ const Layout = () => {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', flex: 1 }}>
       <CssBaseline />
       <AppBar
         position="fixed"
@@ -200,7 +200,8 @@ const Layout = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: '100%',
+          maxWidth: { sm: `calc(100% - ${drawerWidth}px)` },
         }}
       >
         <Toolbar /> {/* Spacer for AppBar */}
