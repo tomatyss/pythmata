@@ -33,6 +33,18 @@ vi.mock('./pages/NotFound', () => ({
   default: () => <div>Not Found Mock</div>,
 }));
 
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: '1', name: 'Test User', email: 'test@example.com' },
+    loading: false,
+    error: null,
+    isAuthenticated: true,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+  }),
+}));
+
 // Mock MUI components
 vi.mock('@mui/material', () => {
   const actual = vi.importActual('@mui/material');
@@ -91,6 +103,9 @@ vi.mock('@mui/material', () => {
     },
     CssBaseline: function CssBaseline() {
       return null;
+    },
+    CircularProgress: function CircularProgress() {
+      return React.createElement('div', { 'data-testid': 'circular-progress' });
     },
   };
 });
