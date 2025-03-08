@@ -54,7 +54,6 @@ class RoleCreate(RoleBase):
     """Role creation schema."""
 
 
-
 class RoleUpdate(RoleBase):
     """Role update schema."""
 
