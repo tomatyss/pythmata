@@ -211,52 +211,76 @@ describe('SequenceFlowPropertiesPanel', () => {
     expect(screen.queryByText(/Syntax error/i)).not.toBeInTheDocument();
   });
 
-  test('handles default flow checkbox', () => {
-    render(
-      <SequenceFlowPropertiesPanel
-        element={mockElement}
-        modeler={mockModeler}
-        variables={mockVariables}
-      />
-    );
+  test('handles default flow checkbox', async () => {
+    // Reset mocks before the test
+    vi.clearAllMocks();
 
-    // Mock elementRegistry.get before rendering the component
-    const elementRegistry = mockModeler.get('elementRegistry');
-    if (!elementRegistry?.get) {
-      throw new Error('Element registry or its get method is undefined');
-    }
-    elementRegistry.get.mockReturnValue({
+    // Mock the modeling service with a spy function
+    const updatePropertiesMock = vi.fn();
+    const mockModelingService = {
+      updateProperties: updatePropertiesMock,
+    };
+
+    // Mock the element registry service
+    const gatewayElement = {
       type: 'bpmn:ExclusiveGateway',
       id: 'Gateway_1',
       businessObject: {
         id: 'Gateway_1',
         name: 'Test Gateway',
       },
-    });
+    };
 
+    const mockElementRegistryService = {
+      get: vi.fn().mockImplementation((id) => {
+        if (id === 'Gateway_1') {
+          return gatewayElement;
+        }
+        return null;
+      }),
+    };
+
+    // Create a customized mock modeler for this specific test
+    const testModeler = {
+      get: vi.fn().mockImplementation((service) => {
+        if (service === 'elementRegistry') {
+          return mockElementRegistryService;
+        }
+        if (service === 'modeling') {
+          return mockModelingService;
+        }
+        if (service === 'moddle') {
+          return mockModeler.get('moddle');
+        }
+        return {};
+      }),
+    };
+
+    // Render the component with our test-specific mocks
     render(
       <SequenceFlowPropertiesPanel
         element={mockElement}
-        modeler={mockModeler}
+        modeler={testModeler}
         variables={mockVariables}
       />
     );
 
+    // Get the checkbox element and verify it exists
     const checkbox = screen.getByLabelText(/Use as default flow/i, {
       selector: 'input#default-flow-checkbox-Flow_1',
     });
+    expect(checkbox).toBeInTheDocument();
 
-    // Verify sourceElement is correctly retrieved
-    const sourceElement = elementRegistry?.get?.('Gateway_1') ?? null;
-    expect(sourceElement).not.toBeNull();
-
-    // Simulate checkbox click
+    // Simulate checkbox click - use fireEvent.change which might be more reliable
+    // for checkbox inputs in some React testing scenarios
     fireEvent.click(checkbox);
 
-    // Verify updateProperties is called with the correct arguments
-    expect(mockModeler.get('modeling').updateProperties).toHaveBeenCalledWith(
-      sourceElement,
-      { default: mockElement }
-    );
+    // Wait a bit for React state updates to process
+    await vi.waitFor(() => {
+      // Verify updateProperties was called with correct arguments
+      expect(updatePropertiesMock).toHaveBeenCalledWith(gatewayElement, {
+        default: mockElement,
+      });
+    });
   });
 });
