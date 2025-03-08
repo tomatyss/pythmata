@@ -17,7 +17,9 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-async def verify_instance(session: AsyncSession, instance_id: UUID) -> Optional[ProcessInstance]:
+async def verify_instance(
+    session: AsyncSession, instance_id: UUID
+) -> Optional[ProcessInstance]:
     """
     Verify that a process instance exists.
 

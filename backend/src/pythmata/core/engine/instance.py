@@ -8,7 +8,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.schemas import ProcessVariableValue
-from pythmata.api.schemas.websocket import ActivityUpdate, StatusUpdate, VariableUpdate
 from pythmata.api.websocket.manager import manager
 from pythmata.core.bpmn.parser import BPMNParser
 from pythmata.core.engine.transaction import Transaction
@@ -17,7 +16,6 @@ from pythmata.core.types import Event, EventType
 from pythmata.models.process import (
     ActivityLog,
     ActivityType,
-    ProcessDefinition,
     ProcessInstance,
     ProcessStatus,
     Variable,
@@ -68,7 +66,9 @@ class ProcessInstanceManager:
         self.session = session
         self.executor = executor
         self.state_manager = state_manager
-        self._active_transactions: Dict[str, Transaction] = {}  # instance_id -> Transaction
+        self._active_transactions: Dict[str, Transaction] = (
+            {}
+        )  # instance_id -> Transaction
 
     async def _send_websocket_update(
         self, instance_id: UUID, message_type: str, details: dict
