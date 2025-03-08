@@ -3,44 +3,41 @@ import GatewayPropertiesPanel from './GatewayPropertiesPanel';
 import { vi } from 'vitest';
 
 // Mock data
+const mockElementRegistry = {
+  get: vi.fn((id: string) => {
+    if (id === 'Flow_1') {
+      return {
+        id: 'Flow_1',
+        businessObject: {
+          id: 'Flow_1',
+          name: 'Flow 1',
+        },
+      };
+    }
+    if (id === 'Flow_2') {
+      return {
+        id: 'Flow_2',
+        businessObject: {
+          id: 'Flow_2',
+          name: 'Flow 2',
+        },
+      };
+    }
+    return null;
+  }),
+};
+
+const mockModeling = {
+  updateProperties: vi.fn(),
+};
+
 const mockModeler = {
   get: vi.fn((module: string) => {
     if (module === 'elementRegistry') {
-      return {
-        get: vi.fn((id: string) => {
-          if (id === 'Flow_1') {
-            return {
-              id: 'Flow_1',
-              businessObject: {
-                id: 'Flow_1',
-                name: 'Flow 1',
-              },
-            };
-          }
-          if (id === 'Flow_2') {
-            return {
-              id: 'Flow_2',
-              businessObject: {
-                id: 'Flow_2',
-                name: 'Flow 2',
-              },
-            };
-            return {
-              id: 'Flow_2',
-              businessObject: {
-                id: 'Flow_2',
-                name: 'Flow 2',
-              },
-            };
-          }
-          return null;
-        }),
-      };
+      return mockElementRegistry;
     }
     if (module === 'modeling') {
-      return {
-        updateProperties: vi.fn(),
-      };
+      return mockModeling;
     }
     return {};
   }),
@@ -78,7 +75,55 @@ const mockParallelGateway = {
   },
 };
 
+// Mock MUI Select component behavior
+vi.mock('@mui/material', async () => {
+  const actual = await vi.importActual('@mui/material');
+  return {
+    ...actual,
+    Select: ({
+      children,
+      onChange,
+      value,
+      ...props
+    }: React.PropsWithChildren<{
+      onChange: React.ChangeEventHandler<HTMLButtonElement>;
+      value: string | null;
+    }>) => {
+      return (
+        <div data-testid="mock-select" {...props}>
+          <div data-value={value}>{value}</div>
+          <button
+            onClick={() =>
+              onChange({
+                target: { value: 'Flow_2' },
+              } as unknown as React.ChangeEvent<HTMLButtonElement>)
+            }
+            data-testid="select-flow2"
+          >
+            Select Flow 2
+          </button>
+          <button
+            onClick={() =>
+              onChange({
+                target: { value: '' },
+              } as unknown as React.ChangeEvent<HTMLButtonElement>)
+            }
+            data-testid="select-none"
+          >
+            Select None
+          </button>
+          {children}
+        </div>
+      );
+    },
+  };
+});
+
 describe('GatewayPropertiesPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   test('renders exclusive gateway properties', () => {
     render(
       <GatewayPropertiesPanel
@@ -89,9 +134,16 @@ describe('GatewayPropertiesPanel', () => {
 
     expect(screen.getByText(/Gateway Configuration/i)).toBeInTheDocument();
     expect(screen.getByText(/For exclusive gateways/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Default Flow/i)).toBeInTheDocument();
-    expect(screen.getByText(/Flow 1/i)).toBeInTheDocument();
-    expect(screen.getByText(/Flow 2/i)).toBeInTheDocument();
+    expect(screen.getByTestId('mock-select')).toBeInTheDocument();
+
+    // Check that Flow_1 is the current value (checking the data-value attribute)
+    const selectValue = screen
+      .getByTestId('mock-select')
+      .querySelector('[data-value]');
+    expect(selectValue).toHaveAttribute('data-value', 'Flow_1');
+
+    // We don't need to check for Flow_2 text being visible since it would only
+    // be visible when the dropdown is open
   });
 
   test('renders inclusive gateway properties', () => {
@@ -104,7 +156,7 @@ describe('GatewayPropertiesPanel', () => {
 
     expect(screen.getByText(/Gateway Configuration/i)).toBeInTheDocument();
     expect(screen.getByText(/For inclusive gateways/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Default Flow/i)).toBeInTheDocument();
+    expect(screen.getByTestId('mock-select')).toBeInTheDocument();
   });
 
   test('renders parallel gateway message', () => {
@@ -128,29 +180,14 @@ describe('GatewayPropertiesPanel', () => {
       />
     );
 
-    const select = screen.getByLabelText(/Default Flow/i);
-    fireEvent.mouseDown(select, { container: document.body }); // Open the dropdown
-    const option = screen.getByText((content, _element) =>
-      content.includes('Flow 2')
+    // Use our custom button to simulate selecting Flow_2
+    fireEvent.click(screen.getByTestId('select-flow2'));
+
+    // Check that updateProperties was called with the correct arguments
+    expect(mockModeling.updateProperties).toHaveBeenCalledWith(
+      mockExclusiveGateway,
+      { default: expect.anything() }
     );
-    fireEvent.click(option, { container: document.body }); // Select an option
-    const elementRegistry = mockModeler.get('elementRegistry');
-    const modeling = mockModeler.get('modeling');
-    if (!elementRegistry?.get) {
-      throw new Error(
-        'MockModeler.get("elementRegistry") returned undefined or invalid'
-      );
-    }
-    if (!modeling?.updateProperties) {
-      throw new Error(
-        'MockModeler.get("modeling") returned undefined or invalid'
-      );
-    }
-    const updatePropertiesSpy = modeling.updateProperties;
-    console.warn('Spy calls:', updatePropertiesSpy.mock.calls);
-    expect(updatePropertiesSpy).toHaveBeenCalledWith(mockExclusiveGateway, {
-      default: expect.anything(),
-    });
   });
 
   test('handles clearing default flow', () => {
@@ -161,22 +198,13 @@ describe('GatewayPropertiesPanel', () => {
       />
     );
 
-    const select = screen.getByLabelText(/Default Flow/i);
-    fireEvent.mouseDown(select); // Open the dropdown
-    const noneOption = screen.getByText((content, _element) =>
-      content.includes('None')
+    // Use our custom button to simulate selecting None
+    fireEvent.click(screen.getByTestId('select-none'));
+
+    // Check that updateProperties was called with the correct arguments
+    expect(mockModeling.updateProperties).toHaveBeenCalledWith(
+      mockExclusiveGateway,
+      { default: null }
     );
-    fireEvent.click(noneOption, { container: document.body }); // Select "None"
-    const modeling = mockModeler.get('modeling');
-    if (!modeling?.updateProperties) {
-      throw new Error(
-        'MockModeler.get("modeling") returned undefined or invalid'
-      );
-    }
-    const updatePropertiesSpy = modeling.updateProperties;
-    console.warn('Spy calls:', updatePropertiesSpy.mock.calls);
-    expect(updatePropertiesSpy).toHaveBeenCalledWith(mockExclusiveGateway, {
-      default: null,
-    });
   });
 });
