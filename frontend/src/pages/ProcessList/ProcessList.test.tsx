@@ -60,7 +60,9 @@ describe('ProcessList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (apiService.getProcessDefinitions as any).mockResolvedValue(mockProcesses);
+    (apiService.getProcessDefinitions as jest.Mock).mockResolvedValue(
+      mockProcesses
+    );
   });
 
   afterEach(() => {
@@ -99,7 +101,9 @@ describe('ProcessList', () => {
         updatedAt: '2025-02-06T12:00:00Z',
       },
     };
-    (apiService.startProcessInstance as any).mockResolvedValue(mockInstance);
+    (apiService.startProcessInstance as jest.Mock).mockResolvedValue(
+      mockInstance
+    );
 
     render(
       <MemoryRouter>
@@ -131,7 +135,7 @@ describe('ProcessList', () => {
         definitionId: '1',
         variables: {
           amount: {
-            type: 'number',
+            type: 'float',
             value: 99.99,
           },
         },
@@ -146,7 +150,7 @@ describe('ProcessList', () => {
 
   it('handles process start error', async () => {
     const error = new Error('Failed to start process');
-    (apiService.startProcessInstance as any).mockRejectedValue(error);
+    (apiService.startProcessInstance as jest.Mock).mockRejectedValue(error);
 
     render(
       <MemoryRouter>
