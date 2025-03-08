@@ -6,13 +6,30 @@ import pytest
 from fastapi.testclient import TestClient
 
 from pythmata.core.services.registry import ServiceTaskRegistry
+from pythmata.core.auth import get_current_user
 from pythmata.main import app
 
 
 @pytest.fixture
-def client():
-    """Create a test client for the FastAPI app."""
-    return TestClient(app)
+def mock_user():
+    """Create a mock authenticated user."""
+    mock_user = MagicMock()
+    mock_user.id = "00000000-0000-0000-0000-000000000000"
+    mock_user.email = "test@example.com"
+    mock_user.is_active = True
+    mock_user.roles = []
+    return mock_user
+
+
+@pytest.fixture
+def client(mock_user):
+    """Create a test client with authentication mocked."""
+    # Override the authentication dependency
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+    client = TestClient(app)
+    yield client
+    # Clean up the override after the test
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture
