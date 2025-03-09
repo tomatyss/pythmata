@@ -47,7 +47,7 @@ async def test_register_user(async_client: AsyncClient):
     }
 
     response = await async_client.post(
-        "/auth/register",
+        "/api/auth/register",
         json=user_data,
     )
 
@@ -76,7 +76,7 @@ async def test_register_user(async_client: AsyncClient):
 async def test_register_duplicate_email(async_client: AsyncClient, test_user: User):
     """Test registration with existing email."""
     response = await async_client.post(
-        "/auth/register",
+        "/api/auth/register",
         json={
             "email": test_user.email,
             "password": "Password123!",
@@ -89,7 +89,7 @@ async def test_register_duplicate_email(async_client: AsyncClient, test_user: Us
 async def test_login_success(async_client: AsyncClient, test_user: User):
     """Test successful login."""
     response = await async_client.post(
-        "/auth/login",
+        "/api/auth/login",
         data={
             "username": test_user.email,
             "password": "testpassword",
@@ -108,7 +108,7 @@ async def test_login_success(async_client: AsyncClient, test_user: User):
 async def test_login_invalid_credentials(async_client: AsyncClient, test_user: User):
     """Test login with invalid credentials."""
     response = await async_client.post(
-        "/auth/login",
+        "/api/auth/login",
         data={
             "username": test_user.email,
             "password": "wrongpassword",
@@ -123,7 +123,7 @@ async def test_get_current_user(
     """Test getting current user info."""
     # First login to get token
     login_response = await async_client.post(
-        "/auth/login",
+        "/api/auth/login",
         data={
             "username": test_user.email,
             "password": "testpassword",
@@ -138,7 +138,7 @@ async def test_get_current_user(
 
     # Get user info with token
     response = await async_client.get(
-        "/auth/me",
+        "/api/auth/me",
         headers={"Authorization": f"Bearer {token.access_token}"},
     )
     assert response.status_code == status.HTTP_200_OK, "Should get user info"
@@ -163,7 +163,7 @@ async def test_logout(async_client: AsyncClient, test_user: User):
     """Test user logout."""
     # First login to get token
     login_response = await async_client.post(
-        "/auth/login",
+        "/api/auth/login",
         data={
             "username": test_user.email,
             "password": "testpassword",
@@ -173,7 +173,7 @@ async def test_logout(async_client: AsyncClient, test_user: User):
 
     # Logout with token
     response = await async_client.post(
-        "/auth/logout",
+        "/api/auth/logout",
         headers={"Authorization": f"Bearer {token.access_token}"},
     )
     assert response.status_code == status.HTTP_200_OK, "Logout should succeed"

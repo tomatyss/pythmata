@@ -264,9 +264,11 @@ def app(test_settings: Settings, state_manager, event_bus) -> FastAPI:
         FastAPI: Configured test application
     """
     from pythmata.api.routes import router
+    from pythmata.api.routes.auth import router as auth_router
 
     app = FastAPI()
     app.include_router(router)
+    app.include_router(auth_router, prefix="/api")
 
     # Override production dependencies with test ones
     async def get_test_state_manager():
