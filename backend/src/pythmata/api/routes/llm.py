@@ -128,7 +128,7 @@ async def chat_completion(
         # Add context about the current XML if provided
         if request.current_xml:
             # Append to the system prompt instead of adding a separate system message
-            xml_context = f"\nThe user is working with the following BPMN XML. Use this as context for your responses:\n\n{request.current_xml}"
+            xml_context = f"\nThe user is working with the following BPMN XML. Use this as context for your responses:\n\n```{request.current_xml}```"
             messages[0]["content"] += xml_context
 
         # Add user messages

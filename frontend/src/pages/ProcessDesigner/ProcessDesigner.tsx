@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Snackbar, Alert } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiService from '@/services/api';
 import {
@@ -44,6 +45,72 @@ import pythmataModdleDescriptor from '@/components/BpmnModeler/moddle/pythmata.j
 
 // Import types
 import * as BpmnTypes from './types';
+
+// Define validation rule interface
+interface ValidationRule {
+  validate(modeler: BpmnTypes.ExtendedBpmnModeler): string[];
+}
+
+// Start event validation rule
+const startEventRule: ValidationRule = {
+  validate(modeler: BpmnTypes.ExtendedBpmnModeler): string[] {
+    const elementRegistry = modeler.get('elementRegistry');
+    const startEvents = elementRegistry.filter(
+      (el: BpmnTypes.BpmnElement) => el.type === 'bpmn:StartEvent'
+    );
+    return startEvents.length > 0
+      ? []
+      : ['Process must have at least one start event'];
+  },
+};
+
+// End event validation rule
+const endEventRule: ValidationRule = {
+  validate(modeler: BpmnTypes.ExtendedBpmnModeler): string[] {
+    const elementRegistry = modeler.get('elementRegistry');
+    const endEvents = elementRegistry.filter(
+      (el: BpmnTypes.BpmnElement) => el.type === 'bpmn:EndEvent'
+    );
+    return endEvents.length > 0
+      ? []
+      : ['Process must have at least one end event'];
+  },
+};
+
+// Service task implementation rule
+const serviceTaskImplementationRule: ValidationRule = {
+  validate(modeler: BpmnTypes.ExtendedBpmnModeler): string[] {
+    const elementRegistry = modeler.get('elementRegistry');
+    const errors: string[] = [];
+
+    const serviceTasks = elementRegistry.filter(
+      (el: BpmnTypes.BpmnElement) => el.type === 'bpmn:ServiceTask'
+    );
+    serviceTasks.forEach((task: BpmnTypes.BpmnElement) => {
+      const extensions = task.businessObject.extensionElements?.values || [];
+      const hasImplementation = extensions.some(
+        (ext: BpmnTypes.ExtensionElement) =>
+          ext.$type === 'pythmata:ServiceTaskConfig' && !!ext.taskName
+      );
+
+      if (!hasImplementation) {
+        errors.push(
+          `Service task "${task.id}" is missing implementation details`
+        );
+      }
+    });
+
+    return errors;
+  },
+};
+
+// Define all validation rules
+const validationRules: ValidationRule[] = [
+  startEventRule,
+  endEventRule,
+  serviceTaskImplementationRule,
+  // Add more rules as needed
+];
 
 // Constants
 const DRAWER_WIDTH = 400;
@@ -108,6 +175,9 @@ const ProcessDesigner: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [xmlError, setXmlError] = useState<string | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>('');
 
   // State - Drawers
   const [variablesDrawerOpen, setVariablesDrawerOpen] =
@@ -123,6 +193,13 @@ const ProcessDesigner: React.FC = () => {
         try {
           const response = await apiService.getProcessDefinition(id);
           const { name, bpmnXml, variableDefinitions } = response.data;
+
+          // Check schema compatibility
+          const compatibility = checkSchemaCompatibility(bpmnXml);
+          if (!compatibility.compatible && compatibility.message) {
+            setError(compatibility.message);
+          }
+
           setProcessName(name);
           setBpmnXml(bpmnXml);
           setVariableDefinitions(variableDefinitions || []);
@@ -140,6 +217,52 @@ const ProcessDesigner: React.FC = () => {
 
     loadProcess();
   }, [id]);
+
+  /**
+   * Check schema compatibility
+   *
+   * Verifies if the BPMN XML uses a compatible schema version
+   *
+   * @param xml - The BPMN XML to check
+   * @returns Object with compatibility status and optional message
+   */
+  const checkSchemaCompatibility = (
+    xml: string
+  ): { compatible: boolean; message?: string } => {
+    // Check for namespace declaration
+    const hasNamespace = xml.includes(
+      'xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"'
+    );
+    if (!hasNamespace) {
+      return {
+        compatible: false,
+        message:
+          'Process XML is missing the Pythmata namespace declaration. This process may not be compatible.',
+      };
+    }
+
+    // Check for specific schema version (could be extended for multiple versions)
+    const schemaVersionMatch = xml.match(/pythmata:schema\/(\d+\.\d+)\/bpmn/);
+    if (!schemaVersionMatch) {
+      return {
+        compatible: true,
+        message:
+          'Process XML does not specify a schema version. Using default compatibility.',
+      };
+    }
+
+    const schemaVersion = schemaVersionMatch[1];
+
+    // Version-specific compatibility checks
+    if (schemaVersion === '1.0') {
+      return { compatible: true };
+    } else {
+      return {
+        compatible: false,
+        message: `Process uses schema version ${schemaVersion}, but this editor supports version 1.0. Some features may not work correctly.`,
+      };
+    }
+  };
 
   // Initialize BPMN modeler
   useEffect(() => {
@@ -173,8 +296,56 @@ const ProcessDesigner: React.FC = () => {
         // Import XML to the modeler
         await modelerRef.current.importXML(bpmnXml);
 
-        // Set up event listeners
-        setupEventListeners();
+        // Set up event listeners inline
+        {
+          const eventBus = modelerRef.current.get('eventBus');
+          eventBus.on(
+            'selection.changed',
+            (e: { newSelection: Array<BpmnTypes.BpmnElement> }) => {
+              const selection = e.newSelection;
+              if (selection.length === 1) {
+                const element = selection[0];
+                if (element) {
+                  setSelectedElement(element.id);
+                } else {
+                  setElementDrawerOpen(false);
+                }
+              } else {
+                setElementDrawerOpen(false);
+              }
+            }
+          );
+          eventBus.on(
+            'element.dblclick',
+            (e: { element: BpmnTypes.BpmnElement }) => {
+              if (e.element) {
+                setSelectedElement(e.element.id);
+                setElementDrawerOpen(true);
+              }
+            }
+          );
+          let updateXmlTimeout: NodeJS.Timeout | null = null;
+          eventBus.on('commandStack.changed', async () => {
+            if (modelerRef.current && activeTab === 'modeler') {
+              if (updateXmlTimeout) {
+                clearTimeout(updateXmlTimeout);
+              }
+              updateXmlTimeout = setTimeout(async () => {
+                const modeler = modelerRef.current;
+                if (!modeler) return;
+                try {
+                  const { xml } = await modeler.saveXML({ format: true });
+                  setBpmnXml(xml);
+                } catch (error) {
+                  console.error(
+                    'Failed to update XML after diagram change:',
+                    error
+                  );
+                }
+              }, 500);
+            }
+          });
+        }
 
         // Position the palette on the left
         positionPalette();
@@ -197,38 +368,7 @@ const ProcessDesigner: React.FC = () => {
     };
   }, [loading, bpmnXml, activeTab]);
 
-  // Set up event listeners for the modeler
-  const setupEventListeners = () => {
-    if (!modelerRef.current) return;
-
-    const eventBus = modelerRef.current.get('eventBus');
-
-    // Listen for element selection
-    eventBus.on(
-      'selection.changed',
-      (e: { newSelection: Array<BpmnTypes.BpmnElement> }) => {
-        const selection = e.newSelection;
-        if (selection.length === 1) {
-          const element = selection[0];
-          if (element) {
-            setSelectedElement(element.id);
-          } else {
-            setElementDrawerOpen(false);
-          }
-        } else {
-          setElementDrawerOpen(false);
-        }
-      }
-    );
-
-    // Listen for element double-click to open properties panel
-    eventBus.on('element.dblclick', (e: { element: BpmnTypes.BpmnElement }) => {
-      if (e.element) {
-        setSelectedElement(e.element.id);
-        setElementDrawerOpen(true);
-      }
-    });
-  };
+  // Removed unused setupEventListeners function
 
   // Position the palette on the left side
   const positionPalette = () => {
@@ -276,12 +416,59 @@ const ProcessDesigner: React.FC = () => {
     }
   };
 
+  /**
+   * Validate the process
+   *
+   * Checks if the process meets all validation rules
+   *
+   * @returns Object with validation status and errors
+   */
+  const validateProcess = useCallback((): {
+    valid: boolean;
+    errors: string[];
+  } => {
+    const modeler = modelerRef.current;
+    if (!modeler) {
+      return { valid: false, errors: ['Modeler not initialized'] };
+    }
+
+    try {
+      // Run all validation rules
+      const errors = validationRules.flatMap((rule) => rule.validate(modeler));
+
+      return {
+        valid: errors.length === 0,
+        errors,
+      };
+    } catch (error) {
+      console.error('Validation error:', error);
+      return {
+        valid: false,
+        errors: [
+          `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ],
+      };
+    }
+  }, []);
+
   // Save process
   const handleSave = async () => {
     if (!modelerRef.current || !processName) return;
 
     try {
       setSaving(true);
+
+      // Basic validation
+      const validation = validateProcess();
+      if (!validation.valid) {
+        // Show errors in a dialog
+        alert(
+          `Cannot save process with errors:\n\n${validation.errors.join('\n')}`
+        );
+        setSaving(false);
+        return;
+      }
+
       const { xml } = await modelerRef.current.saveXML({ format: true });
 
       // Convert variable definitions to backend format
@@ -316,17 +503,46 @@ const ProcessDesigner: React.FC = () => {
   };
 
   // Apply XML from editor to modeler
-  const applyXmlChanges = () => {
+  const applyXmlChanges = async () => {
+    if (!modelerRef.current) return;
+    setXmlError(null); // Clear previous errors
+
     try {
-      if (modelerRef.current) {
-        modelerRef.current.importXML(bpmnXml);
-        alert('XML applied successfully');
+      const result = await modelerRef.current.importXML(bpmnXml);
+
+      // Check for warnings
+      if (result.warnings && result.warnings.length > 0) {
+        setSnackbarMessage(
+          'XML applied with warnings. Check console for details.'
+        );
+        setSnackbarOpen(true);
+        console.warn('XML import warnings:', result.warnings);
+      } else {
+        setSnackbarMessage('XML applied successfully');
+        setSnackbarOpen(true);
       }
     } catch (error) {
-      alert(
-        'Invalid XML. Please fix the errors and try again. See console for details.'
-      );
       console.error('Error applying XML changes:', error);
+
+      // Extract meaningful error message
+      let errorMessage = 'Unknown error occurred';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+
+        // Try to extract more specific error details
+        if (error.message.includes('unparsable')) {
+          errorMessage =
+            'XML syntax error. Please check for missing tags or invalid characters.';
+        } else if (error.message.includes('unknown element')) {
+          const match = error.message.match(/unknown element <([^>]+)>/);
+          if (match) {
+            errorMessage = `Unknown element "${match[1]}". Check for typos or missing namespace declarations.`;
+          }
+        }
+      }
+
+      setXmlError(errorMessage);
     }
   };
 
@@ -378,6 +594,21 @@ const ProcessDesigner: React.FC = () => {
         flexDirection: 'column',
       }}
     >
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity="success"
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
       {/* Toolbar */}
       <AppBar position="static" color="default" elevation={0}>
         <Toolbar sx={{ gap: 2 }}>
@@ -487,9 +718,30 @@ const ProcessDesigner: React.FC = () => {
               height="100%"
             />
           </Box>
-          <Button variant="contained" onClick={applyXmlChanges} sx={{ mt: 2 }}>
-            Apply XML
-          </Button>
+          <Box sx={{ mt: 2 }}>
+            {xmlError && (
+              <Paper
+                sx={{
+                  p: 2,
+                  mb: 2,
+                  bgcolor: 'error.light',
+                  color: 'error.contrastText',
+                }}
+              >
+                <Typography variant="subtitle2">Error in XML:</Typography>
+                <Typography
+                  variant="body2"
+                  component="pre"
+                  sx={{ whiteSpace: 'pre-wrap' }}
+                >
+                  {xmlError}
+                </Typography>
+              </Paper>
+            )}
+            <Button variant="contained" onClick={applyXmlChanges}>
+              Apply XML
+            </Button>
+          </Box>
         </Box>
       )}
 

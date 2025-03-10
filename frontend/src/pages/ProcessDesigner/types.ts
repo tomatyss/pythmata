@@ -28,6 +28,9 @@ export interface PropertyValue {
 // Define types for the modeler modules
 export interface ElementRegistry {
   get(id: string): BpmnElement;
+  find(filter: (element: BpmnElement) => boolean): BpmnElement[];
+  filter(filter: (element: BpmnElement) => boolean): BpmnElement[];
+  forEach(callback: (element: BpmnElement) => void): void;
 }
 
 export interface Modeling {
