@@ -232,6 +232,20 @@ const ProcessDiagram = (): React.ReactElement => {
         </Tabs>
       </Box>
 
+      {tabValue === 0 && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ height: '600px' }}>
+              <ProcessDiagramViewer
+                bpmnXml={process.bpmnXml}
+                key={process.bpmnXml}
+                tokens={[]} // No tokens needed for definition view
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      )}
+
       {tabValue === 1 && (
         <>
           <Card sx={{ mb: 3 }}>
