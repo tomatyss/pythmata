@@ -2,6 +2,17 @@
 
 from pythmata.api.schemas.activity import ActivityLogResponse
 from pythmata.api.schemas.base import ApiResponse, PaginatedResponse
+from pythmata.api.schemas.llm import (
+    ChatMessageResponse,
+    ChatRequest,
+    ChatResponse,
+    ChatSessionCreate,
+    ChatSessionResponse,
+    Message,
+    XmlGenerationRequest,
+    XmlModificationRequest,
+    XmlResponse,
+)
 from pythmata.api.schemas.process import (
     ProcessDefinitionBase,
     ProcessDefinitionCreate,
@@ -46,6 +57,16 @@ __all__ = [
     # Base schemas
     "ApiResponse",
     "PaginatedResponse",
+    # LLM schemas
+    "Message",
+    "ChatRequest",
+    "ChatResponse",
+    "ChatSessionCreate",
+    "ChatSessionResponse",
+    "ChatMessageResponse",
+    "XmlGenerationRequest",
+    "XmlModificationRequest",
+    "XmlResponse",
     # Process schemas
     "ProcessDefinitionBase",
     "ProcessDefinitionCreate",
