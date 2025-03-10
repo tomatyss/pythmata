@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 import {
   Box,
@@ -24,8 +24,11 @@ import {
   Check as CheckIcon,
   History as HistoryIcon,
   Add as AddIcon,
+  Wifi as WifiIcon,
+  WifiOff as WifiOffIcon,
 } from '@mui/icons-material';
 import apiService from '@/services/api';
+import websocketService, { ConnectionState } from '@/services/websocket';
 
 interface Message {
   id: string;
@@ -82,213 +85,75 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // WebSocket related state
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>('disconnected');
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [streamingMessage, setStreamingMessage] = useState<Message | null>(
+    null
+  );
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
 
-  // Reset copied state after 2 seconds
-  useEffect(() => {
-    if (copied) {
-      const timer = setTimeout(() => setCopied(false), 2000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [copied]);
-
-  const loadChatSessions = async () => {
-    if (!processId) return;
-
-    try {
-      const response = await apiService.listChatSessions(processId);
-
-      if (response && response.length > 0) {
-        // Format and store all sessions
-        const formattedSessions = response.map((session) => ({
-          id: session.id,
-          title: session.title,
-          createdAt: new Date(session.createdAt),
-          updatedAt: new Date(session.updatedAt),
-        }));
-
-        setChatSessions(formattedSessions);
-
-        // Use the most recent session
-        const mostRecentSession = formattedSessions[0];
-        if (mostRecentSession) {
-          setSessionId(mostRecentSession.id);
-          await loadMessagesForSession(mostRecentSession.id);
-        }
+  // WebSocket event handlers
+  /**
+   * Handles the incoming token data from WebSocket.
+   * @param data - Object containing a 'content' string token.
+   * @returns void
+   */
+  const handleToken = useCallback(
+    (data: { content: string }) => {
+      if (streamingMessage) {
+        setStreamingMessage((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            content: prev.content + data.content,
+          };
+        });
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage && lastMessage.id === streamingMessage.id) {
+            lastMessage.content += data.content;
+            return newMessages;
+          } else {
+            return [
+              ...prev,
+              {
+                ...streamingMessage,
+                content: streamingMessage.content + data.content,
+              },
+            ];
+          }
+        });
       } else {
-        setChatSessions([]);
-
-        // Create a new session if none exists
-        if (processId) {
-          await createNewSession();
-        }
-      }
-    } catch (error) {
-      console.error('Error loading chat sessions:', error);
-      setChatSessions([]);
-    }
-  };
-
-  // Load existing chat session if process ID is provided
-  useEffect(() => {
-    if (processId) {
-      loadChatSessions();
-    }
-  }, [processId, loadChatSessions]);
-
-  const loadMessagesForSession = async (sessionId: string) => {
-    setLoadingMessages(true);
-    try {
-      const messagesResponse = await apiService.getChatMessages(sessionId);
-
-      if (messagesResponse && messagesResponse.length > 0) {
-        const formattedMessages = messagesResponse.map((msg) => ({
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant' | 'system',
-          content: msg.content,
-          timestamp: new Date(msg.createdAt),
-          xml: msg.xmlContent,
-        }));
-
-        setMessages(formattedMessages);
-      } else {
-        // If no messages, set default welcome message
-        setMessages([
-          {
-            id: 'welcome',
-            role: 'assistant',
-            content:
-              'Hello! I can help you design your BPMN process. You can ask me questions, request XML generation, or get suggestions for your current diagram.',
-            timestamp: new Date(),
-          },
-        ]);
-      }
-    } catch (error) {
-      console.error('Error loading chat messages:', error);
-      setMessages([
-        {
-          id: 'error',
-          role: 'system',
-          content: 'Failed to load chat messages. Please try again.',
+        const newMessage: Message = {
+          id: `streaming-${Date.now()}`,
+          role: 'assistant',
+          content: data.content,
           timestamp: new Date(),
-        },
-      ]);
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
-
-  const handleSessionSelect = async (sessionId: string) => {
-    setSessionId(sessionId);
-    await loadMessagesForSession(sessionId);
-    setCurrentTab(0); // Switch to chat tab after selecting a session
-  };
-
-  const createNewSession = async () => {
-    if (!processId) return;
-
-    try {
-      const title = `Chat ${new Date().toLocaleString()}`;
-      const response = await apiService.createChatSession({
-        process_definition_id: processId,
-        title,
-      });
-
-      if (response) {
-        const newSession = {
-          id: response.id,
-          title: response.title,
-          createdAt: new Date(response.createdAt),
-          updatedAt: new Date(response.updatedAt),
         };
-
-        setChatSessions((prev) => [newSession, ...prev]);
-        setSessionId(newSession.id);
-
-        // Reset messages to just the welcome message
-        setMessages([
-          {
-            id: 'welcome',
-            role: 'assistant',
-            content:
-              'Hello! I can help you design your BPMN process. You can ask me questions, request XML generation, or get suggestions for your current diagram.',
-            timestamp: new Date(),
-          },
-        ]);
-
-        // Switch to chat tab
-        setCurrentTab(0);
+        setStreamingMessage(newMessage);
+        setMessages((prev) => [...prev, newMessage]);
       }
-    } catch (error) {
-      console.error('Error creating new chat session:', error);
-    }
-  };
+    },
+    [streamingMessage]
+  );
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleMessageReceived = useCallback(
+    (data: { messageId: string; timestamp: string }) => {
+      console.warn('Message received by server:', data.messageId);
+    },
+    []
+  );
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-
-    try {
-      // Get current XML if modeler is available
-      let currentXml = '';
-      if (modeler) {
-        const { xml } = await modeler.saveXML({ format: true });
-        currentXml = xml;
-      }
-
-      // Prepare messages for API
-      const apiMessages = messages
-        .filter((m) => m.role !== 'system')
-        .concat(userMessage)
-        .map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
-
-      // Send message to LLM service
-      const response = await apiService.sendChatMessage({
-        messages: apiMessages,
-        processId,
-        currentXml,
-        sessionId: sessionId || undefined,
-      });
-
-      // Update session ID if provided in response
-      if (response?.sessionId) {
-        setSessionId(response.sessionId);
-      }
-
-      // Add assistant message
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: response.message,
-        timestamp: new Date(),
-        xml: response.xml,
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // If XML is provided, automatically apply it instead of showing preview
-      if (response.xml && onApplyXml) {
-        onApplyXml(response.xml);
-
-        // Add a system message confirming the changes were applied
+  const handleMessageComplete = useCallback(
+    (data: { messageId: string; timestamp: string; xml?: string }) => {
+      setStreamingMessage(null);
+      setLoading(false);
+      if (data.xml && onApplyXml) {
+        onApplyXml(data.xml);
         setMessages((prev) => [
           ...prev,
           {
@@ -299,19 +164,391 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           },
         ]);
       }
+    },
+    [onApplyXml]
+  );
+
+  const handleAssistantTyping = useCallback((data: { status: string }) => {
+    if (data.status === 'started') {
+      setLoading(true);
+    }
+  }, []);
+
+  const handleTypingIndicator = useCallback(
+    (data: { clientId: string; isTyping: boolean }) => {
+      setTypingUsers((prev) => {
+        const newTypingUsers = new Set(prev);
+        if (data.isTyping) {
+          newTypingUsers.add(data.clientId);
+        } else {
+          newTypingUsers.delete(data.clientId);
+        }
+        return newTypingUsers;
+      });
+    },
+    []
+  );
+
+  const handleClientJoined = useCallback(
+    (data: { clientId: string; timestamp: string }) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `join-${Date.now()}`,
+          role: 'system',
+          content: `Another user joined the chat.`,
+          timestamp: new Date(data.timestamp),
+        },
+      ]);
+    },
+    []
+  );
+
+  const handleClientLeft = useCallback(
+    (data: { clientId: string; timestamp: string }) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `leave-${Date.now()}`,
+          role: 'system',
+          content: `Another user left the chat.`,
+          timestamp: new Date(data.timestamp),
+        },
+      ]);
+      setTypingUsers((prev) => {
+        const newTypingUsers = new Set(prev);
+        newTypingUsers.delete(data.clientId);
+        return newTypingUsers;
+      });
+    },
+    []
+  );
+
+  const handleNewMessage = useCallback(
+    (data: {
+      messageId: string;
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      xml?: string;
+      timestamp: string;
+    }) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: data.messageId,
+          role: data.role,
+          content: data.content,
+          timestamp: new Date(data.timestamp),
+          xml: data.xml,
+        },
+      ]);
+      if (data.xml && onApplyXml) {
+        onApplyXml(data.xml);
+      }
+    },
+    [onApplyXml]
+  );
+
+  const handleError = useCallback((data: { message: string }) => {
+    console.error('WebSocket error:', data.message);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `error-${Date.now()}`,
+        role: 'system',
+        content: `Error: ${data.message}`,
+        timestamp: new Date(),
+      },
+    ]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    websocketService.connect();
+    const unsubscribe =
+      websocketService.onConnectionStateChange(setConnectionState);
+
+    // Define callbacks
+    const tokenCallback = (data: { content: string }) => handleToken(data);
+    const messageReceivedCallback = (data: {
+      messageId: string;
+      timestamp: string;
+    }) => handleMessageReceived(data);
+    const messageCompleteCallback = (data: {
+      messageId: string;
+      timestamp: string;
+      xml?: string;
+    }) => handleMessageComplete(data);
+    const assistantTypingCallback = (data: { status: string }) =>
+      handleAssistantTyping(data);
+    const typingIndicatorCallback = (data: {
+      clientId: string;
+      isTyping: boolean;
+    }) => handleTypingIndicator(data);
+    const clientJoinedCallback = (data: {
+      clientId: string;
+      timestamp: string;
+    }) => handleClientJoined(data);
+    const clientLeftCallback = (data: {
+      clientId: string;
+      timestamp: string;
+    }) => handleClientLeft(data);
+    const newMessageCallback = (data: {
+      messageId: string;
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      xml?: string;
+      timestamp: string;
+    }) => {
+      handleNewMessage(data);
+    };
+    const errorCallback = (data: { message: string }) => handleError(data);
+
+    // Subscribe events with callbacks
+    websocketService.subscribe('token', tokenCallback);
+    websocketService.subscribe('message_received', messageReceivedCallback);
+    websocketService.subscribe('message_complete', messageCompleteCallback);
+    websocketService.subscribe('assistant_typing', assistantTypingCallback);
+    websocketService.subscribe('typing_indicator', typingIndicatorCallback);
+    websocketService.subscribe('client_joined', clientJoinedCallback);
+    websocketService.subscribe('client_left', clientLeftCallback);
+    websocketService.subscribe('new_message', newMessageCallback);
+    websocketService.subscribe('error', errorCallback);
+
+    return () => {
+      unsubscribe();
+      websocketService.unsubscribe('token', tokenCallback);
+      websocketService.unsubscribe('message_received', messageReceivedCallback);
+      websocketService.unsubscribe('message_complete', messageCompleteCallback);
+      websocketService.unsubscribe('assistant_typing', assistantTypingCallback);
+      websocketService.unsubscribe('typing_indicator', typingIndicatorCallback);
+      websocketService.unsubscribe('client_joined', clientJoinedCallback);
+      websocketService.unsubscribe('client_left', clientLeftCallback);
+      websocketService.unsubscribe('new_message', newMessageCallback);
+      websocketService.unsubscribe('error', errorCallback);
+      websocketService.disconnect();
+    };
+  }, [
+    handleToken,
+    handleMessageReceived,
+    handleMessageComplete,
+    handleAssistantTyping,
+    handleTypingIndicator,
+    handleClientJoined,
+    handleClientLeft,
+    handleNewMessage,
+    handleError,
+  ]);
+
+  useEffect(() => {
+    if (sessionId) {
+      websocketService.joinSession(sessionId);
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (input.trim() && !isTyping) {
+      setIsTyping(true);
+      websocketService.sendTypingIndicator(true, sessionId || undefined);
+    } else if (!input.trim() && isTyping) {
+      setIsTyping(false);
+      websocketService.sendTypingIndicator(false, sessionId || undefined);
+    } else if (input.trim() && isTyping) {
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        websocketService.sendTypingIndicator(false, sessionId || undefined);
+      }, 2000);
+    }
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [input, isTyping, sessionId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    if (copied) {
+      const timer = setTimeout(() => setCopied(false), 2000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [copied]);
+
+  const loadMessagesForSession = useCallback(
+    async (sessionId: string) => {
+      console.warn('Loading messages for session:', sessionId);
+      setLoadingMessages(true);
+      try {
+        const messagesResponse = await apiService.getChatMessages(sessionId);
+        console.warn('Messages response:', messagesResponse);
+        if (messagesResponse && messagesResponse.length > 0) {
+          const formattedMessages = messagesResponse.map((msg) => ({
+            id: msg.id,
+            role: msg.role as 'user' | 'assistant' | 'system',
+            content: msg.content,
+            timestamp: new Date(msg.createdAt),
+            xml: msg.xmlContent,
+          }));
+          console.warn('Formatted messages:', formattedMessages);
+          setMessages(formattedMessages);
+        } else {
+          console.warn('No messages found, setting default welcome message');
+          setMessages([
+            {
+              id: 'welcome',
+              role: 'assistant',
+              content:
+                'Hello! I can help you design your BPMN process. You can ask me questions, request XML generation, or get suggestions for your current diagram.',
+              timestamp: new Date(),
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading chat messages:', error);
+        setMessages([
+          {
+            id: 'error',
+            role: 'system',
+            content: 'Failed to load chat messages. Please try again.',
+            timestamp: new Date(),
+          },
+        ]);
+      } finally {
+        setLoadingMessages(false);
+      }
+    },
+    [setMessages, setLoadingMessages]
+  );
+
+  const handleSessionSelect = useCallback(
+    async (sessionId: string) => {
+      setSessionId(sessionId);
+      await loadMessagesForSession(sessionId);
+      setCurrentTab(0);
+    },
+    [loadMessagesForSession, setCurrentTab]
+  );
+
+  const createNewSession = useCallback(async () => {
+    if (!processId) return;
+    try {
+      const title = `Chat ${new Date().toLocaleString()}`;
+      const response = await apiService.createChatSession({
+        process_definition_id: processId,
+        title,
+      });
+      if (response) {
+        const newSession = {
+          id: response.id,
+          title: response.title,
+          createdAt: new Date(response.createdAt),
+          updatedAt: new Date(response.updatedAt),
+        };
+        setChatSessions((prev) => [newSession, ...prev]);
+        setSessionId(newSession.id);
+        setMessages([
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content:
+              'Hello! I can help you design your BPMN process. You can ask me questions, request XML generation, or get suggestions for your current diagram.',
+            timestamp: new Date(),
+          },
+        ]);
+        setCurrentTab(0);
+      }
+    } catch (error) {
+      console.error('Error creating new chat session:', error);
+    }
+  }, [processId, setCurrentTab]);
+
+  const loadChatSessions = useCallback(async () => {
+    if (!processId) return;
+    console.warn('Loading chat sessions for process:', processId);
+    try {
+      const response = await apiService.listChatSessions(processId);
+      console.warn('Chat sessions response:', response);
+      if (response && response.length > 0) {
+        const formattedSessions = response.map((session) => ({
+          id: session.id,
+          title: session.title,
+          createdAt: new Date(session.createdAt),
+          updatedAt: new Date(session.updatedAt),
+        }));
+        console.warn('Formatted sessions:', formattedSessions);
+        setChatSessions(formattedSessions);
+        const mostRecentSession = formattedSessions[0];
+        if (mostRecentSession) {
+          console.warn('Using most recent session:', mostRecentSession.id);
+          setSessionId(mostRecentSession.id);
+          await loadMessagesForSession(mostRecentSession.id);
+        }
+      } else {
+        console.warn('No chat sessions found, creating new session');
+        setChatSessions([]);
+        if (processId) {
+          await createNewSession();
+        }
+      }
+    } catch (error) {
+      console.error('Error loading chat sessions:', error);
+      setChatSessions([]);
+    }
+  }, [
+    processId,
+    createNewSession,
+    loadMessagesForSession,
+    setChatSessions,
+    setSessionId,
+  ]);
+
+  useEffect(() => {
+    if (processId) {
+      loadChatSessions();
+    }
+  }, [processId, loadChatSessions]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setLoading(true);
+    try {
+      let currentXml = '';
+      if (modeler) {
+        const { xml } = await modeler.saveXML({ format: true });
+        currentXml = xml;
+      }
+      websocketService.sendChatMessage(
+        input,
+        sessionId || undefined,
+        processId,
+        currentXml
+      );
     } catch (error) {
       console.error('Error sending message:', error);
-      // Add error message
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
-          role: 'assistant',
-          content: 'Sorry, an error occurred. Please try again.',
+          role: 'system',
+          content: 'Error sending message. Please try again.',
           timestamp: new Date(),
         },
       ]);
-    } finally {
       setLoading(false);
     }
   };
@@ -327,20 +564,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     setCurrentTab(newValue);
   };
 
-  // Render message content with markdown and code highlighting
   const renderMessageContent = (message: Message) => {
-    // For assistant messages with XML, filter out XML code blocks
     if (message.role === 'assistant' && message.xml) {
-      // Split content by code blocks
       const parts = message.content.split('```');
       const filteredParts: string[] = [];
       let xmlBlockRemoved = false;
-
-      // Process each part to filter out XML but keep explanations
       for (let i = 0; i < parts.length; i++) {
         if (i % 2 === 1) {
-          // This is a code block
-          // Skip XML code blocks but keep other code blocks
           const codeBlock = parts[i] || '';
           if (
             codeBlock.startsWith('xml') ||
@@ -353,8 +583,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         }
         filteredParts.push(parts[i] || '');
       }
-
-      // Reconstruct content without XML blocks
       let filteredContent = filteredParts
         .map((part, i) => {
           if (i > 0 && i < filteredParts.length - 1) {
@@ -363,17 +591,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           return part;
         })
         .join('');
-
-      // Add a note about applied changes if XML was removed
       if (xmlBlockRemoved) {
         filteredContent +=
           '\n\n(XML changes were automatically applied to the diagram)';
       }
-
-      // Use the filtered content for rendering
       const content = filteredContent.split('```').map((part, i) => {
         if (i % 2 === 1) {
-          // This is a code block
           const [, ...code] = part.split('\n');
           return (
             <Box
@@ -393,7 +616,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             </Box>
           );
         } else {
-          // Regular text
           return (
             <Typography
               key={i}
@@ -406,8 +628,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           );
         }
       });
-
-      // Add a copy button if XML is available
       return (
         <>
           {content}
@@ -431,11 +651,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         </>
       );
     }
-
-    // For non-assistant messages or messages without XML, use the original rendering
     const content = message.content.split('```').map((part, i) => {
       if (i % 2 === 1) {
-        // This is a code block
         const [, ...code] = part.split('\n');
         return (
           <Box
@@ -455,7 +672,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           </Box>
         );
       } else {
-        // Regular text
         return (
           <Typography
             key={i}
@@ -468,7 +684,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         );
       }
     });
-
     return <>{content}</>;
   };
 
@@ -483,12 +698,49 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
         }}
       >
-        <Typography variant="h6">Process Assistant</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Typography variant="h6">Process Assistant</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+            {connectionState === 'connected' ? (
+              <Tooltip title="Connected">
+                <WifiIcon fontSize="small" color="success" sx={{ mr: 1 }} />
+              </Tooltip>
+            ) : connectionState === 'connecting' ||
+              connectionState === 'reconnecting' ? (
+              <Tooltip
+                title={
+                  connectionState === 'connecting'
+                    ? 'Connecting...'
+                    : 'Reconnecting...'
+                }
+              >
+                <CircularProgress size={16} color="warning" sx={{ mr: 1 }} />
+              </Tooltip>
+            ) : (
+              <Tooltip title="Disconnected">
+                <WifiOffIcon fontSize="small" color="error" sx={{ mr: 1 }} />
+              </Tooltip>
+            )}
+            <Typography variant="caption" color="text.secondary">
+              {connectionState === 'connected'
+                ? 'Connected'
+                : connectionState === 'connecting'
+                  ? 'Connecting...'
+                  : connectionState === 'reconnecting'
+                    ? 'Reconnecting...'
+                    : 'Disconnected'}
+            </Typography>
+          </Box>
+          {typingUsers.size > 0 && (
+            <Typography variant="caption" sx={{ ml: 2, fontStyle: 'italic' }}>
+              Someone is typing...
+            </Typography>
+          )}
+        </Box>
         <IconButton onClick={onClose} aria-label="close">
           <CloseIcon />
         </IconButton>
       </Box>
-
       <Tabs
         value={currentTab}
         onChange={handleTabChange}
@@ -497,16 +749,13 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         <Tab label="Chat" />
         <Tab label="History" icon={<HistoryIcon />} iconPosition="start" />
       </Tabs>
-
       {currentTab === 0 ? (
-        // Chat tab
         <>
           {loadingMessages && (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
               <CircularProgress size={24} />
             </Box>
           )}
-          {/* Messages container */}
           <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
             {messages.map((message) => (
               <Paper
@@ -549,8 +798,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             ))}
             <div ref={messagesEndRef} />
           </Box>
-
-          {/* Input area */}
           <Box sx={{ p: 2, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <TextField
@@ -585,7 +832,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           </Box>
         </>
       ) : (
-        // History tab
         <Box
           sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', p: 2 }}
         >
@@ -600,7 +846,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               New Chat
             </Button>
           </Box>
-
           {chatSessions.length === 0 ? (
             <Box
               sx={{

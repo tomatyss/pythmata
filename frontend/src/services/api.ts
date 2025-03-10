@@ -192,7 +192,7 @@ class ApiService {
         return response.data;
       } catch (error) {
         // If the new endpoint fails, fall back to the original endpoint
-        console.warn(
+        console.error(
           'Failed to fetch instances from process-specific endpoint, falling back to generic endpoint',
           error
         );
@@ -347,10 +347,23 @@ class ApiService {
   }
 
   async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
-    const response = await this.client.get(
-      `/llm/sessions/${sessionId}/messages`
-    );
-    return response.data;
+    try {
+      console.warn(`Fetching chat messages for session: ${sessionId}`);
+
+      // Use a query parameter approach to avoid path conflicts
+      const url = `/llm/messages?session_id=${sessionId}`;
+      console.warn(`API URL: ${url}`);
+
+      const response = await this.client.get(url);
+      console.warn(`API response:`, response.data);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching chat messages for session ${sessionId}:`,
+        error
+      );
+      throw error;
+    }
   }
 }
 

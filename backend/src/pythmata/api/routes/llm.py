@@ -346,9 +346,38 @@ async def list_chat_sessions(process_id: str, db: AsyncSession = Depends(get_ses
 
 
 @router.get("/sessions/{session_id}/messages", response_model=List[ChatMessageResponse])
-async def get_chat_messages(session_id: str, db: AsyncSession = Depends(get_session)):
+async def get_chat_messages_by_path(session_id: str, db: AsyncSession = Depends(get_session)):
     """
-    Get all messages for a chat session.
+    Get all messages for a chat session using path parameter.
+
+    Args:
+        session_id: Chat session ID
+        db: Database session
+
+    Returns:
+        List of chat messages
+    """
+    return await _get_chat_messages(session_id, db)
+
+
+@router.get("/messages", response_model=List[ChatMessageResponse])
+async def get_chat_messages_by_query(session_id: str, db: AsyncSession = Depends(get_session)):
+    """
+    Get all messages for a chat session using query parameter.
+
+    Args:
+        session_id: Chat session ID (query parameter)
+        db: Database session
+
+    Returns:
+        List of chat messages
+    """
+    return await _get_chat_messages(session_id, db)
+
+
+async def _get_chat_messages(session_id: str, db: AsyncSession) -> List[Dict[str, Any]]:
+    """
+    Helper function to get chat messages for a session.
 
     Args:
         session_id: Chat session ID
@@ -358,12 +387,14 @@ async def get_chat_messages(session_id: str, db: AsyncSession = Depends(get_sess
         List of chat messages
     """
     try:
+        logger.info(f"Fetching messages for session: {session_id}")
         result = await db.execute(
             select(ChatMessage)
             .filter(ChatMessage.session_id == session_id)
             .order_by(ChatMessage.created_at)
         )
         db_messages = result.scalars().all()
+        logger.info(f"Found {len(db_messages)} messages for session {session_id}")
 
         # Convert UUID fields to strings for response
         messages = []
