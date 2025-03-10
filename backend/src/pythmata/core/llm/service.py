@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional
 
 import aisuite as ai
 
-from pythmata.utils.logger import get_logger
 from pythmata.core.websockets.chat_manager import chat_manager
+from pythmata.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -181,7 +181,7 @@ class LlmService:
         except Exception as e:
             logger.error(f"XML generation failed: {str(e)}")
             raise
-            
+
     async def stream_chat_completion(
         self,
         messages: List[Dict[str, str]],
@@ -192,17 +192,17 @@ class LlmService:
     ) -> str:
         """
         Stream a chat completion response token by token.
-        
+
         Args:
             messages: List of message objects with role and content
             client_id: Client ID to stream tokens to
             model: Model identifier in format <provider>:<model-name>
             temperature: Controls randomness (0-1)
             max_tokens: Maximum tokens to generate
-            
+
         Returns:
             Complete response content as a string
-            
+
         Raises:
             Exception: If the LLM API call fails
         """
@@ -211,41 +211,43 @@ class LlmService:
             if "/" in model:
                 model = model.replace("/", ":")
                 logger.debug(f"Converted model format to: {model}")
-                
+
             logger.debug(f"Starting streaming request to LLM model {model}")
-            
+
             # Create streaming response
             response_stream = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                stream=True
+                stream=True,
             )
-            
+
             # Stream tokens to client
             content_buffer = ""
             try:
                 for chunk in response_stream:
                     # Safely access chunk attributes with proper error handling
                     try:
-                        if (hasattr(chunk, 'choices') and 
-                            len(chunk.choices) > 0 and 
-                            hasattr(chunk.choices[0], 'delta') and 
-                            hasattr(chunk.choices[0].delta, 'content')):
-                            
+                        if (
+                            hasattr(chunk, "choices")
+                            and len(chunk.choices) > 0
+                            and hasattr(chunk.choices[0], "delta")
+                            and hasattr(chunk.choices[0].delta, "content")
+                        ):
+
                             delta_content = chunk.choices[0].delta.content
                             if delta_content:
                                 content_buffer += delta_content
                                 # Send token to client
                                 await chat_manager.send_personal_message(
-                                    client_id,
-                                    "token",
-                                    {"content": delta_content}
+                                    client_id, "token", {"content": delta_content}
                                 )
                     except AttributeError as attr_err:
                         # Log the specific attribute error but continue processing
-                        logger.warning(f"Attribute error while processing chunk: {attr_err}")
+                        logger.warning(
+                            f"Attribute error while processing chunk: {attr_err}"
+                        )
                         # Continue with the next chunk instead of failing the entire stream
                         continue
             except Exception as stream_err:
@@ -255,10 +257,10 @@ class LlmService:
                 if content_buffer:
                     return content_buffer
                 raise
-            
+
             logger.debug(f"Completed streaming response from LLM model {model}")
             return content_buffer
-            
+
         except Exception as e:
             logger.error(f"LLM streaming error: {str(e)}")
             raise

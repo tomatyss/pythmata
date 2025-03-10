@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from pythmata.core.services.registry import ServiceTaskRegistry
 from pythmata.core.auth import get_current_user
+from pythmata.core.services.registry import ServiceTaskRegistry
 from pythmata.main import app
 
 

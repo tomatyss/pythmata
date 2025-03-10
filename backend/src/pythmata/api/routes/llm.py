@@ -279,7 +279,9 @@ async def list_chat_sessions(process_id: str, db: AsyncSession = Depends(get_ses
 
 
 @router.get("/sessions/{session_id}/messages", response_model=List[ChatMessageResponse])
-async def get_chat_messages_by_path(session_id: str, db: AsyncSession = Depends(get_session)):
+async def get_chat_messages_by_path(
+    session_id: str, db: AsyncSession = Depends(get_session)
+):
     """
     Get all messages for a chat session using path parameter.
 
@@ -294,7 +296,9 @@ async def get_chat_messages_by_path(session_id: str, db: AsyncSession = Depends(
 
 
 @router.get("/messages", response_model=List[ChatMessageResponse])
-async def get_chat_messages_by_query(session_id: str, db: AsyncSession = Depends(get_session)):
+async def get_chat_messages_by_query(
+    session_id: str, db: AsyncSession = Depends(get_session)
+):
     """
     Get all messages for a chat session using query parameter.
 

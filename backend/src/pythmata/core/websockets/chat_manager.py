@@ -1,7 +1,7 @@
 """WebSocket connection manager for chat functionality."""
 
 from datetime import datetime
-from typing import Dict, Set, Optional, Any
+from typing import Any, Dict, Optional, Set
 from uuid import UUID
 
 from fastapi import WebSocket
@@ -15,11 +15,12 @@ logger = get_logger(__name__)
 class ChatWebSocketMessage(BaseModel):
     """
     WebSocket message format for chat.
-    
+
     Attributes:
         type: Message type (token, message_received, etc.)
         content: Message content as a dictionary
     """
+
     type: str
     content: Dict[str, Any]
 
@@ -27,10 +28,10 @@ class ChatWebSocketMessage(BaseModel):
 class ChatConnectionManager:
     """
     Manages WebSocket connections for chat sessions.
-    
+
     This manager handles client connections, session associations,
     and message routing for the chat functionality.
-    
+
     Attributes:
         active_connections: Dictionary mapping client IDs to WebSocket connections
         session_clients: Dictionary mapping session IDs to sets of client IDs
@@ -46,7 +47,7 @@ class ChatConnectionManager:
     async def connect(self, websocket: WebSocket, client_id: str) -> None:
         """
         Connect a WebSocket client.
-        
+
         Args:
             websocket: The WebSocket connection
             client_id: Unique identifier for the client
@@ -58,13 +59,13 @@ class ChatConnectionManager:
     def disconnect(self, client_id: str) -> None:
         """
         Disconnect a WebSocket client.
-        
+
         Args:
             client_id: Unique identifier for the client
         """
         if client_id in self.active_connections:
             del self.active_connections[client_id]
-            
+
         # Remove from session if associated
         if client_id in self.client_sessions:
             session_id = self.client_sessions[client_id]
@@ -73,13 +74,13 @@ class ChatConnectionManager:
                 if not self.session_clients[session_id]:
                     del self.session_clients[session_id]
             del self.client_sessions[client_id]
-            
+
         logger.info(f"Chat WebSocket client {client_id} disconnected")
 
     async def join_session(self, client_id: str, session_id: UUID) -> None:
         """
         Associate a client with a chat session.
-        
+
         Args:
             client_id: Unique identifier for the client
             session_id: UUID of the chat session
@@ -89,22 +90,19 @@ class ChatConnectionManager:
         self.session_clients[session_id].add(client_id)
         self.client_sessions[client_id] = session_id
         logger.info(f"Client {client_id} joined session {session_id}")
-        
+
         # Notify other clients in the session that a new client has joined
         await self.broadcast_to_session(
             session_id,
             "client_joined",
-            {
-                "clientId": client_id,
-                "timestamp": datetime.now().isoformat()
-            },
-            exclude_client=client_id
+            {"clientId": client_id, "timestamp": datetime.now().isoformat()},
+            exclude_client=client_id,
         )
 
     async def leave_session(self, client_id: str) -> None:
         """
         Remove a client from its current session.
-        
+
         Args:
             client_id: Unique identifier for the client
         """
@@ -112,27 +110,26 @@ class ChatConnectionManager:
             session_id = self.client_sessions[client_id]
             if session_id in self.session_clients:
                 self.session_clients[session_id].discard(client_id)
-                
+
                 # Notify other clients that this client has left
                 await self.broadcast_to_session(
                     session_id,
                     "client_left",
-                    {
-                        "clientId": client_id,
-                        "timestamp": datetime.now().isoformat()
-                    },
-                    exclude_client=client_id
+                    {"clientId": client_id, "timestamp": datetime.now().isoformat()},
+                    exclude_client=client_id,
                 )
-                
+
                 if not self.session_clients[session_id]:
                     del self.session_clients[session_id]
             del self.client_sessions[client_id]
             logger.info(f"Client {client_id} left session {session_id}")
 
-    async def send_personal_message(self, client_id: str, message_type: str, content: Dict[str, Any]) -> None:
+    async def send_personal_message(
+        self, client_id: str, message_type: str, content: Dict[str, Any]
+    ) -> None:
         """
         Send a message to a specific client.
-        
+
         Args:
             client_id: Unique identifier for the client
             message_type: Type of message (token, message_received, etc.)
@@ -151,15 +148,15 @@ class ChatConnectionManager:
             self.disconnect(client_id)
 
     async def broadcast_to_session(
-        self, 
-        session_id: UUID, 
-        message_type: str, 
+        self,
+        session_id: UUID,
+        message_type: str,
         content: Dict[str, Any],
-        exclude_client: Optional[str] = None
+        exclude_client: Optional[str] = None,
     ) -> None:
         """
         Broadcast a message to all clients in a session.
-        
+
         Args:
             session_id: UUID of the chat session
             message_type: Type of message (chat_message, typing_indicator, etc.)
@@ -176,10 +173,12 @@ class ChatConnectionManager:
         for client_id in self.session_clients[session_id]:
             if exclude_client and client_id == exclude_client:
                 continue
-                
+
             if client_id in self.active_connections:
                 try:
-                    await self.active_connections[client_id].send_json(message.model_dump())
+                    await self.active_connections[client_id].send_json(
+                        message.model_dump()
+                    )
                 except Exception as e:
                     logger.error(f"Error broadcasting to client {client_id}: {e}")
                     disconnected.add(client_id)
