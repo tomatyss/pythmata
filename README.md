@@ -43,6 +43,10 @@ The frontend is built with modern React and TypeScript, following a component-ba
   - Gateway condition configuration
   - Process instance management
   - Variable inspection and modification
+  - WebSocket-based chat system with LLM integration
+    - Real-time streaming of LLM responses
+    - Multi-client chat sessions
+    - Typing indicators
 
 ### Backend (Python)
 
@@ -59,6 +63,10 @@ The backend is built with Python, implementing a robust BPMN execution engine wi
   - Instance execution and control
   - Variable management
   - Script execution and sandboxing
+  - WebSocket-based chat system
+    - LLM integration with streaming responses
+    - Multi-client session management
+    - Real-time messaging and notifications
 
 ### Infrastructure
 

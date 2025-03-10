@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pythmata.api.routes import router as process_router
 from pythmata.api.routes.auth import router as auth_router
+from pythmata.api.routes.websockets import router as websocket_router
 from pythmata.core.auth import get_current_active_user
 from pythmata.core.utils import lifespan
 from pythmata.utils.logger import get_logger
@@ -46,3 +47,4 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(
     process_router, prefix="/api", dependencies=[Depends(get_current_active_user)]
 )
+app.include_router(websocket_router, prefix="/api")

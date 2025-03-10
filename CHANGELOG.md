@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- WebSocket-based chat system for BPMN Process Assistant
+  - Real-time streaming of LLM responses
+  - Typing indicators
+  - Multi-client chat sessions
+  - Automatic reconnection handling
+  - Connection status indicators
 - Initial project setup
 - Frontend React/TypeScript application
   - Material-UI components
