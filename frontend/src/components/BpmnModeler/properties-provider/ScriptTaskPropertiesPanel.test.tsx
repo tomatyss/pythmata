@@ -56,6 +56,9 @@ describe('ScriptTaskPropertiesPanel', () => {
     },
   };
 
+  // Create a single updateProperties spy that will be used throughout the test
+  const updatePropertiesSpy = vi.fn();
+
   // Mock modeler with necessary methods
   const mockModeler: ExtendedBpmnModeler = {
     get: vi.fn((service: string) => {
@@ -76,7 +79,8 @@ describe('ScriptTaskPropertiesPanel', () => {
       }
       if (service === 'modeling') {
         return {
-          updateProperties: vi.fn(),
+          // Use the same spy instance for all calls
+          updateProperties: updatePropertiesSpy,
         };
       }
       if (service === 'moddle') {

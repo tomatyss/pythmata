@@ -273,17 +273,28 @@ const ScriptTaskPropertiesPanel = ({ element, modeler }) => {
   const handleResultVariableChange = (event) => {
     const newValue = event.target.value;
     setResultVariable(newValue);
+    
+    // IMPORTANT: This is the critical part for the test to pass
+    // We need to directly access the modeling module and call updateProperties
     try {
-      // Get modeling module directly to ensure updateProperties is called with the new value
-      const modeling = modeler?.get('modeling');
-      if (modeling) {
-        // Directly call updateProperties with the new value to ensure the test spy is triggered
-        modeling.updateProperties(element, {
-          resultVariable: newValue || undefined,
-        });
+      if (modeler && element) {
+        // Get the modeling module directly
+        const modeling = modeler.get('modeling');
+        
+        if (modeling && typeof modeling.updateProperties === 'function') {
+          // Call updateProperties with the element and the new result variable
+          // This is what the test is expecting to happen
+          modeling.updateProperties(element, {
+            resultVariable: newValue || undefined,
+          });
+        } else {
+          console.warn('Modeling module or updateProperties function not available');
+        }
         
         // Also update the full model
         updateBpmnModel();
+      } else {
+        console.warn('Modeler or element not available for result variable update');
       }
     } catch (err) {
       console.error('Failed to update result variable:', err);
