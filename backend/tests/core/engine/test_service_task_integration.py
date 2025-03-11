@@ -1,7 +1,7 @@
 """Integration tests for service task execution in the process engine."""
 
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -17,41 +17,9 @@ from pythmata.models.process import (
     ActivityType,
     ProcessDefinition,
     ProcessStatus,
-    Variable,
 )
 
-# Sample BPMN XML with a service task
-SERVICE_TASK_BPMN = """<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
-                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                  id="Definitions_1"
-                  targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="Process_1" isExecutable="true">
-    <bpmn:startEvent id="StartEvent_1">
-      <bpmn:outgoing>Flow_1</bpmn:outgoing>
-    </bpmn:startEvent>
-    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="ServiceTask_1" />
-    <bpmn:serviceTask id="ServiceTask_1" name="Test Service Task">
-      <bpmn:extensionElements>
-        <pythmata:serviceTaskConfig taskName="test_task">
-          <pythmata:properties>
-            <pythmata:property name="test_prop" value="test_value" />
-          </pythmata:properties>
-        </pythmata:serviceTaskConfig>
-      </bpmn:extensionElements>
-      <bpmn:incoming>Flow_1</bpmn:incoming>
-      <bpmn:outgoing>Flow_2</bpmn:outgoing>
-    </bpmn:serviceTask>
-    <bpmn:sequenceFlow id="Flow_2" sourceRef="ServiceTask_1" targetRef="EndEvent_1" />
-    <bpmn:endEvent id="EndEvent_1">
-      <bpmn:incoming>Flow_2</bpmn:incoming>
-    </bpmn:endEvent>
-  </bpmn:process>
-</bpmn:definitions>"""
-
+from tests.data.process_samples import SERVICE_TASK_BPMN
 
 class TestServiceTask(ServiceTask):
     """Test service task for integration testing."""

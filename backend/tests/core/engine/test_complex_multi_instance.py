@@ -1,11 +1,10 @@
 import time
-from typing import List
 
 import pytest
 
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.executor import ProcessExecutor
-from pythmata.core.engine.token import Token, TokenState
+from pythmata.core.engine.token import TokenState
 from pythmata.core.state import StateManager
 
 

@@ -2,7 +2,7 @@ import pytest
 
 from pythmata.core.engine.expressions import ExpressionEvalError, ExpressionSyntaxError
 from pythmata.core.engine.gateway import ExclusiveGateway
-from pythmata.core.engine.token import Token, TokenState
+from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
 
 
