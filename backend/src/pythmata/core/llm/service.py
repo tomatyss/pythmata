@@ -342,7 +342,7 @@ class LlmService:
             logger.debug(f"Starting streaming request to LLM model {model}")
 
             # Create streaming response
-            response_stream = self.client.chat.completions.create(
+            response_stream = await self.client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
