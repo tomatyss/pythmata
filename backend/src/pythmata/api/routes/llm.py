@@ -70,26 +70,28 @@ async def chat_completion(
         if request.session_id:
             try:
                 # Get previous messages from the database
-                previous_messages = await _get_chat_messages(str(request.session_id), db)
-                
+                previous_messages = await _get_chat_messages(
+                    str(request.session_id), db
+                )
+
                 # Add previous messages to maintain conversation history
                 for msg in previous_messages:
                     messages.append({"role": msg["role"], "content": msg["content"]})
-                
-                logger.info(f"Added {len(previous_messages)} previous messages from session {request.session_id}")
+
+                logger.info(
+                    f"Added {len(previous_messages)} previous messages from session {request.session_id}"
+                )
             except Exception as e:
                 logger.warning(f"Failed to retrieve previous messages: {str(e)}")
                 # Continue with the request even if retrieving previous messages fails
-        
+
         # Add user messages from the current request
         for m in request.messages:
             messages.append({"role": m.role, "content": m.content})
 
         # Call LLM service with XML validation
         response = await llm_service.chat_completion(
-            messages=messages, 
-            model=model,
-            validate_xml=validate_xml
+            messages=messages, model=model, validate_xml=validate_xml
         )
 
         # Extract XML if present in the response
@@ -150,24 +152,28 @@ async def chat_completion(
             "model": model,
             "session_id": str(session_id) if session_id else None,
         }
-        
+
         # Include XML validation info if available
         if "xml_validation" in response:
             # Convert validation errors to schema format
             validation_errors = []
             for error in response["xml_validation"].get("validation_errors", []):
-                validation_errors.append({
-                    "code": error.get("code", "UNKNOWN"),
-                    "message": error.get("message", "Unknown error"),
-                    "element_id": error.get("element_id")
-                })
-                
+                validation_errors.append(
+                    {
+                        "code": error.get("code", "UNKNOWN"),
+                        "message": error.get("message", "Unknown error"),
+                        "element_id": error.get("element_id"),
+                    }
+                )
+
             result["xml_validation"] = {
                 "is_valid": response["xml_validation"].get("is_valid", False),
                 "errors": validation_errors,
-                "improvement_attempts": response["xml_validation"].get("improvement_attempts", 0)
+                "improvement_attempts": response["xml_validation"].get(
+                    "improvement_attempts", 0
+                ),
             }
-            
+
         return result
     except Exception as e:
         logger.error(f"Chat completion failed: {str(e)}")
@@ -178,7 +184,7 @@ async def chat_completion(
 
 @router.post("/generate-xml", response_model=XmlResponse)
 async def generate_xml(
-    request: XmlGenerationRequest, 
+    request: XmlGenerationRequest,
     db: AsyncSession = Depends(get_session),
     validate: bool = True,
     max_validation_attempts: int = 3,
@@ -213,24 +219,28 @@ async def generate_xml(
             "xml": response["xml"],
             "explanation": response["explanation"],
         }
-        
+
         # Include validation info if available
         if "validation" in response:
             # Convert validation errors to schema format
             validation_errors = []
             for error in response["validation"].get("validation_errors", []):
-                validation_errors.append({
-                    "code": error.get("code", "UNKNOWN"),
-                    "message": error.get("message", "Unknown error"),
-                    "element_id": error.get("element_id")
-                })
-                
+                validation_errors.append(
+                    {
+                        "code": error.get("code", "UNKNOWN"),
+                        "message": error.get("message", "Unknown error"),
+                        "element_id": error.get("element_id"),
+                    }
+                )
+
             result["validation"] = {
                 "is_valid": response["validation"].get("is_valid", False),
                 "errors": validation_errors,
-                "improvement_attempts": response["validation"].get("improvement_attempts", 0)
+                "improvement_attempts": response["validation"].get(
+                    "improvement_attempts", 0
+                ),
             }
-            
+
         return result
     except Exception as e:
         logger.error(f"XML generation failed: {str(e)}")
@@ -239,7 +249,7 @@ async def generate_xml(
 
 @router.post("/modify-xml", response_model=XmlResponse)
 async def modify_xml(
-    request: XmlModificationRequest, 
+    request: XmlModificationRequest,
     db: AsyncSession = Depends(get_session),
     validate: bool = True,
     max_validation_attempts: int = 3,
@@ -275,24 +285,28 @@ async def modify_xml(
             "xml": response["xml"],
             "explanation": response["explanation"],
         }
-        
+
         # Include validation info if available
         if "validation" in response:
             # Convert validation errors to schema format
             validation_errors = []
             for error in response["validation"].get("validation_errors", []):
-                validation_errors.append({
-                    "code": error.get("code", "UNKNOWN"),
-                    "message": error.get("message", "Unknown error"),
-                    "element_id": error.get("element_id")
-                })
-                
+                validation_errors.append(
+                    {
+                        "code": error.get("code", "UNKNOWN"),
+                        "message": error.get("message", "Unknown error"),
+                        "element_id": error.get("element_id"),
+                    }
+                )
+
             result["validation"] = {
                 "is_valid": response["validation"].get("is_valid", False),
                 "errors": validation_errors,
-                "improvement_attempts": response["validation"].get("improvement_attempts", 0)
+                "improvement_attempts": response["validation"].get(
+                    "improvement_attempts", 0
+                ),
             }
-            
+
         return result
     except Exception as e:
         logger.error(f"XML modification failed: {str(e)}")
