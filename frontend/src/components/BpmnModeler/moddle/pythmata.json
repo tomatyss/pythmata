@@ -22,11 +22,17 @@
         },
         {
           "name": "inputs",
-          "type": "Properties"
+          "type": "Properties",
+          "xml": {
+            "serialize": "property"
+          }
         },
         {
           "name": "outputs",
-          "type": "Properties"
+          "type": "Properties",
+          "xml": {
+            "serialize": "property"
+          }
         }
       ]
     },
@@ -41,7 +47,10 @@
         },
         {
           "name": "properties",
-          "type": "Properties"
+          "type": "Properties",
+          "xml": {
+            "serialize": "property"
+          }
         }
       ]
     },
