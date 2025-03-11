@@ -107,10 +107,14 @@ class ProcessInstanceManager:
             ID of the start event
 
         Raises:
-            InvalidProcessDefinitionError: If no start event found
+            InvalidProcessDefinitionError: If BPMN XML is invalid or no start event found
         """
         parser = BPMNParser()
-        process_graph = parser.parse(bpmn_xml)
+        try:
+            process_graph = parser.parse(bpmn_xml)
+        except ValueError as e:
+            # Convert ValueError from parser to InvalidProcessDefinitionError
+            raise InvalidProcessDefinitionError(f"Invalid BPMN XML: {str(e)}")
 
         # Find start event node
         start_event = next(
