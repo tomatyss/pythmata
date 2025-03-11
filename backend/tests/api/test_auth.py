@@ -155,7 +155,7 @@ async def test_get_current_user(
 
 async def test_get_current_user_no_token(async_client: AsyncClient):
     """Test getting current user without token."""
-    response = await async_client.get("/auth/me")
+    response = await async_client.get("/api/auth/me")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 

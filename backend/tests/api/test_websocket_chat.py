@@ -94,13 +94,25 @@ async def test_handle_chat_message(mock_db):
     ):
         # Setup mock LLM service
         mock_llm = AsyncMock()
-        mock_llm.stream_chat_completion = AsyncMock(return_value="Test response")
+        # Updated to match the actual implementation which uses chat_completion
+        mock_llm.chat_completion = AsyncMock(return_value={
+            "content": "Test response"
+        })
         MockLlmService.return_value = mock_llm
 
         # Mock db.execute result
         mock_result = MagicMock()
         mock_result.fetchall.return_value = []
         mock_db.execute.return_value = mock_result
+        
+        # Mock db.refresh behavior to set created_at field
+        def refresh_side_effect(obj):
+            # Ensure the created_at field is set after db.refresh is called
+            if not hasattr(obj, 'created_at') or obj.created_at is None:
+                obj.created_at = datetime.now()
+            return AsyncMock()
+            
+        mock_db.refresh.side_effect = refresh_side_effect
 
         # Call handle_chat_message
         from pythmata.api.routes.websockets import handle_chat_message
@@ -114,8 +126,8 @@ async def test_handle_chat_message(mock_db):
         }
         await handle_chat_message(client_id, data, mock_db)
 
-        # Verify LLM service was called
-        mock_llm.stream_chat_completion.assert_called_once()
+        # Updated to match the actual implementation
+        mock_llm.chat_completion.assert_called_once()
 
         # Verify chat_manager.send_personal_message was called
         assert (

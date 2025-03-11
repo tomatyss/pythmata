@@ -1,6 +1,6 @@
 """LLM service for interacting with language models using AISuite."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import aisuite as ai
 
@@ -68,7 +68,7 @@ class LlmService:
                 model=model,
                 messages=messages,
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
             )
 
             # Extract usage information if available
@@ -111,49 +111,76 @@ class LlmService:
             if validate_xml:
                 # Extract XML from response
                 xml = None
-                
+
                 # Extract XML from markdown code blocks
                 if "```xml" in content and "```" in content.split("```xml", 1)[1]:
                     xml = content.split("```xml", 1)[1].split("```", 1)[0].strip()
                 elif "```" in content and "```" in content.split("```", 1)[1]:
                     # Try without language specifier
-                    potential_xml = content.split("```", 1)[1].split("```", 1)[0].strip()
-                    if potential_xml.startswith("<?xml") or potential_xml.startswith("<bpmn:"):
+                    potential_xml = (
+                        content.split("```", 1)[1].split("```", 1)[0].strip()
+                    )
+                    if potential_xml.startswith("<?xml") or potential_xml.startswith(
+                        "<bpmn:"
+                    ):
                         xml = potential_xml
-                
+
                 # If XML found, validate and improve it
                 if xml:
-                    logger.info("XML found in chat response, validating and improving...")
+                    logger.info(
+                        "XML found in chat response, validating and improving..."
+                    )
                     validation_result = await self.validate_and_improve_xml(
                         xml=xml,
                         model=model,
                         max_attempts=max_validation_attempts,
                         temperature=temperature,
                     )
-                    
+
                     # If validation improved the XML, update the content
                     if validation_result["improvement_attempts"] > 0:
                         improved_xml = validation_result["xml"]
-                        
+
                         # Replace the original XML with the improved version
-                        if "```xml" in content and "```" in content.split("```xml", 1)[1]:
-                            new_content = content.split("```xml", 1)[0] + "```xml\n" + improved_xml + "\n```" + content.split("```xml", 1)[1].split("```", 1)[1]
+                        if (
+                            "```xml" in content
+                            and "```" in content.split("```xml", 1)[1]
+                        ):
+                            new_content = (
+                                content.split("```xml", 1)[0]
+                                + "```xml\n"
+                                + improved_xml
+                                + "\n```"
+                                + content.split("```xml", 1)[1].split("```", 1)[1]
+                            )
                         else:
                             # For code blocks without language specifier
-                            new_content = content.split("```", 1)[0] + "```\n" + improved_xml + "\n```" + content.split("```", 1)[1].split("```", 1)[1]
-                        
+                            new_content = (
+                                content.split("```", 1)[0]
+                                + "```\n"
+                                + improved_xml
+                                + "\n```"
+                                + content.split("```", 1)[1].split("```", 1)[1]
+                            )
+
                         # Update the result with the improved content
                         result["content"] = new_content
-                        
+
                         # Add validation info to the result
                         result["xml_validation"] = {
                             "is_valid": validation_result["is_valid"],
-                            "improvement_attempts": validation_result["improvement_attempts"],
+                            "improvement_attempts": validation_result[
+                                "improvement_attempts"
+                            ],
                             "validation_errors": validation_result["validation_errors"],
                         }
-                        
-                        validation_status = "valid" if validation_result["is_valid"] else "invalid"
-                        logger.info(f"XML in chat response is {validation_status} after {validation_result['improvement_attempts']} improvement attempts")
+
+                        validation_status = (
+                            "valid" if validation_result["is_valid"] else "invalid"
+                        )
+                        logger.info(
+                            f"XML in chat response is {validation_status} after {validation_result['improvement_attempts']} improvement attempts"
+                        )
 
             logger.debug(f"Received response from LLM model {model}")
             return result
@@ -231,7 +258,7 @@ class LlmService:
             if not xml:
                 logger.warning("Failed to extract valid XML from the LLM response")
                 xml = ""
-                
+
             # Validate and improve XML if requested
             validation_result = None
             if validate and xml:
@@ -243,16 +270,21 @@ class LlmService:
                     temperature=temperature,
                     system_prompt=system_prompt,
                 )
-                
+
                 # Use the validated/improved XML
                 xml = validation_result["xml"]
-                
+
                 # Add validation info to the explanation
                 if validation_result["improvement_attempts"] > 0:
-                    validation_status = "valid" if validation_result["is_valid"] else "invalid"
+                    validation_status = (
+                        "valid" if validation_result["is_valid"] else "invalid"
+                    )
                     explanation += f"\n\nXML validation: {validation_status} after {validation_result['improvement_attempts']} improvement attempts."
-                    
-                    if not validation_result["is_valid"] and validation_result["validation_errors"]:
+
+                    if (
+                        not validation_result["is_valid"]
+                        and validation_result["validation_errors"]
+                    ):
                         explanation += "\nRemaining validation errors:\n"
                         for error in validation_result["validation_errors"]:
                             explanation += f"- {error['code']}: {error['message']}\n"
@@ -262,7 +294,7 @@ class LlmService:
                 "explanation": explanation,
                 "model": model,
             }
-            
+
             # Include validation info if available
             if validation_result:
                 result["validation"] = {
@@ -310,7 +342,7 @@ class LlmService:
             logger.debug(f"Starting streaming request to LLM model {model}")
 
             # Create streaming response
-            response_stream = self.client.chat.completions.create(
+            response_stream = await self.client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
@@ -371,7 +403,7 @@ class LlmService:
     ) -> Dict[str, Any]:
         """
         Validate XML and attempt to improve it if validation fails.
-        
+
         Args:
             xml: XML content to validate
             model: LLM model to use for improvements
@@ -379,7 +411,7 @@ class LlmService:
             temperature: Temperature for LLM requests
             max_tokens: Maximum tokens for LLM requests
             system_prompt: Optional system prompt to override default
-            
+
         Returns:
             Dictionary with validated XML, validation status, and improvement history
         """
@@ -387,10 +419,10 @@ class LlmService:
 
         # Initialize validator
         validator = BPMNValidator()
-        
+
         # First validation
         validation_result = validator.validate(xml)
-        
+
         # If already valid, return immediately
         if validation_result.is_valid:
             logger.info("XML is valid, no improvements needed")
@@ -400,35 +432,36 @@ class LlmService:
                 "validation_errors": [],
                 "improvement_attempts": 0,
             }
-        
+
         # Track the best XML version (with fewest validation errors)
         best_xml = xml
         best_error_count = len(validation_result.errors)
-        
+
         # Format validation errors for the prompt
         validation_errors_text = "\n".join(
             [f"- {error}" for error in validation_result.errors]
         )
-        
-        logger.info(f"XML validation failed with {best_error_count} errors. Attempting to improve...")
-        
+
+        logger.info(
+            f"XML validation failed with {best_error_count} errors. Attempting to improve..."
+        )
+
         # Improvement loop
         attempts = 0
         improvement_history = []
-        
+
         while not validation_result.is_valid and attempts < max_attempts:
             attempts += 1
-            
+
             try:
                 # Prepare improvement prompt
                 prompt = XML_IMPROVEMENT_PROMPT.format(
-                    validation_errors=validation_errors_text,
-                    original_xml=best_xml
+                    validation_errors=validation_errors_text, original_xml=best_xml
                 )
-                
+
                 # Use provided system prompt or default
                 sys_prompt = system_prompt or BPMN_SYSTEM_PROMPT
-                
+
                 # Call LLM for improvement
                 response = await self.chat_completion(
                     messages=[
@@ -439,43 +472,61 @@ class LlmService:
                     temperature=temperature,
                     max_tokens=max_tokens,
                 )
-                
+
                 # Extract improved XML
                 content = response["content"]
                 improved_xml = None
-                
+
                 # Extract XML from markdown code blocks
                 if "```xml" in content and "```" in content.split("```xml", 1)[1]:
-                    improved_xml = content.split("```xml", 1)[1].split("```", 1)[0].strip()
+                    improved_xml = (
+                        content.split("```xml", 1)[1].split("```", 1)[0].strip()
+                    )
                 elif "```" in content and "```" in content.split("```", 1)[1]:
                     # Try without language specifier
-                    potential_xml = content.split("```", 1)[1].split("```", 1)[0].strip()
-                    if potential_xml.startswith("<?xml") or potential_xml.startswith("<bpmn:"):
+                    potential_xml = (
+                        content.split("```", 1)[1].split("```", 1)[0].strip()
+                    )
+                    if potential_xml.startswith("<?xml") or potential_xml.startswith(
+                        "<bpmn:"
+                    ):
                         improved_xml = potential_xml
-                
+
                 if not improved_xml:
-                    logger.warning(f"Attempt {attempts}: Failed to extract XML from improvement response")
-                    improvement_history.append({
-                        "attempt": attempts,
-                        "success": False,
-                        "error": "Failed to extract XML from response"
-                    })
+                    logger.warning(
+                        f"Attempt {attempts}: Failed to extract XML from improvement response"
+                    )
+                    improvement_history.append(
+                        {
+                            "attempt": attempts,
+                            "success": False,
+                            "error": "Failed to extract XML from response",
+                        }
+                    )
                     continue
-                
+
                 # Validate improved XML
                 new_validation_result = validator.validate(improved_xml)
                 new_error_count = len(new_validation_result.errors)
-                
+
                 # Record improvement attempt
-                improvement_history.append({
-                    "attempt": attempts,
-                    "success": new_validation_result.is_valid,
-                    "error_count": new_error_count,
-                    "errors": [str(error) for error in new_validation_result.errors] if not new_validation_result.is_valid else []
-                })
-                
-                logger.info(f"Attempt {attempts}: XML has {new_error_count} validation errors (was {best_error_count})")
-                
+                improvement_history.append(
+                    {
+                        "attempt": attempts,
+                        "success": new_validation_result.is_valid,
+                        "error_count": new_error_count,
+                        "errors": (
+                            [str(error) for error in new_validation_result.errors]
+                            if not new_validation_result.is_valid
+                            else []
+                        ),
+                    }
+                )
+
+                logger.info(
+                    f"Attempt {attempts}: XML has {new_error_count} validation errors (was {best_error_count})"
+                )
+
                 # If valid or better than previous best, update best XML
                 if new_validation_result.is_valid or new_error_count < best_error_count:
                     best_xml = improved_xml
@@ -484,26 +535,30 @@ class LlmService:
                     validation_errors_text = "\n".join(
                         [f"- {error}" for error in validation_result.errors]
                     )
-                    
+
                     if new_validation_result.is_valid:
-                        logger.info(f"XML successfully validated after {attempts} attempts")
+                        logger.info(
+                            f"XML successfully validated after {attempts} attempts"
+                        )
                         break
-                
+
             except Exception as e:
-                logger.error(f"Error during XML improvement attempt {attempts}: {str(e)}")
-                improvement_history.append({
-                    "attempt": attempts,
-                    "success": False,
-                    "error": str(e)
-                })
-        
+                logger.error(
+                    f"Error during XML improvement attempt {attempts}: {str(e)}"
+                )
+                improvement_history.append(
+                    {"attempt": attempts, "success": False, "error": str(e)}
+                )
+
         # Return best XML version with validation status
         return {
             "xml": best_xml,
             "is_valid": validation_result.is_valid,
-            "validation_errors": [error.to_dict() for error in validation_result.errors],
+            "validation_errors": [
+                error.to_dict() for error in validation_result.errors
+            ],
             "improvement_attempts": attempts,
-            "improvement_history": improvement_history
+            "improvement_history": improvement_history,
         }
 
     async def modify_xml(
@@ -583,7 +638,7 @@ class LlmService:
                 logger.warning("Failed to extract valid XML from the LLM response")
                 # Fall back to the original XML
                 xml = current_xml
-                
+
             # Validate and improve XML if requested
             validation_result = None
             if validate and xml:
@@ -595,16 +650,21 @@ class LlmService:
                     temperature=temperature,
                     system_prompt=system_prompt,
                 )
-                
+
                 # Use the validated/improved XML
                 xml = validation_result["xml"]
-                
+
                 # Add validation info to the explanation
                 if validation_result["improvement_attempts"] > 0:
-                    validation_status = "valid" if validation_result["is_valid"] else "invalid"
+                    validation_status = (
+                        "valid" if validation_result["is_valid"] else "invalid"
+                    )
                     explanation += f"\n\nXML validation: {validation_status} after {validation_result['improvement_attempts']} improvement attempts."
-                    
-                    if not validation_result["is_valid"] and validation_result["validation_errors"]:
+
+                    if (
+                        not validation_result["is_valid"]
+                        and validation_result["validation_errors"]
+                    ):
                         explanation += "\nRemaining validation errors:\n"
                         for error in validation_result["validation_errors"]:
                             explanation += f"- {error['code']}: {error['message']}\n"
@@ -614,7 +674,7 @@ class LlmService:
                 "explanation": explanation,
                 "model": model,
             }
-            
+
             # Include validation info if available
             if validation_result:
                 result["validation"] = {
