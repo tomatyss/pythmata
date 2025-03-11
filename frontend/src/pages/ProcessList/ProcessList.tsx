@@ -31,6 +31,7 @@ import {
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   ListAlt as ListAltIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import ProcessVariablesDialog, {
   ProcessVariables,
@@ -149,6 +150,44 @@ const ProcessList = () => {
     }
   };
 
+  /**
+   * Creates a copy of an existing process definition
+   * @param process The process definition to copy
+   */
+  const handleCopyProcess = async (process: ProcessDefinition) => {
+    try {
+      // Create a new process with the same data
+      const newProcess = {
+        name: `Copy of ${process.name}`,
+        bpmnXml: process.bpmnXml,
+        variableDefinitions: process.variableDefinitions,
+      };
+
+      // Call the API to create the new process
+      const response = await apiService.createProcessDefinition(newProcess);
+
+      // Add the new process to the list
+      setProcesses([
+        ...processes,
+        {
+          ...response.data,
+          activeInstances: 0,
+          totalInstances: 0,
+        },
+      ]);
+
+      // Show success message
+      alert('Process copied successfully');
+    } catch (error) {
+      console.error('Failed to copy process:', error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('An unexpected error occurred while copying the process');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <Box
@@ -253,6 +292,13 @@ const ProcessList = () => {
                       title="Edit Process"
                     >
                       <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleCopyProcess(process)}
+                      title="Copy Process"
+                    >
+                      <ContentCopyIcon />
                     </IconButton>
                     <IconButton
                       color="error"

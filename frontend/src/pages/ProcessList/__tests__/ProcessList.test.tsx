@@ -17,6 +17,7 @@ vi.mock('@/services/api', () => ({
     getProcessDefinitions: vi.fn(),
     deleteProcessDefinition: vi.fn(),
     startProcessInstance: vi.fn(),
+    createProcessDefinition: vi.fn(),
   },
 }));
 
@@ -212,5 +213,108 @@ describe('ProcessList', () => {
       fireEvent.click(editProcessButtons[0]);
     }
     expect(mockNavigate).toHaveBeenCalledWith('/processes/process-1');
+  });
+
+  it('copies a process successfully', async () => {
+    // Mock the createProcessDefinition API call
+    const mockCopiedProcess = {
+      data: {
+        id: 'process-3',
+        name: 'Copy of Test Process 1',
+        version: 1,
+        bpmnXml: '<xml>...</xml>',
+        activeInstances: 0,
+        totalInstances: 0,
+        createdAt: '2024-02-15T12:00:00Z',
+        updatedAt: '2024-02-15T12:00:00Z',
+        variableDefinitions: [],
+      },
+    };
+
+    (
+      apiService.createProcessDefinition as jest.MockedFunction<
+        typeof apiService.createProcessDefinition
+      >
+    ).mockResolvedValue(mockCopiedProcess);
+
+    // Mock window.alert
+    const alertMock = vi.fn();
+    window.alert = alertMock;
+
+    render(<ProcessList />);
+
+    // Wait for processes to load
+    await waitFor(() => {
+      expect(screen.getByText('Test Process 1')).toBeInTheDocument();
+    });
+
+    // Find and click copy button for the first process
+    const copyButtons = screen.getAllByTitle('Copy Process');
+    expect(copyButtons.length).toBeGreaterThan(0);
+    if (copyButtons[0]) {
+      fireEvent.click(copyButtons[0]);
+    }
+
+    // Should call createProcessDefinition API with correct data
+    await waitFor(() => {
+      expect(apiService.createProcessDefinition).toHaveBeenCalledWith({
+        name: 'Copy of Test Process 1',
+        bpmnXml: '<xml>...</xml>',
+        variableDefinitions: [],
+      });
+    });
+
+    // Should show success message
+    expect(alertMock).toHaveBeenCalledWith('Process copied successfully');
+
+    // New process should be added to the list
+    await waitFor(() => {
+      expect(screen.getByText('Copy of Test Process 1')).toBeInTheDocument();
+    });
+  });
+
+  it('handles copy process error', async () => {
+    // Mock console.error to prevent test output pollution
+    const originalConsoleError = console.error;
+    console.error = vi.fn();
+
+    // Mock window.alert
+    const alertMock = vi.fn();
+    window.alert = alertMock;
+
+    // Mock API to throw an error
+    const errorMessage = 'Failed to copy process';
+    (
+      apiService.createProcessDefinition as jest.MockedFunction<
+        typeof apiService.createProcessDefinition
+      >
+    ).mockRejectedValue(new Error(errorMessage));
+
+    render(<ProcessList />);
+
+    // Wait for processes to load
+    await waitFor(() => {
+      expect(screen.getByText('Test Process 1')).toBeInTheDocument();
+    });
+
+    // Find and click copy button for the first process
+    const copyButtons = screen.getAllByTitle('Copy Process');
+    expect(copyButtons.length).toBeGreaterThan(0);
+    if (copyButtons[0]) {
+      fireEvent.click(copyButtons[0]);
+    }
+
+    // Should show error alert
+    await waitFor(() => {
+      expect(alertMock).toHaveBeenCalledWith(errorMessage);
+    });
+
+    // Should not add any new process to the list
+    expect(
+      screen.queryByText('Copy of Test Process 1')
+    ).not.toBeInTheDocument();
+
+    // Restore console.error
+    console.error = originalConsoleError;
   });
 });
