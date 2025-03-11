@@ -3,6 +3,7 @@ import { Box, Tabs, Tab } from '@mui/material';
 import CommonProperties from './CommonProperties';
 import InputOutputProperties from './InputOutputProperties';
 import ServiceTaskPropertiesPanel from './ServiceTaskPropertiesPanel';
+import ScriptTaskPropertiesPanel from './ScriptTaskPropertiesPanel';
 import TimerEventPropertiesPanel from './TimerEventPropertiesPanel';
 import SequenceFlowPropertiesPanel from './SequenceFlowPropertiesPanel';
 import GatewayPropertiesPanel from './GatewayPropertiesPanel';
@@ -23,6 +24,7 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
   const [hasTimerDefinition, setHasTimerDefinition] = useState(false);
   const [isSequenceFlow, setIsSequenceFlow] = useState(false);
   const [isGateway, setIsGateway] = useState(false);
+  const [isScriptTask, setIsScriptTask] = useState(false);
   const [processVariables, setProcessVariables] = useState([]);
   
   // Set element type when element changes
@@ -41,6 +43,9 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
         element.type === 'bpmn:ComplexGateway' ||
         element.type === 'bpmn:EventBasedGateway'
       );
+      
+      // Check if element is a script task
+      setIsScriptTask(element.type === 'bpmn:ScriptTask');
       
       // Check if element has timer definition or is a type that can have timer definitions
       const businessObject = element.businessObject;
@@ -107,6 +112,7 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
   // Check if element is a service task
   const isServiceTask = elementType === 'bpmn:ServiceTask';
   
+  
   return (
     <Box sx={{ width: '100%' }}>
       {isSequenceFlow ? (
@@ -128,6 +134,7 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
             >
               <Tab label="General" />
               {isServiceTask && <Tab label="Service" />}
+              {isScriptTask && <Tab label="Script" />}
               {isGateway && <Tab label="Gateway" />}
               {hasTimerDefinition && <Tab label="Timer" />}
               {isTask && <Tab label="I/O Mapping" />}
@@ -144,21 +151,26 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
             <ServiceTaskPropertiesPanel element={element} modeler={modeler} />
           )}
           
+          {/* Script Task Properties Tab */}
+          {currentTab === 1 && isScriptTask && (
+            <ScriptTaskPropertiesPanel element={element} modeler={modeler} />
+          )}
+          
           {/* Gateway Properties Tab */}
-          {currentTab === (isServiceTask ? 2 : 1) && isGateway && (
+          {currentTab === (isServiceTask || isScriptTask ? 2 : 1) && isGateway && (
             <GatewayPropertiesPanel element={element} modeler={modeler} />
           )}
           
           {/* Timer Properties Tab */}
           {currentTab === (
-            isServiceTask ? (isGateway ? 3 : 2) : (isGateway ? 2 : 1)
+            (isServiceTask || isScriptTask) ? (isGateway ? 3 : 2) : (isGateway ? 2 : 1)
           ) && hasTimerDefinition && (
             <TimerEventPropertiesPanel element={element} modeler={modeler} />
           )}
           
           {/* Input/Output Mappings Tab */}
           {currentTab === (
-            isServiceTask ? 
+            (isServiceTask || isScriptTask) ? 
               (isGateway ? 
                 (hasTimerDefinition ? 4 : 3) : 
                 (hasTimerDefinition ? 3 : 2)
