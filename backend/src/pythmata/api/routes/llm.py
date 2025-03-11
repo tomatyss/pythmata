@@ -34,6 +34,7 @@ async def chat_completion(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_session),
+    validate_xml: bool = True,
 ) -> Dict[str, Any]:
     """
     Generate a chat completion response for BPMN assistance.
@@ -42,6 +43,7 @@ async def chat_completion(
         request: Chat request with messages and context
         background_tasks: FastAPI background tasks
         db: Database session
+        validate_xml: Whether to validate and improve XML if found in the response
 
     Returns:
         Response from the LLM with optional XML
@@ -83,8 +85,12 @@ async def chat_completion(
         for m in request.messages:
             messages.append({"role": m.role, "content": m.content})
 
-        # Call LLM service
-        response = await llm_service.chat_completion(messages=messages, model=model)
+        # Call LLM service with XML validation
+        response = await llm_service.chat_completion(
+            messages=messages, 
+            model=model,
+            validate_xml=validate_xml
+        )
 
         # Extract XML if present in the response
         content = response["content"]
@@ -137,12 +143,32 @@ async def chat_completion(
             db.add(assistant_message)
             await db.commit()
 
-        return {
+        # Prepare response
+        result = {
             "message": response["content"],
             "xml": xml,
             "model": model,
             "session_id": str(session_id) if session_id else None,
         }
+        
+        # Include XML validation info if available
+        if "xml_validation" in response:
+            # Convert validation errors to schema format
+            validation_errors = []
+            for error in response["xml_validation"].get("validation_errors", []):
+                validation_errors.append({
+                    "code": error.get("code", "UNKNOWN"),
+                    "message": error.get("message", "Unknown error"),
+                    "element_id": error.get("element_id")
+                })
+                
+            result["xml_validation"] = {
+                "is_valid": response["xml_validation"].get("is_valid", False),
+                "errors": validation_errors,
+                "improvement_attempts": response["xml_validation"].get("improvement_attempts", 0)
+            }
+            
+        return result
     except Exception as e:
         logger.error(f"Chat completion failed: {str(e)}")
         raise HTTPException(
@@ -152,7 +178,10 @@ async def chat_completion(
 
 @router.post("/generate-xml", response_model=XmlResponse)
 async def generate_xml(
-    request: XmlGenerationRequest, db: AsyncSession = Depends(get_session)
+    request: XmlGenerationRequest, 
+    db: AsyncSession = Depends(get_session),
+    validate: bool = True,
+    max_validation_attempts: int = 3,
 ):
     """
     Generate BPMN XML from a natural language description.
@@ -160,6 +189,8 @@ async def generate_xml(
     Args:
         request: XML generation request
         db: Database session
+        validate: Whether to validate and improve the generated XML
+        max_validation_attempts: Maximum number of validation improvement attempts
 
     Returns:
         Generated XML and explanation
@@ -170,12 +201,37 @@ async def generate_xml(
         response = await llm_service.generate_xml(
             description=request.description,
             model=request.model or "anthropic:claude-3-7-sonnet-latest",
+            validate=validate,
+            max_validation_attempts=max_validation_attempts,
         )
 
         if not response["xml"]:
             raise ValueError("Failed to generate valid XML")
 
-        return {"xml": response["xml"], "explanation": response["explanation"]}
+        # Prepare response
+        result = {
+            "xml": response["xml"],
+            "explanation": response["explanation"],
+        }
+        
+        # Include validation info if available
+        if "validation" in response:
+            # Convert validation errors to schema format
+            validation_errors = []
+            for error in response["validation"].get("validation_errors", []):
+                validation_errors.append({
+                    "code": error.get("code", "UNKNOWN"),
+                    "message": error.get("message", "Unknown error"),
+                    "element_id": error.get("element_id")
+                })
+                
+            result["validation"] = {
+                "is_valid": response["validation"].get("is_valid", False),
+                "errors": validation_errors,
+                "improvement_attempts": response["validation"].get("improvement_attempts", 0)
+            }
+            
+        return result
     except Exception as e:
         logger.error(f"XML generation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate XML: {str(e)}")
@@ -183,7 +239,10 @@ async def generate_xml(
 
 @router.post("/modify-xml", response_model=XmlResponse)
 async def modify_xml(
-    request: XmlModificationRequest, db: AsyncSession = Depends(get_session)
+    request: XmlModificationRequest, 
+    db: AsyncSession = Depends(get_session),
+    validate: bool = True,
+    max_validation_attempts: int = 3,
 ):
     """
     Modify existing BPMN XML based on a natural language request.
@@ -191,6 +250,8 @@ async def modify_xml(
     Args:
         request: XML modification request
         db: Database session
+        validate: Whether to validate and improve the modified XML
+        max_validation_attempts: Maximum number of validation improvement attempts
 
     Returns:
         Modified XML and explanation
@@ -202,12 +263,37 @@ async def modify_xml(
             current_xml=request.current_xml,
             request=request.request,
             model=request.model or "anthropic:claude-3-7-sonnet-latest",
+            validate=validate,
+            max_validation_attempts=max_validation_attempts,
         )
 
         if not response["xml"]:
             raise ValueError("Failed to modify XML")
 
-        return {"xml": response["xml"], "explanation": response["explanation"]}
+        # Prepare response
+        result = {
+            "xml": response["xml"],
+            "explanation": response["explanation"],
+        }
+        
+        # Include validation info if available
+        if "validation" in response:
+            # Convert validation errors to schema format
+            validation_errors = []
+            for error in response["validation"].get("validation_errors", []):
+                validation_errors.append({
+                    "code": error.get("code", "UNKNOWN"),
+                    "message": error.get("message", "Unknown error"),
+                    "element_id": error.get("element_id")
+                })
+                
+            result["validation"] = {
+                "is_valid": response["validation"].get("is_valid", False),
+                "errors": validation_errors,
+                "improvement_attempts": response["validation"].get("improvement_attempts", 0)
+            }
+            
+        return result
     except Exception as e:
         logger.error(f"XML modification failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to modify XML: {str(e)}")

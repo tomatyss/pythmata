@@ -125,3 +125,19 @@ Please include:
 3. Suggestions for improvements
 4. Any missing elements or connections
 """
+
+# Prompt for improving XML based on validation errors
+XML_IMPROVEMENT_PROMPT = """
+The XML you generated has validation errors:
+
+{validation_errors}
+
+Original XML:
+{original_xml}
+
+Please fix these errors and provide a corrected version of the COMPLETE XML.
+Remember to include all required elements and ensure proper structure.
+Do not use placeholders or abbreviations. The entire XML must be valid according to BPMN 2.0 specification.
+
+Focus specifically on fixing these validation errors while preserving the original intent and structure as much as possible.
+"""

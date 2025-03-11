@@ -1,9 +1,9 @@
 """LLM-related schemas."""
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Message(BaseModel):
@@ -30,6 +30,7 @@ class ChatResponse(BaseModel):
     xml: Optional[str] = None
     model: str
     session_id: Optional[str] = None
+    xml_validation: Optional["ValidationResult"] = None
 
 
 class ChatSessionCreate(BaseModel):
@@ -75,8 +76,25 @@ class XmlModificationRequest(BaseModel):
     model: Optional[str] = None
 
 
+class ValidationError(BaseModel):
+    """Validation error model."""
+
+    code: str
+    message: str
+    element_id: Optional[str] = None
+
+
+class ValidationResult(BaseModel):
+    """Validation result model."""
+
+    is_valid: bool
+    errors: List[ValidationError] = Field(default_factory=list)
+    improvement_attempts: int = 0
+
+
 class XmlResponse(BaseModel):
     """XML response model."""
 
     xml: str
     explanation: str
+    validation: Optional[ValidationResult] = None
