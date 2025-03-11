@@ -32,7 +32,6 @@ class LlmService:
         model: str = "anthropic:claude-3-7-sonnet-latest",
         temperature: float = 0.5,
         max_tokens: int = 8192,
-        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate a chat completion response.
@@ -65,7 +64,7 @@ class LlmService:
                 model=model,
                 messages=messages,
                 temperature=temperature,
-                max_tokens=max_tokens,
+                max_tokens=max_tokens
             )
 
             # Extract usage information if available

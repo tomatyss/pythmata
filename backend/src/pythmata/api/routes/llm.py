@@ -64,7 +64,22 @@ async def chat_completion(
             xml_context = f"\nThe user is working with the following BPMN XML. Use this as context for your responses:\n\n```{request.current_xml}```"
             messages[0]["content"] += xml_context
 
-        # Add user messages
+        # If session_id is provided, retrieve previous messages to include conversation history
+        if request.session_id:
+            try:
+                # Get previous messages from the database
+                previous_messages = await _get_chat_messages(str(request.session_id), db)
+                
+                # Add previous messages to maintain conversation history
+                for msg in previous_messages:
+                    messages.append({"role": msg["role"], "content": msg["content"]})
+                
+                logger.info(f"Added {len(previous_messages)} previous messages from session {request.session_id}")
+            except Exception as e:
+                logger.warning(f"Failed to retrieve previous messages: {str(e)}")
+                # Continue with the request even if retrieving previous messages fails
+        
+        # Add user messages from the current request
         for m in request.messages:
             messages.append({"role": m.role, "content": m.content})
 
