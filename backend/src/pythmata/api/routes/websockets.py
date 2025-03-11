@@ -172,7 +172,11 @@ async def handle_chat_message(client_id: str, data: Dict[str, Any], db: AsyncSes
         "message_received",
         {
             "messageId": str(user_message.id),
-            "timestamp": user_message.created_at.isoformat() if user_message.created_at else datetime.now().isoformat(),
+            "timestamp": (
+                user_message.created_at.isoformat()
+                if user_message.created_at
+                else datetime.now().isoformat()
+            ),
         },
     )
 
@@ -225,7 +229,11 @@ async def handle_chat_message(client_id: str, data: Dict[str, Any], db: AsyncSes
                 "role": "assistant",
                 "content": response_content,
                 "xml": xml,
-                "timestamp": assistant_message.created_at.isoformat() if assistant_message.created_at else datetime.now().isoformat(),
+                "timestamp": (
+                    assistant_message.created_at.isoformat()
+                    if assistant_message.created_at
+                    else datetime.now().isoformat()
+                ),
             },
         )
 
@@ -235,7 +243,11 @@ async def handle_chat_message(client_id: str, data: Dict[str, Any], db: AsyncSes
             "message_complete",
             {
                 "messageId": str(assistant_message.id),
-                "timestamp": assistant_message.created_at.isoformat() if assistant_message.created_at else datetime.now().isoformat(),
+                "timestamp": (
+                    assistant_message.created_at.isoformat()
+                    if assistant_message.created_at
+                    else datetime.now().isoformat()
+                ),
                 "xml": xml,
             },
         )
@@ -250,7 +262,11 @@ async def handle_chat_message(client_id: str, data: Dict[str, Any], db: AsyncSes
                     "role": "assistant",
                     "content": response_content,
                     "xml": xml,
-                    "timestamp": assistant_message.created_at.isoformat() if assistant_message.created_at else datetime.now().isoformat(),
+                    "timestamp": (
+                        assistant_message.created_at.isoformat()
+                        if assistant_message.created_at
+                        else datetime.now().isoformat()
+                    ),
                 },
                 exclude_client=client_id,
             )

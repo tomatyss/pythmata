@@ -6,7 +6,7 @@ from pythmata.core.config import Settings
 from pythmata.core.engine.executor import ProcessExecutor
 from pythmata.core.engine.instance import ProcessInstanceManager
 from pythmata.core.state import StateManager
-from pythmata.models.process import ProcessDefinition, ProcessStatus
+from pythmata.models.process import ProcessDefinition, ProcessInstance, ProcessStatus
 from tests.core.engine.base import BaseEngineTest
 from tests.data.process_samples import SIMPLE_PROCESS_XML
 
@@ -39,7 +39,16 @@ class TestTokenIdempotency(BaseEngineTest):
         instance_manager.executor = executor
 
         # Create process instance
-        instance = await instance_manager.create_instance(definition.id)
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start the instance
+        instance = await instance_manager.start_instance(instance, definition.bpmn_xml)
         instance_id = str(instance.id)
 
         # First token creation attempt
@@ -90,7 +99,16 @@ class TestTokenIdempotency(BaseEngineTest):
         instance_manager.executor = executor
 
         # Create process instance
-        instance = await instance_manager.create_instance(definition.id)
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start the instance
+        instance = await instance_manager.start_instance(instance, definition.bpmn_xml)
         instance_id = str(instance.id)
 
         # Simulate concurrent token creation attempts
@@ -140,8 +158,23 @@ class TestTokenIdempotency(BaseEngineTest):
         instance_manager.executor = executor
 
         # Create two process instances
-        instance1 = await instance_manager.create_instance(definition1.id)
-        instance2 = await instance_manager.create_instance(definition2.id)
+        instance1 = ProcessInstance(
+            id=uuid4(),
+            definition_id=definition1.id,
+            status=ProcessStatus.RUNNING,
+        )
+        instance2 = ProcessInstance(
+            id=uuid4(),
+            definition_id=definition2.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance1)
+        session.add(instance2)
+        await session.commit()
+
+        # Start the instances
+        instance1 = await instance_manager.start_instance(instance1, definition1.bpmn_xml)
+        instance2 = await instance_manager.start_instance(instance2, definition2.bpmn_xml)
         instance1_id = str(instance1.id)
         instance2_id = str(instance2.id)
 
@@ -205,7 +238,16 @@ class TestTokenIdempotency(BaseEngineTest):
         instance_manager.executor = executor
 
         # Create process instance
-        instance = await instance_manager.create_instance(definition.id)
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start the instance
+        instance = await instance_manager.start_instance(instance, definition.bpmn_xml)
         instance_id = str(instance.id)
 
         # Force a lock to simulate a failed previous attempt
@@ -256,7 +298,16 @@ class TestTokenIdempotency(BaseEngineTest):
         instance_manager.executor = executor
 
         # Create process instance
-        instance = await instance_manager.create_instance(definition.id)
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start the instance
+        instance = await instance_manager.start_instance(instance, definition.bpmn_xml)
         instance_id = str(instance.id)
 
         # First event handling

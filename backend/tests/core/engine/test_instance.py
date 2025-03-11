@@ -12,7 +12,7 @@ from pythmata.core.engine.instance import (
 )
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
-from pythmata.models.process import ProcessDefinition, ProcessStatus
+from pythmata.models.process import ProcessDefinition, ProcessInstance, ProcessStatus
 from tests.data.process_samples import MULTI_START_PROCESS_XML, SIMPLE_PROCESS_XML
 
 
@@ -85,7 +85,18 @@ class TestProcessInstanceCreation:
         4. Create initial token at start event
         """
         # Create instance
-        instance = await instance_manager.create_instance(process_definition.id)
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=process_definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start instance
+        instance = await instance_manager.start_instance(
+            instance, process_definition.bpmn_xml
+        )
 
         # Verify instance creation
         assert instance.status == ProcessStatus.RUNNING
@@ -114,14 +125,23 @@ class TestProcessInstanceCreation:
         2. Store variables with correct types
         3. Make variables accessible in process scope
         """
+        # Create instance
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=process_definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
         # Create instance with variables
         variables = {
             "amount": {"type": "integer", "value": 1000},
             "approved": {"type": "boolean", "value": False},
             "notes": {"type": "string", "value": "Test notes"},
         }
-        instance = await instance_manager.create_instance(
-            process_definition.id, variables=variables
+        instance = await instance_manager.start_instance(
+            instance, process_definition.bpmn_xml, variables=variables
         )
 
         # Verify variables
@@ -149,9 +169,20 @@ class TestProcessInstanceCreation:
         """
         start_event_id = "StartEvent_2"
 
+        # Create instance
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=multi_start_process_definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
         # Create instance with specific start event
-        instance = await instance_manager.create_instance(
-            multi_start_process_definition.id, start_event_id=start_event_id
+        instance = await instance_manager.start_instance(
+            instance,
+            multi_start_process_definition.bpmn_xml,
+            start_event_id=start_event_id,
         )
 
         # Verify token creation at specific start event
@@ -174,10 +205,24 @@ class TestProcessInstanceCreation:
         2. Handle missing/invalid process definition gracefully
         3. Prevent instance creation for invalid definition
         """
+        # First create a valid process definition to avoid foreign key constraint
+        definition = ProcessDefinition(
+            id=uuid4(), name="Temporary Definition", version=1, bpmn_xml="<valid_xml/>"
+        )
+        session.add(definition)
+        await session.commit()
+
+        # Create instance with the valid definition_id
+        instance = ProcessInstance(
+            id=uuid4(), definition_id=definition.id, status=ProcessStatus.RUNNING
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Now test with invalid BPMN XML
         with pytest.raises(InvalidProcessDefinitionError):
-            await instance_manager.create_instance(
-                uuid4()
-            )  # Non-existent definition ID
+            # Attempt to start with invalid BPMN XML
+            await instance_manager.start_instance(instance, bpmn_xml="<invalid_xml/>")
 
     async def test_create_instance_with_invalid_variables(
         self,
@@ -195,12 +240,21 @@ class TestProcessInstanceCreation:
         2. Handle invalid variable values
         3. Prevent instance creation with invalid variables
         """
+        # Create instance
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=process_definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
         # Try to create instance with invalid variable
         invalid_variables = {"invalid_var": {"type": "invalid_type", "value": "test"}}
 
         with pytest.raises(InvalidVariableError):
-            await instance_manager.create_instance(
-                process_definition.id, variables=invalid_variables
+            await instance_manager.start_instance(
+                instance, process_definition.bpmn_xml, variables=invalid_variables
             )
 
 
@@ -221,8 +275,21 @@ class TestProcessInstanceState:
         2. Preserve instance state
         3. Prevent further token movement
         """
-        # Create and suspend instance
-        instance = await instance_manager.create_instance(process_definition.id)
+        # Create instance
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=process_definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start instance
+        instance = await instance_manager.start_instance(
+            instance, process_definition.bpmn_xml
+        )
+
+        # Suspend instance
         instance = await instance_manager.suspend_instance(instance.id)
 
         # Verify suspension
@@ -249,8 +316,21 @@ class TestProcessInstanceState:
         2. Restore instance state
         3. Allow token movement to continue
         """
-        # Create and suspend instance
-        instance = await instance_manager.create_instance(process_definition.id)
+        # Create instance
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=process_definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start instance
+        instance = await instance_manager.start_instance(
+            instance, process_definition.bpmn_xml
+        )
+
+        # Suspend instance
         instance = await instance_manager.suspend_instance(instance.id)
 
         # Resume instance
@@ -286,8 +366,21 @@ class TestProcessInstanceState:
         3. Clean up instance state
         4. Remove all tokens
         """
-        # Create and terminate instance
-        instance = await instance_manager.create_instance(process_definition.id)
+        # Create instance
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=process_definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start instance
+        instance = await instance_manager.start_instance(
+            instance, process_definition.bpmn_xml
+        )
+
+        # Terminate instance
         instance = await instance_manager.terminate_instance(instance.id)
 
         # Verify termination
@@ -315,8 +408,21 @@ class TestProcessInstanceState:
         3. Prevent further token movement
         4. Allow error recovery
         """
-        # Create instance and set error state
-        instance = await instance_manager.create_instance(process_definition.id)
+        # Create instance
+        instance = ProcessInstance(
+            id=uuid4(),
+            definition_id=process_definition.id,
+            status=ProcessStatus.RUNNING,
+        )
+        session.add(instance)
+        await session.commit()
+
+        # Start instance
+        instance = await instance_manager.start_instance(
+            instance, process_definition.bpmn_xml
+        )
+
+        # Set error state
         instance = await instance_manager.set_error_state(instance.id)
 
         # Verify error state
