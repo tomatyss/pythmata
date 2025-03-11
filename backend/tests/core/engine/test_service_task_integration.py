@@ -85,7 +85,16 @@ async def test_service_task_execution(mock_registry, state_manager, session):
     instance_manager = ProcessInstanceManager(session, executor, state_manager)
 
     # Create a process instance
-    instance = await instance_manager.create_instance(definition.id, variables={})
+    instance = ProcessInstance(
+        id=uuid4(),
+        definition_id=definition.id,
+        status=ProcessStatus.RUNNING,
+    )
+    session.add(instance)
+    await session.commit()
+
+    # Start the instance
+    instance = await instance_manager.start_instance(instance, definition.bpmn_xml, variables={})
 
     # Set the instance manager on the executor
     executor.instance_manager = instance_manager
@@ -151,7 +160,16 @@ async def test_service_task_error_handling(mock_registry, state_manager, session
     instance_manager = ProcessInstanceManager(session, executor, state_manager)
 
     # Create a process instance
-    instance = await instance_manager.create_instance(definition.id, variables={})
+    instance = ProcessInstance(
+        id=uuid4(),
+        definition_id=definition.id,
+        status=ProcessStatus.RUNNING,
+    )
+    session.add(instance)
+    await session.commit()
+
+    # Start the instance
+    instance = await instance_manager.start_instance(instance, definition.bpmn_xml, variables={})
 
     # Set the instance manager on the executor
     executor.instance_manager = instance_manager
