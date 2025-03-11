@@ -126,6 +126,9 @@ const InputOutputProperties = ({ element, modeler }) => {
       extensionElements.values.push(elementConfig);
     }
     
+    // Get existing properties to preserve
+    let properties = elementConfig.properties;
+    
     // Create input mappings
     const inputElements = newInputs.map(input => {
       return moddle.create('pythmata:Property', {
@@ -134,6 +137,7 @@ const InputOutputProperties = ({ element, modeler }) => {
       });
     });
     
+    // Create a dedicated inputs element
     const inputsElement = moddle.create('pythmata:Properties', {
       values: inputElements,
     });
@@ -146,13 +150,37 @@ const InputOutputProperties = ({ element, modeler }) => {
       });
     });
     
+    // Create a dedicated outputs element
     const outputsElement = moddle.create('pythmata:Properties', {
       values: outputElements,
     });
     
-    // Update element config
-    elementConfig.inputs = inputsElement;
-    elementConfig.outputs = outputsElement;
+    // Remove existing element config
+    extensionElements.values = extensionElements.values.filter(
+      ext => ext.$type !== 'pythmata:ElementConfig' && ext.$type !== 'pythmata:ServiceTaskConfig'
+    );
+    
+    // Create a new element config with all properties
+    let newElementConfig;
+    if (element.type === 'bpmn:ServiceTask') {
+      newElementConfig = moddle.create('pythmata:ServiceTaskConfig', {
+        taskName: elementConfig.taskName || '',
+        documentation: elementConfig.documentation || '',
+        properties: properties,
+        inputs: inputsElement,
+        outputs: outputsElement
+      });
+    } else {
+      newElementConfig = moddle.create('pythmata:ElementConfig', {
+        displayName: elementConfig.displayName || '',
+        documentation: elementConfig.documentation || '',
+        inputs: inputsElement,
+        outputs: outputsElement
+      });
+    }
+    
+    // Add the new element config
+    extensionElements.values.push(newElementConfig);
     
     // Update the element
     modeling.updateProperties(element, {

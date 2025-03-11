@@ -144,7 +144,11 @@ const ServiceTaskPropertiesPanel = ({ element, modeler }) => {
     if (serviceTaskConfig) {
       // Preserve existing values
       documentation = serviceTaskConfig.documentation || '';
+      
+      // Preserve input mappings
       inputs = serviceTaskConfig.inputs;
+      
+      // Preserve output mappings
       outputs = serviceTaskConfig.outputs;
       
       // Remove existing service task config
@@ -164,6 +168,19 @@ const ServiceTaskPropertiesPanel = ({ element, modeler }) => {
     const propertiesElement = moddle.create('pythmata:Properties', {
       values: propertyElements,
     });
+    
+    // Create empty inputs/outputs if they don't exist
+    if (!inputs) {
+      inputs = moddle.create('pythmata:Properties', {
+        values: [],
+      });
+    }
+    
+    if (!outputs) {
+      outputs = moddle.create('pythmata:Properties', {
+        values: [],
+      });
+    }
     
     // Create new service task config with preserved values
     serviceTaskConfig = moddle.create('pythmata:ServiceTaskConfig', {
