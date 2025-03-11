@@ -158,7 +158,7 @@ This XML defines a simple process with a start event, a task for reviewing appli
     # Test XML generation with validate=False to prevent additional calls
     result = await llm_service.generate_xml(
         "Create a process for reviewing applications",
-        validate=False  # Add this parameter to prevent validation
+        validate=False,  # Add this parameter to prevent validation
     )
 
     # Verify result
@@ -206,8 +206,7 @@ This XML defines a simple process with a start event, a task for reviewing appli
 
     # Test XML generation with validate=False
     result = await llm_service.generate_xml(
-        "Create a process for reviewing applications",
-        validate=False
+        "Create a process for reviewing applications", validate=False
     )
 
     # Verify result
@@ -230,10 +229,7 @@ async def test_generate_xml_no_code_block(llm_service):
     llm_service.chat_completion = AsyncMock(return_value=mock_response)
 
     # Test XML generation with validate=False
-    result = await llm_service.generate_xml(
-        "Invalid request",
-        validate=False
-    )
+    result = await llm_service.generate_xml("Invalid request", validate=False)
 
     # Verify result
     assert result["xml"] == ""
@@ -276,9 +272,9 @@ I've added a service task named "Process Payment" between the start and end even
 
     # Test XML modification with validate=False
     result = await llm_service.modify_xml(
-        current_xml=original_xml, 
+        current_xml=original_xml,
         request="Add a service task for payment processing",
-        validate=False
+        validate=False,
     )
 
     # Verify result
@@ -326,9 +322,7 @@ async def test_modify_xml_fallback_to_original(llm_service):
 
     # Test XML modification with validate=False
     result = await llm_service.modify_xml(
-        current_xml=original_xml, 
-        request="Invalid request",
-        validate=False
+        current_xml=original_xml, request="Invalid request", validate=False
     )
 
     # Verify result falls back to original XML

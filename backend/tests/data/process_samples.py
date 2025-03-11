@@ -90,7 +90,6 @@ SERVICE_TASK_BPMN = """<?xml version="1.0" encoding="UTF-8"?>
 </bpmn:definitions>"""
 
 
-
 def create_test_bpmn_xml(start_event_id: str = "StartEvent_1") -> str:
     """Create a test BPMN XML with specified start event ID.
 

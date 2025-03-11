@@ -12,7 +12,7 @@ from pythmata.core.engine.instance import (
 )
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
-from pythmata.models.process import ProcessDefinition, ProcessStatus, ProcessInstance
+from pythmata.models.process import ProcessDefinition, ProcessInstance, ProcessStatus
 from tests.data.process_samples import MULTI_START_PROCESS_XML, SIMPLE_PROCESS_XML
 
 
@@ -88,7 +88,7 @@ class TestProcessInstanceCreation:
         instance = ProcessInstance(
             id=uuid4(),
             definition_id=process_definition.id,
-            status=ProcessStatus.RUNNING
+            status=ProcessStatus.RUNNING,
         )
         session.add(instance)
         await session.commit()
@@ -129,7 +129,7 @@ class TestProcessInstanceCreation:
         instance = ProcessInstance(
             id=uuid4(),
             definition_id=process_definition.id,
-            status=ProcessStatus.RUNNING
+            status=ProcessStatus.RUNNING,
         )
         session.add(instance)
         await session.commit()
@@ -173,16 +173,16 @@ class TestProcessInstanceCreation:
         instance = ProcessInstance(
             id=uuid4(),
             definition_id=multi_start_process_definition.id,
-            status=ProcessStatus.RUNNING
+            status=ProcessStatus.RUNNING,
         )
         session.add(instance)
         await session.commit()
 
         # Create instance with specific start event
         instance = await instance_manager.start_instance(
-            instance, 
-            multi_start_process_definition.bpmn_xml, 
-            start_event_id=start_event_id
+            instance,
+            multi_start_process_definition.bpmn_xml,
+            start_event_id=start_event_id,
         )
 
         # Verify token creation at specific start event
@@ -211,16 +211,14 @@ class TestProcessInstanceCreation:
         )
         session.add(definition)
         await session.commit()
-        
+
         # Create instance with the valid definition_id
         instance = ProcessInstance(
-            id=uuid4(),
-            definition_id=definition.id,
-            status=ProcessStatus.RUNNING
+            id=uuid4(), definition_id=definition.id, status=ProcessStatus.RUNNING
         )
         session.add(instance)
         await session.commit()
-        
+
         # Now test with invalid BPMN XML
         with pytest.raises(InvalidProcessDefinitionError):
             # Attempt to start with invalid BPMN XML
@@ -246,7 +244,7 @@ class TestProcessInstanceCreation:
         instance = ProcessInstance(
             id=uuid4(),
             definition_id=process_definition.id,
-            status=ProcessStatus.RUNNING
+            status=ProcessStatus.RUNNING,
         )
         session.add(instance)
         await session.commit()
@@ -281,7 +279,7 @@ class TestProcessInstanceState:
         instance = ProcessInstance(
             id=uuid4(),
             definition_id=process_definition.id,
-            status=ProcessStatus.RUNNING
+            status=ProcessStatus.RUNNING,
         )
         session.add(instance)
         await session.commit()
@@ -322,7 +320,7 @@ class TestProcessInstanceState:
         instance = ProcessInstance(
             id=uuid4(),
             definition_id=process_definition.id,
-            status=ProcessStatus.RUNNING
+            status=ProcessStatus.RUNNING,
         )
         session.add(instance)
         await session.commit()
@@ -372,7 +370,7 @@ class TestProcessInstanceState:
         instance = ProcessInstance(
             id=uuid4(),
             definition_id=process_definition.id,
-            status=ProcessStatus.RUNNING
+            status=ProcessStatus.RUNNING,
         )
         session.add(instance)
         await session.commit()
@@ -414,7 +412,7 @@ class TestProcessInstanceState:
         instance = ProcessInstance(
             id=uuid4(),
             definition_id=process_definition.id,
-            status=ProcessStatus.RUNNING
+            status=ProcessStatus.RUNNING,
         )
         session.add(instance)
         await session.commit()

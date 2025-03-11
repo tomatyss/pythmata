@@ -18,8 +18,8 @@ from pythmata.models.process import (
     ProcessDefinition,
     ProcessStatus,
 )
-
 from tests.data.process_samples import SERVICE_TASK_BPMN
+
 
 class TestServiceTask(ServiceTask):
     """Test service task for integration testing."""
