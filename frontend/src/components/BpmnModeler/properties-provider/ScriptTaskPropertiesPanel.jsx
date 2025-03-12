@@ -261,8 +261,27 @@ const ScriptTaskPropertiesPanel = ({ element, modeler }) => {
   const handleLanguageChange = (event) => {
     const language = event.target.value;
     setScriptLanguage(language);
+    
     try {
-      updateBpmnModel();
+      if (modeler && element) {
+        // Get the modeling module directly
+        const modeling = modeler.get('modeling');
+        
+        if (modeling && typeof modeling.updateProperties === 'function') {
+          // Call updateProperties with the element and the new script language
+          // This is what the test is expecting to happen
+          modeling.updateProperties(element, {
+            scriptFormat: language,
+          });
+        } else {
+          console.warn('Modeling module or updateProperties function not available');
+        }
+        
+        // Also update the full model
+        updateBpmnModel();
+      } else {
+        console.warn('Modeler or element not available for script language update');
+      }
     } catch (err) {
       console.error('Failed to update language:', err);
       setError('Failed to update language: ' + err.message);
@@ -366,8 +385,10 @@ const ScriptTaskPropertiesPanel = ({ element, modeler }) => {
       )}
 
       <FormControl fullWidth sx={{ mb: 2 }}>
-        <InputLabel>Script Language</InputLabel>
+        <InputLabel id="script-language-label">Script Language</InputLabel>
         <Select
+          labelId="script-language-label"
+          id="script-language-select"
           value={scriptLanguage}
           onChange={handleLanguageChange}
           label="Script Language"

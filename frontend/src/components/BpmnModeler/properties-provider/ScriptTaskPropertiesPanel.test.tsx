@@ -202,9 +202,16 @@ describe('ScriptTaskPropertiesPanel', () => {
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
-    // Find the language select and change it to Python
+    // Find the language select by its ID and trigger a change
     const languageSelect = screen.getByLabelText('Script Language');
-    fireEvent.change(languageSelect, { target: { value: 'python' } });
+
+    // For Material-UI Select, we need to:
+    // 1. First click on the select to open the dropdown
+    fireEvent.mouseDown(languageSelect);
+
+    // 2. Then find and click on the option we want
+    const pythonOption = screen.getByText('Python');
+    fireEvent.click(pythonOption);
 
     // Check that the modeling.updateProperties was called with the right values
     await waitFor(() => {
