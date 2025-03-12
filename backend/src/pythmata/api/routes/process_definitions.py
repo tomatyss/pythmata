@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import re
+import xml.etree.ElementTree as ET
 from typing import Optional, Tuple
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -16,6 +18,7 @@ from pythmata.api.schemas import (
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
+from pythmata.models.process import Script as ScriptModel
 from pythmata.utils.logger import get_logger, log_error
 
 logger = get_logger(__name__)
@@ -191,6 +194,9 @@ async def update_process(
             ]
         process.updated_at = datetime.now(timezone.utc)
 
+        # Extract script content from BPMN XML
+        await extract_and_save_scripts(session, process)
+
         await session.commit()
         await session.refresh(process)
         return {"data": process}
@@ -214,3 +220,74 @@ async def delete_process(process_id: str, session: AsyncSession = Depends(get_se
     await session.delete(process)
     await session.commit()
     return {"message": "Process deleted successfully"}
+
+
+async def extract_and_save_scripts(session: AsyncSession, process: ProcessDefinitionModel) -> None:
+    """
+    Extract script content from BPMN XML and save to database.
+    
+    Args:
+        session: Database session
+        process: Process definition model
+    """
+    try:
+        # Parse XML
+        root = ET.fromstring(process.bpmn_xml)
+        
+        # Define namespaces
+        ns = {
+            "bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
+            "pythmata": "http://pythmata.org/schema/1.0/bpmn"
+        }
+        
+        # Find all script tasks
+        script_tasks = root.findall(".//bpmn:scriptTask", ns)
+        
+        for task in script_tasks:
+            node_id = task.get("id")
+            if not node_id:
+                continue
+                
+            # Check for script content in extension elements
+            script_content = None
+            ext_elements = task.find("bpmn:extensionElements", ns)
+            
+            if ext_elements is not None:
+                script_config = ext_elements.find(".//pythmata:scriptConfig", ns)
+                if script_config is not None:
+                    # First try to get scriptContent as a direct child element
+                    script_content_elem = script_config.find("pythmata:scriptContent", ns)
+                    if script_content_elem is not None and script_content_elem.text:
+                        script_content = script_content_elem.text.strip()
+                    # If not found, try to get it as text content of scriptConfig
+                    elif hasattr(script_config, "text") and script_config.text:
+                        script_content = script_config.text.strip()
+            
+            if script_content:
+                # Check if script already exists
+                result = await session.execute(
+                    select(ScriptModel).filter(
+                        ScriptModel.process_def_id == process.id,
+                        ScriptModel.node_id == node_id
+                    )
+                )
+                script = result.scalar_one_or_none()
+                
+                if script:
+                    # Update existing script
+                    script.content = script_content
+                    script.updated_at = datetime.now(timezone.utc)
+                else:
+                    # Create new script
+                    script = ScriptModel(
+                        process_def_id=process.id,
+                        node_id=node_id,
+                        content=script_content,
+                        version=1
+                    )
+                    session.add(script)
+                    
+        logger.info(f"Extracted and saved scripts for process {process.id}")
+    except Exception as e:
+        logger.error(f"Error extracting scripts from BPMN XML: {str(e)}")
+        # Don't raise the exception, just log it

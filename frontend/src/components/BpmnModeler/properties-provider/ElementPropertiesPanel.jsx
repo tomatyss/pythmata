@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
 import { Box, Tabs, Tab } from '@mui/material';
 import CommonProperties from './CommonProperties';
 import InputOutputProperties from './InputOutputProperties';
@@ -17,8 +17,11 @@ import GatewayPropertiesPanel from './GatewayPropertiesPanel';
  * @param {Object} props - Component props
  * @param {Object} props.element - The BPMN element
  * @param {Object} props.modeler - The BPMN modeler instance
+ * @param {Object} ref - Forwarded ref for parent components to access methods
  */
-const ElementPropertiesPanel = ({ element, modeler }) => {
+const ElementPropertiesPanel = React.forwardRef((props, ref) => {
+  const { element, modeler } = props;
+  
   const [currentTab, setCurrentTab] = useState(0);
   const [elementType, setElementType] = useState('');
   const [hasTimerDefinition, setHasTimerDefinition] = useState(false);
@@ -26,6 +29,18 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
   const [isGateway, setIsGateway] = useState(false);
   const [isScriptTask, setIsScriptTask] = useState(false);
   const [processVariables, setProcessVariables] = useState([]);
+  
+  // Create refs for child components
+  const scriptTaskPanelRef = useRef(null);
+  
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    saveScript: () => {
+      if (isScriptTask && scriptTaskPanelRef.current && scriptTaskPanelRef.current.handleSave) {
+        scriptTaskPanelRef.current.handleSave();
+      }
+    }
+  }));
   
   // Set element type when element changes
   useEffect(() => {
@@ -112,7 +127,6 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
   // Check if element is a service task
   const isServiceTask = elementType === 'bpmn:ServiceTask';
   
-  
   return (
     <Box sx={{ width: '100%' }}>
       {isSequenceFlow ? (
@@ -153,7 +167,11 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
           
           {/* Script Task Properties Tab */}
           {currentTab === 1 && isScriptTask && (
-            <ScriptTaskPropertiesPanel element={element} modeler={modeler} />
+            <ScriptTaskPropertiesPanel 
+              ref={scriptTaskPanelRef}
+              element={element} 
+              modeler={modeler} 
+            />
           )}
           
           {/* Gateway Properties Tab */}
@@ -186,6 +204,6 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
       )}
     </Box>
   );
-};
+});
 
 export default ElementPropertiesPanel;

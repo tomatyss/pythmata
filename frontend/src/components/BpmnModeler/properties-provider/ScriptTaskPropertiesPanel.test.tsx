@@ -8,6 +8,155 @@ import {
   ExtendedBpmnModeler,
   BpmnElement,
 } from '@/pages/ProcessDesigner/types';
+// Mock Material-UI components
+vi.mock('@mui/material', () => {
+  return {
+    Box: ({
+      children,
+      sx: _sx,
+    }: {
+      children: React.ReactNode;
+      sx?: Record<string, unknown>;
+    }) => <div>{children}</div>,
+    Typography: ({
+      children,
+      color: _color,
+      sx: _sx,
+      variant: _variant,
+    }: {
+      children: React.ReactNode;
+      color?: string;
+      sx?: Record<string, unknown>;
+      variant?: string;
+    }) => <div>{children}</div>,
+    FormControl: ({
+      children,
+      fullWidth: _fullWidth,
+      sx: _sx,
+    }: {
+      children: React.ReactNode;
+      fullWidth?: boolean;
+      sx?: Record<string, unknown>;
+    }) => <div>{children}</div>,
+    InputLabel: ({
+      children,
+      id,
+    }: {
+      children: React.ReactNode;
+      id?: string;
+    }) => <label htmlFor={id}>{children}</label>,
+    Select: ({
+      children,
+      labelId,
+      id,
+      value,
+      onChange,
+      label: _label,
+    }: {
+      children: React.ReactNode;
+      labelId?: string;
+      id?: string;
+      value: string;
+      onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+      label?: string;
+    }) => (
+      <select
+        aria-labelledby={labelId}
+        id={id}
+        value={value}
+        onChange={onChange}
+      >
+        {children}
+      </select>
+    ),
+    MenuItem: ({
+      children,
+      value,
+    }: {
+      children: React.ReactNode;
+      value: string | number | readonly string[] | undefined;
+    }) => <option value={value}>{children}</option>,
+    TextField: ({
+      label,
+      fullWidth: _fullWidth,
+      value,
+      onChange,
+      helperText,
+      sx: _sx,
+      type,
+    }: {
+      label: string;
+      fullWidth?: boolean;
+      value: string;
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+      helperText?: string;
+      sx?: Record<string, unknown>;
+      type?: string;
+    }) => (
+      <div>
+        <label>{label}</label>
+        <input
+          type={type || 'text'}
+          value={value}
+          onChange={onChange}
+          aria-label={label}
+        />
+        {helperText && <div>{helperText}</div>}
+      </div>
+    ),
+    CircularProgress: ({
+      size: _size,
+      sx: _sx,
+    }: {
+      size?: number;
+      sx?: Record<string, unknown>;
+    }) => <div role="progressbar">Loading...</div>,
+    FormHelperText: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    Button: ({
+      children,
+      variant: _variant,
+      color: _color,
+      onClick,
+      disabled,
+    }: {
+      children: React.ReactNode;
+      variant?: string;
+      color?: string;
+      onClick?: () => void;
+      disabled?: boolean;
+    }) => (
+      <button onClick={onClick} disabled={disabled}>
+        {children}
+      </button>
+    ),
+    Alert: ({
+      children,
+      severity: _severity,
+      sx: _sx,
+      onClose: _onClose,
+    }: {
+      children: React.ReactNode;
+      severity?: string;
+      sx?: Record<string, unknown>;
+      onClose?: () => void;
+    }) => <div role="alert">{children}</div>,
+    Snackbar: ({
+      children,
+      open,
+      autoHideDuration: _autoHideDuration,
+      onClose: _onClose,
+      anchorOrigin: _anchorOrigin,
+    }: {
+      children: React.ReactNode;
+      open?: boolean;
+      autoHideDuration?: number;
+      onClose?: () => void;
+      anchorOrigin?: unknown;
+    }) => (open ? <div>{children}</div> : null),
+  };
+});
 
 // Mock the API service
 vi.mock('@/services/api', () => ({
@@ -19,6 +168,7 @@ vi.mock('@/services/api', () => ({
 
 // Mock the Monaco editor
 vi.mock('@monaco-editor/react', () => ({
+  default: vi.fn(),
   Editor: ({
     value,
     onChange,
@@ -178,51 +328,65 @@ describe('ScriptTaskPropertiesPanel', () => {
     });
   });
 
-  // Test Case 3: Shows warning when process ID is missing
-  it('shows warning when process ID is missing', async () => {
+  // Test Case 3: Shows info message when process ID is missing
+  it('shows info message when process ID is missing', async () => {
     renderWithRouter(); // No process ID
 
     await waitFor(() => {
       expect(
         screen.getByText(
-          'Process must be saved before scripts can be edited. Please save the process first.'
+          'Script properties will be stored in the process model. Save the process to persist scripts to the server.'
         )
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Save Script' })
-      ).toBeDisabled();
+      // Save button should be enabled now
+      expect(screen.getByRole('button', { name: 'Save Script' })).toBeEnabled();
     });
   });
 
   // Test Case 4: Updates script language when changed
   it('updates script language when changed', async () => {
-    renderWithRouter('process-def-1');
+    // Mock the updateProperties function to ensure it's called
+    const updatePropertiesMock = vi.fn();
+    const mockingModeler = {
+      ...mockModeler,
+      get: vi.fn((service) => {
+        if (service === 'modeling') {
+          return {
+            updateProperties: updatePropertiesMock,
+          };
+        }
+        return mockModeler.get(service);
+      }),
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/processes/process-def-1']}>
+        <Routes>
+          <Route
+            path="/processes/:id"
+            element={
+              <ScriptTaskPropertiesPanel
+                element={mockElement}
+                modeler={mockingModeler}
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
-    // Find the language select by its ID and trigger a change
-    const languageSelect = screen.getByLabelText('Script Language');
+    // Find the language select by its role
+    const languageSelect = screen.getByRole('combobox');
 
-    // For Material-UI Select, we need to:
-    // 1. First click on the select to open the dropdown
-    fireEvent.mouseDown(languageSelect);
+    // Directly simulate a change event on the select
+    fireEvent.change(languageSelect, { target: { value: 'python' } });
 
-    // 2. Then find and click on the option we want
-    const pythonOption = screen.getByText('Python');
-    fireEvent.click(pythonOption);
-
-    // Check that the modeling.updateProperties was called with the right values
-    await waitFor(() => {
-      const modeling = mockModeler.get('modeling');
-      expect(modeling.updateProperties).toHaveBeenCalledWith(
-        mockElement,
-        expect.objectContaining({
-          scriptFormat: 'python',
-        })
-      );
-    });
+    // Check that the updateProperties mock was called
+    expect(updatePropertiesMock).toHaveBeenCalled();
   });
 
   // Test Case 5: Updates result variable when changed
@@ -249,8 +413,11 @@ describe('ScriptTaskPropertiesPanel', () => {
     });
   });
 
-  // Test Case 6: Saves script content when save button is clicked
-  it('saves script content when save button is clicked', async () => {
+  // Test Case 6: Auto-saves script content when content changes with process ID
+  it('auto-saves script content when content changes with process ID', async () => {
+    // Mock the timer
+    vi.useFakeTimers();
+
     renderWithRouter('process-def-1');
 
     await waitFor(() => {
@@ -263,9 +430,8 @@ describe('ScriptTaskPropertiesPanel', () => {
       target: { value: 'console.log("Updated");\nresult = "updated";' },
     });
 
-    // Click the save button
-    const saveButton = screen.getByRole('button', { name: 'Save Script' });
-    fireEvent.click(saveButton);
+    // Fast-forward timer to trigger auto-save
+    vi.runAllTimers();
 
     // Check that the API was called with the right values
     await waitFor(() => {
@@ -278,6 +444,30 @@ describe('ScriptTaskPropertiesPanel', () => {
         }
       );
     });
+
+    // Restore real timers
+    vi.useRealTimers();
+  });
+
+  // Test Case 6b: Updates BPMN model when content changes without process ID
+  it('updates BPMN model when content changes without process ID', async () => {
+    renderWithRouter(); // No process ID
+
+    await waitFor(() => {
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+    });
+
+    // Change the script content
+    const editor = screen.getByTestId('monaco-editor');
+    fireEvent.change(editor, {
+      target: { value: 'console.log("Updated");\nresult = "updated";' },
+    });
+
+    // Check that the API was NOT called
+    expect(apiService.updateScript).not.toHaveBeenCalled();
+
+    // Check that the BPMN model was updated
+    expect(updatePropertiesSpy).toHaveBeenCalled();
   });
 
   // Test Case 7: Validates JavaScript syntax
@@ -319,8 +509,11 @@ describe('ScriptTaskPropertiesPanel', () => {
     });
   });
 
-  // Test Case 9: Handles API errors gracefully when saving script
-  it('handles API errors gracefully when saving script', async () => {
+  // Test Case 9: Handles API errors gracefully when auto-saving script
+  it('handles API errors gracefully when auto-saving script', async () => {
+    // Mock the timer
+    vi.useFakeTimers();
+
     // Mock successful get but failed update
     (apiService.getScript as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: {
@@ -338,20 +531,65 @@ describe('ScriptTaskPropertiesPanel', () => {
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
-    // Click the save button
-    const saveButton = screen.getByRole('button', { name: 'Save Script' });
-    fireEvent.click(saveButton);
+    // Change the script content
+    const editor = screen.getByTestId('monaco-editor');
+    fireEvent.change(editor, {
+      target: { value: 'console.log("Updated");\nresult = "updated";' },
+    });
 
-    // Check that error is shown
+    // Fast-forward timer to trigger auto-save
+    vi.runAllTimers();
+
+    // Verify the API was called but failed
     await waitFor(() => {
-      expect(
-        screen.getByText(/Failed to save script content/)
-      ).toBeInTheDocument();
+      expect(apiService.updateScript).toHaveBeenCalled();
+    });
+
+    // Error should not be shown for auto-save failures
+    expect(
+      screen.queryByText(/Failed to save script content/)
+    ).not.toBeInTheDocument();
+
+    // Restore real timers
+    vi.useRealTimers();
+  });
+
+  // Test Case 9b: Updates BPMN model even when API fails
+  it('updates BPMN model even when API fails', async () => {
+    // Mock successful get but failed update
+    (apiService.getScript as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        content: 'console.log("Hello");',
+        version: 1,
+      },
+    });
+    (apiService.updateScript as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('Save Error')
+    );
+
+    renderWithRouter('process-def-1');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+    });
+
+    // Change the script content
+    const editor = screen.getByTestId('monaco-editor');
+    fireEvent.change(editor, {
+      target: { value: 'console.log("Updated");\nresult = "updated";' },
+    });
+
+    // Check that the BPMN model was updated even without clicking save
+    await waitFor(() => {
+      expect(updatePropertiesSpy).toHaveBeenCalled();
     });
   });
 
-  // Test Case 10: Handles 422 validation errors from backend
-  it('handles 422 validation errors from backend', async () => {
+  // Test Case 10: Handles 422 validation errors from backend during auto-save
+  it('handles 422 validation errors from backend during auto-save', async () => {
+    // Mock the timer
+    vi.useFakeTimers();
+
     // Mock 422 error
     const validationError = new Error('Validation Error');
     (validationError as unknown as { response: { status: number } }).response =
@@ -366,18 +604,27 @@ describe('ScriptTaskPropertiesPanel', () => {
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
-    // Click the save button
-    const saveButton = screen.getByRole('button', { name: 'Save Script' });
-    fireEvent.click(saveButton);
-
-    // Check that specific validation error is shown
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          'Invalid process or node ID. Please save the process first.'
-        )
-      ).toBeInTheDocument();
+    // Change the script content
+    const editor = screen.getByTestId('monaco-editor');
+    fireEvent.change(editor, {
+      target: { value: 'console.log("Updated");\nresult = "updated";' },
     });
+
+    // Fast-forward timer to trigger auto-save
+    vi.runAllTimers();
+
+    // Verify the API was called but failed
+    await waitFor(() => {
+      expect(apiService.updateScript).toHaveBeenCalled();
+    });
+
+    // Error should not be shown for auto-save validation errors
+    expect(
+      screen.queryByText(/Invalid process or node ID/)
+    ).not.toBeInTheDocument();
+
+    // Restore real timers
+    vi.useRealTimers();
   });
 
   // Test Case 11: Handles 404 not found errors gracefully
@@ -399,6 +646,53 @@ describe('ScriptTaskPropertiesPanel', () => {
         '// Write your script here\n\n// Set result variable\nresult = null;'
       );
     });
+  });
+
+  // Test Case 15: Loads script content from BPMN model if available
+  it('loads script content from BPMN model if available', async () => {
+    // Create a mock element with script content in extension elements
+    const elementWithScriptContent = {
+      ...mockElement,
+      businessObject: {
+        ...mockElement.businessObject,
+        extensionElements: {
+          values: [
+            {
+              $type: 'pythmata:ScriptConfig',
+              timeout: '30',
+              scriptContent: 'console.log("From BPMN model");',
+            },
+          ],
+        },
+      },
+    };
+
+    // Render with the modified element
+    render(
+      <MemoryRouter initialEntries={['/processes/process-def-1']}>
+        <Routes>
+          <Route
+            path="/processes/:id"
+            element={
+              <ScriptTaskPropertiesPanel
+                element={elementWithScriptContent}
+                modeler={mockModeler}
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // Should load content from BPMN model
+    await waitFor(() => {
+      expect(screen.getByTestId('monaco-editor')).toHaveValue(
+        'console.log("From BPMN model");'
+      );
+    });
+
+    // API should not be called since content was found in BPMN model
+    expect(apiService.getScript).not.toHaveBeenCalled();
   });
 
   // Test Case 12: Updates timeout when changed

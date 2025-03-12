@@ -123,12 +123,37 @@ const ElementPanel: React.FC<ElementPanelProps> = ({
     return typeName.replace(/([A-Z])/g, ' $1').trim();
   };
 
-  const [saving] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const elementPropertiesPanelRef = React.useRef<{
+    saveScript?: () => void;
+  }>(null);
 
   // Handle save
   const handleSave = () => {
-    // Just close the panel - changes are applied immediately in the ElementPropertiesPanel
-    onClose();
+    setSaving(true);
+
+    // Try to call saveScript on the ScriptTaskPropertiesPanel if it's a script task
+    if (
+      element?.type === 'bpmn:ScriptTask' &&
+      elementPropertiesPanelRef.current?.saveScript
+    ) {
+      try {
+        elementPropertiesPanelRef.current.saveScript();
+        // Wait a moment to show the saving state
+        setTimeout(() => {
+          setSaving(false);
+          onClose();
+        }, 500);
+      } catch (error) {
+        console.error('Error saving script:', error);
+        setSaving(false);
+        onClose();
+      }
+    } else {
+      // For other element types, just close the panel
+      setSaving(false);
+      onClose();
+    }
   };
 
   return (
@@ -157,7 +182,11 @@ const ElementPanel: React.FC<ElementPanelProps> = ({
 
       {element && (
         <>
-          <ElementPropertiesPanel element={element} modeler={modeler} />
+          <ElementPropertiesPanel
+            ref={elementPropertiesPanelRef}
+            element={element}
+            modeler={modeler}
+          />
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
             <Button
