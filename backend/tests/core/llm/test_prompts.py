@@ -17,15 +17,16 @@ def test_bpmn_system_prompt():
     assert "BPMN" in BPMN_SYSTEM_PROMPT
     assert "expert assistant" in BPMN_SYSTEM_PROMPT
 
-    # Check for key capabilities
-    assert "Explain BPMN concepts" in BPMN_SYSTEM_PROMPT
-    assert "Generate BPMN XML" in BPMN_SYSTEM_PROMPT
-    assert "Analyze existing BPMN XML" in BPMN_SYSTEM_PROMPT
+    # Check for XML generation and validation capabilities
+    assert "COMPLETE, VALID XML implementations" in BPMN_SYSTEM_PROMPT
+    assert "RESPONSE FORMAT REQUIREMENTS" in BPMN_SYSTEM_PROMPT
+    assert "PYTHMATA VALIDATION REQUIREMENTS" in BPMN_SYSTEM_PROMPT
 
     # Check for XML generation guidelines
-    assert "proper IDs" in BPMN_SYSTEM_PROMPT
-    assert "BPMN 2.0 specification" in BPMN_SYSTEM_PROMPT
-
+    assert "Correct ID format pattern" in BPMN_SYSTEM_PROMPT
+    
+    # Instead of checking for "BPMN 2.0", check for the actual namespace that's in the prompt
+    assert "http://www.omg.org/spec/BPMN/20100524/MODEL" in BPMN_SYSTEM_PROMPT
 
 def test_xml_generation_prompt():
     """Test that the XML generation prompt contains expected content and placeholders."""
