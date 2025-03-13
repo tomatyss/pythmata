@@ -24,9 +24,10 @@ def test_bpmn_system_prompt():
 
     # Check for XML generation guidelines
     assert "Correct ID format pattern" in BPMN_SYSTEM_PROMPT
-    
+
     # Instead of checking for "BPMN 2.0", check for the actual namespace that's in the prompt
     assert "http://www.omg.org/spec/BPMN/20100524/MODEL" in BPMN_SYSTEM_PROMPT
+
 
 def test_xml_generation_prompt():
     """Test that the XML generation prompt contains expected content and placeholders."""
