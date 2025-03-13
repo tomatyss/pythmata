@@ -173,8 +173,12 @@ class TestTokenIdempotency(BaseEngineTest):
         await session.commit()
 
         # Start the instances
-        instance1 = await instance_manager.start_instance(instance1, definition1.bpmn_xml)
-        instance2 = await instance_manager.start_instance(instance2, definition2.bpmn_xml)
+        instance1 = await instance_manager.start_instance(
+            instance1, definition1.bpmn_xml
+        )
+        instance2 = await instance_manager.start_instance(
+            instance2, definition2.bpmn_xml
+        )
         instance1_id = str(instance1.id)
         instance2_id = str(instance2.id)
 
