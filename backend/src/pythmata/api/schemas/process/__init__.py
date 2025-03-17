@@ -17,7 +17,10 @@ from pythmata.api.schemas.process.variables import (
     ProcessVariableValidation,
     ProcessVariableValue,
 )
-
+from pythmata.api.schemas.process.definition_version_migration import (
+    ProcessMigrationRequest,
+    ProcessMigrationResponse
+)
 __all__ = [
     "ProcessDefinitionBase",
     "ProcessDefinitionCreate",
@@ -30,4 +33,6 @@ __all__ = [
     "ProcessVariableDefinition",
     "ProcessVariableValidation",
     "ProcessVariableValue",
+    "ProcessMigrationRequest",
+    "ProcessMigrationResponse"
 ]

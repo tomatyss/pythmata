@@ -1,0 +1,15 @@
+--2025-03-18 01:13:17--  https://www.navicat.com/download/direct-download?product=navicat16-premium-en
+Resolving www.navicat.com (www.navicat.com)... 34.210.174.199
+Connecting to www.navicat.com (www.navicat.com)|34.210.174.199|:443... connected.
+HTTP request sent, awaiting response... 301 Moved Permanently
+Location: https://www.navicat.com/en/download/direct-download?product=navicat16-premium-en [following]
+--2025-03-18 01:13:19--  https://www.navicat.com/en/download/direct-download?product=navicat16-premium-en
+Reusing existing connection to www.navicat.com:443.
+HTTP request sent, awaiting response... 200 OK
+Length: unspecified [text/html]
+Saving to: ‘direct-download?product=navicat16-premium-en’
+
+            direct-down     [<=>                           ]       0  --.-KB/s               direct-download?product     [ <=>                          ]  26.52K  --.-KB/s    in 0.1s    
+
+2025-03-18 01:13:20 (211 KB/s) - ‘direct-download?product=navicat16-premium-en’ saved [27158]
+

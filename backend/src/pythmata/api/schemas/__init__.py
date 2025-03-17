@@ -29,6 +29,11 @@ from pythmata.api.schemas.process import (
 from pythmata.api.schemas.script import ScriptContent, ScriptResponse
 from pythmata.api.schemas.token import TokenResponse
 
+from pythmata.api.schemas.process.definition_version_migration import (
+    ProcessMigrationRequest,
+    ProcessMigrationResponse
+)
+
 from .auth import (
     Role,
     RoleCreate,
@@ -79,6 +84,9 @@ __all__ = [
     "ProcessVariableDefinition",
     "ProcessVariableValidation",
     "ProcessVariableValue",
+    #Version Migration schemas
+    "ProcessMigrationRequest",
+    "ProcessMigrationResponse",
     # Script schemas
     "ScriptContent",
     "ScriptResponse",

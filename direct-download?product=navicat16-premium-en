@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-us" lang="en-us">
+
+<head>
+	<base href="https://www.navicat.com/en/download/direct-download" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<meta name="author" content="Super User" />
+	<meta name="generator" content="Joomla! - Open Source Content Management" />
+	<title>Direct Download | Navicat</title>
+	<link href="https://www.navicat.com/plugins/content/addtoany/addtoany.css" rel="stylesheet" type="text/css" />
+	<script src="//static.addtoany.com/menu/page.js" type="text/javascript" async="async"></script>
+	<script src="/media/jui/js/jquery.min.js?0f7046c2fcef2ec803a26c7bfde0c00c" type="text/javascript"></script>
+	<script src="/media/jui/js/jquery-noconflict.js?0f7046c2fcef2ec803a26c7bfde0c00c" type="text/javascript"></script>
+	<script src="/media/jui/js/jquery-migrate.min.js?0f7046c2fcef2ec803a26c7bfde0c00c" type="text/javascript"></script>
+	<script src="/media/system/js/caption.js?0f7046c2fcef2ec803a26c7bfde0c00c" type="text/javascript"></script>
+	<script type="text/javascript">
+jQuery(window).on('load',  function() {
+				new JCaption('img.caption');
+			});
+	</script>
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" href="/images/Navicat_16_Premium_win_256x256.ico" type="image/x-icon" />
+	<link href="https://fonts.googleapis.com/css?family=Rubik:300,300i,400,400i,500,500i,700,700i,900,900i" rel="stylesheet">
+	<link rel="stylesheet" href="/templates/Navicat/css/bootstrap.min.css" type="text/css" />
+	<link rel="stylesheet" href="/templates/Navicat/css/reset.css" type="text/css" />
+	<link rel="stylesheet" href="/templates/Navicat/css/jquery.bxslider.css" type="text/css" />
+	<link rel="stylesheet" href="/templates/Navicat/css/style.css?v=20230502" type="text/css" id="main-css" />
+	<link rel="stylesheet" href="/templates/Navicat/css/style_update.css?v=20230502" type="text/css" id="main-css" />
+	<link rel="stylesheet" href="/templates/Navicat/css/aboutus-milestone.css" type="text/css" id="main-css" />
+	<link rel="stylesheet" href="/templates/Navicat/css/print.css" type="text/css" media="print" />
+	<script src="/templates/Navicat/js/jquery_1.9.1.js"></script>
+	<script src="/templates/Navicat/js/bootstrap.min.js"></script>
+	<script src="/templates/Navicat/js/jquery.bxslider.min.js"></script>
+	<script src="/templates/Navicat/js/function.js?v=20250314"></script>
+	<script src="/templates/Navicat/js/aboutus-milestone.js?v=20230314"></script>
+	<script src="/templates/Navicat/js/form_submission.js?v=20240628"></script>
+	<script src="/templates/Navicat/js/script.js?v=20250314"></script>
+	<!--script src="/templates/Navicat/js/retina.js"></script-->
+	<script>
+		var store = "";
+		sessionStorage.removeItem("blogTreeState");
+	</script>
+
+	<!--Fancybox-->
+	<script type="text/javascript" src="/templates/Navicat/fancybox/lib/jquery.mousewheel.pack.js"></script>
+	<link rel="stylesheet" href="/templates/Navicat/fancybox/source/jquery.fancybox.css?v=2.1.7" type="text/css" media="screen" />
+	<script type="text/javascript" src="/templates/Navicat/fancybox/source/jquery.fancybox.js?v=2.1.7"></script>
+	<link rel="stylesheet" href="/templates/Navicat/fancybox/source/helpers/jquery.fancybox-buttons.css?v=1.0.5" type="text/css" media="screen" />
+	<script type="text/javascript" src="/templates/Navicat/fancybox/source/helpers/jquery.fancybox-buttons.js?v=1.0.5"></script>
+	<script type="text/javascript" src="/templates/Navicat/fancybox/source/helpers/jquery.fancybox-media.js?v=1.0.6"></script>
+	<link rel="stylesheet" href="/templates/Navicat/fancybox/source/helpers/jquery.fancybox-thumbs.css?v=1.0.7" type="text/css" media="screen" />
+	<script type="text/javascript" src="/templates/Navicat/fancybox/source/helpers/jquery.fancybox-thumbs.js?v=1.0.7"></script>
+	<script>
+		(function(i, s, o, g, r, a, m) {
+			i['GoogleAnalyticsObject'] = r;
+			i[r] = i[r] || function() {
+				(i[r].q = i[r].q || []).push(arguments)
+			}, i[r].l = 1 * new Date();
+			a = s.createElement(o),
+				m = s.getElementsByTagName(o)[0];
+			a.async = 1;
+			a.src = g;
+			m.parentNode.insertBefore(a, m)
+		})(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+
+		ga('create', 'UA-9800047-2', 'auto');
+		ga('send', 'pageview');
+	</script>
+</head>
+
+
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Q9DCT0L9TK"></script>
+<script>
+	window.dataLayer = window.dataLayer || [];
+
+	function gtag() {
+		dataLayer.push(arguments);
+	}
+
+	gtag("consent", "default", {
+		"ad_storage": "denied",
+		"ad_user_data": "denied",
+		"ad_personalization": "denied",
+		"analytics_storage": "denied"
+	});
+
+	gtag("js", new Date());
+
+	gtag("config", "G-Q9DCT0L9TK");
+</script>
+<body>
+	<div class="main">
+		<div class="promotion-top-banner-placeholder"></div>
+		<div class="promotion-top-banner-container">
+			<div class="container">
+				<div class="promotion-top-banner">
+					<!--p>Navicat Black Friday Get 30% off</p-->
+					<p>Upgrade Now and Save 15%</p>
+					<div class="promotion-top-banner-button-row">
+						<a target="_blank" href="https://customer.navicat.com/">
+							<!--div class="promotion-top-banner-button">Save now</div-->
+							<div class="promotion-top-banner-button">Upgrade Now</div>
+						</a>
+						<!--div class="promotion-top-banner-button promotion-top-banner-pop-up-button">More info</div-->
+						<div class="promotion-top-banner-button promotion-top-banner-pop-up-button">More info</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="back-to-top-btn"><img src="/images/00_BacktoTop.svg"></div>
+		<div class="modules-navigation-bar">
+			
+
+<div class="custom"  >
+	<div class="nav-bar-container">
+	<div class="nav-container">
+		<div class="vertical-menu-container" style="">
+			<div class="container">
+				<ul class="vertical-menu">
+					<li class="menu-item"><a href="/products">Products</a></li>
+					<li class="menu-item"><a href="/support">Support</a></li>
+					<li class="menu-item"><a href="/company/partner">Partners</a></li>
+					<li class="menu-item"><a href="/company/aboutus">About Us</a></li>
+				</ul>
+			</div>
+		</div>
+		<div class="container">
+			<div class="row nav-row">
+				<div class="col-md-8 col-sm-6 col-xs-3 menu-row">
+					<ul class="nav navbar-nav">
+						<li class="navicat-logo"><a href="/"><img src="/images/00_navicat_logo_gold_2x.png"></a></li>
+						<li class="menu-item"><a href="/products">Products</a></li>
+						<li class="menu-item"><a href="/support">Support</a></li>
+						<li class="menu-item"><a href="/company/partner">Partners</a></li>
+						<li class="menu-item"><a href="/company/aboutus">About Us</a></li>
+					</ul>
+				</div>
+				<div class="col-md-4 col-sm-6 col-xs-9 menu-row">
+					<ul class="nav menu-left-bar">
+						<li class="close-menu-btn"><a><img src="/images/00_cancel_icon.svg"></a></li>
+						<li class="menu-icon"><a href="#"><img src="/images/00_menu_icon_grey.svg"></a></li>
+						<li class="language-icon">
+							<a href="/language-select">
+								<div class="lang-img">
+									<img src="/images/00_language_icon_grey.svg"></div>
+								<div class="lang-text">EN</div>
+								<div class="clear"></div>
+							</a>
+						</li>
+						<li class="cart-icon"><a href="/shopping-cart"><img src="/images/00_cart_icon_grey.svg"><div class="number-of-item"></div></a></li>
+						<li class="search-icon"><a href="#"><img src="/images/00_search_icon_grey.svg">&nbsp;</a></li>
+						<li class="customer-center-icon"><a target="_blank" href="https://customer.navicat.com/"><img src="/images/00_customer_icon_grey.svg" /> </a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<script>
+	$( document ).ready(function($) {	
+		//Close Menu------------------------
+		closeVertMenu();
+		function closeVertMenu(){
+			$(".close-menu-btn a img").click(function(){			
+				$(".nav-container").removeClass("mobile-nav-container");
+				$(".vertical-menu-container").slideUp();
+				$(".search-icon, .cart-icon, .language-icon").show();
+				setTimeout(function(){
+					$(".nav-container").removeClass("dark-bg");
+					$(".navicat-logo>a>img").addClass("m-logo");
+					
+					windoWwidth = window.innerWidth
+					if(windoWwidth < 768) { 
+						$(".navicat-logo>a>img").addClass("m-logo");
+						$(".navicat-logo>a>img").attr("src","/images/00_navicat_logo_small_gold_2x.png");
+					}else{
+						$(".navicat-logo>a>img").removeClass("m-logo");
+						$(".navicat-logo>a>img").attr("src","/images/00_navicat_logo_gold_2x.png");
+					}
+					
+				}, 500);
+			});
+		};
+
+	
+		var windoWwidth = window.innerWidth
+		//Originally------------------------
+		navLogo(windoWwidth);
+		function navLogo(windoWwidth){
+			if (windoWwidth > 972) { 
+				closeVertMenu();
+				$(".close-menu-btn a img").click();
+				$(".nav-container").removeClass("mobile-nav-container");
+			}
+			if($(".nav-container").hasClass("mobile-nav-container")){
+				if (windoWwidth < 768) { 
+					$(".navicat-logo>a>img").attr("src","/images/00_navicat_logo_small_white.png")
+					$(".navicat-logo>a>img").addClass("m-logo");
+				}else{
+					$(".navicat-logo>a>img").attr("src","/images/00_navicat_logo_white.png")
+					$(".navicat-logo>a>img").removeClass("m-logo");
+				}
+			}else{
+				if (windoWwidth < 768) { 
+					$(".navicat-logo>a>img").attr("src","/images/00_navicat_logo_small_gold_2x.png")
+					$(".navicat-logo>a>img").addClass("m-logo");
+				}else{
+					$(".navicat-logo>a>img").attr("src","/images/00_navicat_logo_gold_2x.png")
+					$(".navicat-logo>a>img").removeClass("m-logo");
+				}
+			}
+		}			
+		//Resize
+		$(window).resize(function() {
+			var windoWwidth = window.innerWidth
+			navLogo(windoWwidth);		
+		});
+		
+	});
+</script>
+
+
+</div>
+
+		</div>
+		<div class="modules-index-page-header">
+			
+			<div class="modules-smart-search" style="display:none;">
+				<div style="position: relative;">
+					<div class="container">
+						<form id="" action="/search" method="get" class="form-search">
+							<div class="finder">
+								<input type="text" name="q" id="" class="search-query input-medium" size="25" value="" placeholder="search Navicat.com">
+							</div>
+						</form>
+						<div class='search-btn'>GO</div>					</div>
+				</div>
+			</div>
+		</div>
+		<div class="modules-sub-navigation-bar">
+			
+		</div>
+		<div class="modules-banner">
+			
+		</div>
+		<div class="main-article">
+			<div class="item-page" itemscope itemtype="https://schema.org/Article">
+	<meta itemprop="inLanguage" content="en-US" />
+	
+		
+						
+		
+	
+	
+		
+								<div itemprop="articleBody">
+		
+<div class="product-banner"></div>
+<div class="container page-container">
+	<div class="row default-content">
+		<div class="col-md-12">
+			<h1>Thank you for downloading Navicat <span class='trail-day'>14</span>-day fully functional free trial.</h1>
+			<p>Your download should start automatically. If it doesn't, you can download <a class="default-links installer-link" href="/">here</a>.</p>
+			<br/><br/><br/><br/><br/><br/><br/>
+			<h3>Need Help?</h3>
+			<p>Contact our <a class="default-links" href="https://help.navicat.com/hc/en-us/requests/new">customer service team</a>.</p>
+		</div>
+	</div>
+	<!---Window content----->
+	<div class="row window-content" style="display:none;">
+		<div class="col-md-12">
+			<h1>Thank you for downloading Navicat Monitor.</h1>
+			<p>Your download should start automatically. If it doesn't, you can download <a class="default-links installer-link" href="/">here</a>.</p>
+			<br/><br/>
+			<div>
+				<h3>Prerequisites</h3>
+				<p>You must have a machine with x86-64 CPU and at least 2 GB of memory.</p>
+				<p>Network card MAC address must be persistent after reboot.</p>
+				<p>In your OS firewall, you should open port 3000.</p>
+				<p>Prepare a MySQL or PostgreSQL database.</p>
+				<br/>
+				<h3>Command to install:</h3>
+				<p>
+					1. Double-click the installer (eg. navicatmonitor1.0.0.exe)<br/>
+					2. Click next and finish to agree license and set installation path<br/>
+					3. Right-click app icon in right bottom corner to start app, if there have not open browser with installation page<br/>
+					4. After app is started, it should open browser with installation page<br/>
+					5. If browser has not open installation page, open http://localhost:3000 manually			
+				</p>
+				<br/>
+			</div>
+			<h3>Need Help?</h3>
+			<p>Contact our <a class="default-links" href="https://help.navicat.com/hc/en-us/requests/new">customer service team</a>.</p>
+		</div>
+	</div>
+	<!---monitor content----->
+	<div class="row monitor-content" style="display:none;">
+		<div class="col-md-12">
+			<h1>Thank you for downloading Navicat Monitor.</h1>
+			<p>Your download should start automatically. If it doesn't, you can download <a class="default-links installer-link" href="/">here</a>.</p>
+			<br/><br/>
+			<div class="linux-section freebsd-section" style="display:none;">
+				<h3>Prerequisites</h3>
+				<p>You must have a machine with x86-64 CPU and at least 2 GB of memory.</p>
+				<p>Network card MAC address must be persistent after reboot.</p>
+				<p>In your OS firewall, you should open port 3000.</p>
+				<p>Prepare a MySQL or PostgreSQL database.</p>
+				<p class="linux-prerequisites"></p>
+				<br/>
+				<h3>Command to install:</h3>
+				<p class="linux-command">yum localinstall navicatmonitor-1.0.0-b.el6.x86_64.rpm</p>
+				<br/>
+				<h3>How to start:</h3>
+				<p class="how-to-start"></p>
+				<br/>
+			</div>
+			<h3>Need Help?</h3>
+			<p>Contact our <a class="default-links" href="https://help.navicat.com/hc/en-us/requests/new">customer service team</a>.</p>
+		</div>
+	</div>
+</div>
+<div class="direct-download-banner">
+	<div class="container">
+		<div class="row">
+			<div class="col-sm-offset-1 col-sm-10 direct-download-banner-content">
+				<h2>Work better together.</h2>
+				<p>Collaborate with your team in real time from anywhere.</p>
+				<a class="default-links" href="/navicat-collaboration">Learn More</a>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	$(document).ready(function($) {	
+		var product = "navicat16-premium-en";
+		if(product.includes("mongodb")){
+			//jQuery('.trail-day').html("30");
+		}
+		var location = "";
+		var support = "";
+		var linux_dist = "";
+		var ver = "";
+		directDownload(product, location, support, linux_dist);		
+		jQuery('.default-content').hide();jQuery('.default-content').show();jQuery('.monitor-content, .window-content').hide();
+	});
+</script>
+
+<!-- Google Code for V12_downloadcomplete Conversion Page -->
+<script type="text/javascript">
+/* <![CDATA[ */
+var google_conversion_id = 1072681238;
+var google_conversion_language = "en";
+var google_conversion_format = "3";
+var google_conversion_color = "ffffff";
+var google_conversion_label = "4Lr0COaw4XEQlqK__wM";
+var google_remarketing_only = false;
+/* ]]> */
+</script>
+<script type="text/javascript" src="//www.googleadservices.com/pagead/conversion.js">
+</script>
+<noscript>
+<div style="display:inline;">
+<img height="1" width="1" style="border-style:none;" alt="" src="//www.googleadservices.com/pagead/conversion/1072681238/?label=4Lr0COaw4XEQlqK__wM&amp;guid=ON&amp;script=0"/>
+</div>
+</noscript>	</div>
+
+	
+							</div>
+		</div>
+		<div class="modules-sitemap">
+			
+
+<div class="custom"  >
+	<div class="sitemap-container">
+	<div class="container sitemap-wrapper">
+		<div class="row sitemap-wrapper-row">
+			<div class="col-md-2 col-sm-2 col-sm-12">
+				<div class="sitemap-col">
+					<ul>
+						<li class="sitemap-title">
+							<div>
+								<div class="sitemap-name"><b>What's new</b></div>
+								<div class="sitemap-btn"><img status="on" src="/images/00_expand_up_icon.svg"/></div>
+								<div class="clear"></div>
+							</div>
+						</li>
+						<li class="sitemap-items show-items">
+							<ul>
+								<li><a href="/navicat-17-highlights">Navicat 17</a></li>
+								<li><a href="/navicat-data-modeler-4-highlights">Navicat Data Modeler 4</a></li>
+								<li><a href="/what-is-navicat-for-snowflake">Navicat for Snowflake</a></li>
+								<li><a href="/navicat-collaboration">Collaboration</a></li>
+								<li><a href="/discover-navicat-monitor">Navicat Monitor</a></li>
+								<li><a href="/what-is-navicat-for-redis">Navicat for Redis</a></li>
+								<li><a href="/what-is-navicat-for-mongodb">Navicat for MongoDB</a></li>
+							</ul>
+						</li>										
+					</ul>
+				</div>
+			</div>
+			<div class="col-md-2 col-sm-2 col-sm-12">
+				<div class="sitemap-col">
+					<ul>
+						<li class="sitemap-title">
+							<div>
+								<div class="sitemap-name"><a href="/products"><b>Products</b></a></div>
+								<div class="sitemap-btn"><img status="on" src="/images/00_expand_up_icon.svg"/></div>
+								<div class="clear"></div>
+							</div>
+						</li>
+						<li class="sitemap-items show-items">
+							<ul>
+								<li><a href="/products#navicat">Navicat</a></li>
+								<li><a href="/products#navicat-collaboration">Navicat Cloud</a></li>
+								<li><a href="/products#navicat-collaboration">Navicat On-Prem Server</a></li>
+								<li><a href="/products#navicat-bi">Navicat BI</a></li>
+								<li><a href="/products#navicat-monitor">Navicat Monitor</a></li>
+								<li><a href="/products#navicat-data-modeler">Navicat Data Modeler</a></li>
+							</ul>
+						</li>										
+					</ul>
+				</div>
+			</div>
+			<div class="col-md-2 col-sm-2 col-sm-12">
+				<div class="sitemap-col">
+					<ul>
+						<li class="sitemap-title">
+							<div>
+								<div class="sitemap-name"><a href="/support"><b>Support</b></a></div>
+								<div class="sitemap-btn"><img status="on" src="/images/00_expand_up_icon.svg"/></div>
+								<div class="clear"></div>
+							</div>
+						</li>
+						<li class="sitemap-items show-items">
+							<ul>
+								<li><a href="/support/online-manual">Manuals</a></li>
+								<li><a href="/support/video">Videos</a></li>
+								<li><a href="/support/survey">Survey</a></li>
+								<li><a href="/support/live">Live Support</a></li>
+								<!--<li><a target="_blank" href="/support/video">Videos</a></li>-->
+								<!--<li><a target="_blank" href="https://community.navicat.com/">Forums</a></li-->											
+							</ul>
+						</li>
+					</ul>
+				</div>	
+				<div class="sitemap-col">
+					<ul>
+						<li class="sitemap-title sitemap-second-row-title">
+							<div>
+								<div class="sitemap-name"><b>Account</b></div>
+								<div class="sitemap-btn"><img status="on" src="/images/00_expand_up_icon.svg"/></div>
+								<div class="clear"></div>
+							</div>
+						</li>
+						<li class="sitemap-items show-items">
+							<ul>
+								<li><a target="_blank" href="https://customer.navicat.com/">Customer Center</a></li>
+								<li><a target="_blank" href="https://subscription.navicat.com">Subscription Portal</a></li>
+								<li><a target="_blank" href="https://cloud.navicat.com/login">Navicat Cloud</a></li>							
+							</ul>
+						</li>	
+					</ul>
+				</div>
+			</div>
+			<div class="col-md-2 col-sm-2 col-sm-12">
+				<div class="sitemap-col">
+					<ul>
+						<li class="sitemap-title">
+							<div>
+								<div class="sitemap-name"><a href="/company/partner"><b>Partners</b></a></div>
+								<div class="sitemap-btn"><img status="on" src="/images/00_expand_up_icon.svg"/></div>
+								<div class="clear"></div>
+							</div>
+						</li>
+						<li class="sitemap-items show-items">
+							<ul>	
+								<li><a href="/company/partner-directory">Find Resellers</a></li>
+								<li><a href="/company/partner-program">Resellers</a></li>
+								<li><a href="/store/technology-partner">Technology Partners</a></li>
+								<li><a href="/sponsorship">Sponsorships</a></li>
+								<li><a href="/sponsorship/education">Navicat Academic Partner Program</a></li>
+							</ul>
+						</li>
+					</ul>
+				</div>
+			</div>
+			<div class="col-md-2 col-sm-2 col-sm-12">
+				<div class="sitemap-col">
+					<ul>
+						<li class="sitemap-title">
+							<div>
+								<div class="sitemap-name"><a href="/company/aboutus"><b>About Us</b></a></div>
+								<div class="sitemap-btn"><img status="on" src="/images/00_expand_up_icon.svg"/></div>
+								<div class="clear"></div>
+							</div>
+						</li>
+						<li class="sitemap-items show-items">
+							<ul>
+								<li><a href="/company/aboutus">Company</a></li>
+								<li><a href="/company/corporate">Our Customers</a></li>
+								<li><a href="/top10">Top 10 Reasons</a></li>
+								<li><a href="/company/awards">Awards</a></li>
+								<li><a href="/company/press">Press</a></li>
+								<li><a href="/en/company/aboutus/blog">Blog</a></li>
+							</ul>
+						</li>									
+					</ul>
+				</div>
+			</div>
+			<div class="col-md-2 col-sm-2 col-sm-12">
+				<div class="sitemap-col">
+					<ul>
+						<li class="sitemap-title">
+							<div>
+								<div class="sitemap-name"><b>Others</b></div>
+								<div class="sitemap-btn"><img status="on" src="/images/00_expand_up_icon.svg"/></div>
+								<div class="clear"></div>
+							</div>
+						</li>
+						<li class="sitemap-items show-items">
+							<ul>
+								<li><a href="/store/maintenance">Software Maintenance</a></li>
+								<li><a href="/store/upgrade">Upgrades</a></li>
+								<li><a href="/store/non-commercial">Non-Commercial Licenses</a></li>
+								<li><a href="/store/site-license">Site Licenses</a></li>
+								<li><a href="/store/offline-order">Offline Orders</a></li>
+								<li><a href="/unsubscribe">Unsubscribe</a></li>
+							</ul>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</div></div>
+
+		</div>
+		<div class="modules-footer">
+			
+
+<div class="custom"  >
+	<div class="footer-container ">	
+	<div class="container">	
+		<div class="media-footer">
+			<div>
+				<a target="_blank" rel="noreferrer noopener" href="https://www.facebook.com/like.navicat"><img src="/images/00_footer_Facebook.svg" /></a>
+				<a target="_blank" rel="noreferrer noopener" href="https://twitter.com/_navicat"><img src="/images/00_footer_Twitter_X.svg" /></a>
+				<a target="_blank" rel="noreferrer noopener" href="http://www.linkedin.com/company/navicat"><img src="/images/00_footer_Linkedin.svg" /></a>
+				<!--a target="_blank" rel="noreferrer noopener" href="https://google.com/+navicat"><img src="/images/00_footer_GooglePlus.svg" /></a-->
+				<a target="_blank" rel="noreferrer noopener" href="http://www.youtube.com/user/navicatgui"><img src="/images/00_footer_YouTube.svg" /></a>
+				<a target="_blank" rel="noreferrer noopener" href="/rss"><img src="/images/00_footer_RSS.svg" /></a>
+				<span class="footer-wechat-btn"><img src="/images/00_footer_WeChat.svg" /></span>
+			</div>
+			<div class="footer-ms-partner"><img src="/images/ms_gold_white.png" /></div>
+		</div>
+		<div class="signup-newsletter-div">
+			<div class="signup-title">Sign up for newsletter :</div>
+			<div class="signup-input-part">
+				<div class="newsletter-warning">Enter a valid email address.</div>
+              	<!--div class="newsletter-warning user-on-list">*You have been on the subscriber list.</div-->
+				<div class="newsletter-done">*Please check your email.</div>
+				<div class="signup-input"><input id="signup-newsletter" type="text" /></div>
+				<div class="signup-btn">Subscribe</div>
+				<div class="clear"></div>
+			</div>
+			<div class="clear"></div>
+		</div>
+		<div style="margin-bottom:5px;">Copyright © 1999–2025 PremiumSoft™ CyberTech Ltd. All Rights Reserved.</div>
+		<div>
+			<a href="/legalstatement">Legal Statement</a>&nbsp;&nbsp;|&nbsp;&nbsp;
+			<a href="/privacystatement">Privacy Statement</a>&nbsp;&nbsp;|&nbsp;&nbsp;
+			<a href="/GDPR">GDPR</a>&nbsp;&nbsp;|&nbsp;&nbsp;
+			<a href="/company/aboutus#contact-info">Contact Us</a>
+		</div>
+	</div>
+</div>
+
+<div class="footer-wechat-qrcode-container" style="display: none;">
+	<div class="footer-wechat-qrcode-background">
+		<div class="footer-wechat-qrcode">
+			<img class="footer-wechat-qrcode-img" src="/images/LargePopUp_QRcode.svg" />
+			<div class="footer-wechat-qrcode-text">关注微信公众号: Navicat</div>
+			<div class="footer-wechat-qrcode-cancel-btn">
+				<img class="desktop" src="/images/LargePopUp_cancel.svg" />
+				<img class="mobile" src="/images/LargePopUp_cancel_mobile.svg" />
+			</div>
+		</div>
+	</div>
+</div></div>
+
+		</div>
+	</div>
+			<div class="consent-banner-background" style="">
+			<div class="consent-banner">
+				<p class="consent-banner-title">Our site uses cookies.</p>
+				<p class="consent-banner-content">We use cookies to ensure its efficient functioning. Read about how we use cookies <a class='default-links' href='/GDPR'>here</a>. By continuing to use this site, you are giving us your consent to do this.</p>
+				<div class="consent-banner-button-container">
+					<div class="button consent-banner-button agree-btn">Accept</div>
+				</div>
+			</div>
+		</div>
+		<div class="promotion-pop-up-banner-background" style="">
+		<div class="promotion-pop-up-banner">
+			<img class="promotion-pop-up-img desktop" src="/images/promotion/20250114/Website_Desktop_20250114.png" />
+			<img class="promotion-pop-up-img mobile" src="/images/promotion/20250114/Website_mobile_20250114.png" />
+			<img class="promotion-pop-up-close" src="/images/Btn_close.svg" />
+			<div class="promotion-pop-up-banner-content">
+				<a target="_blank" href="https://customer.navicat.com/">
+					<!--div class="button">Save now</div-->
+					<div class="button">Upgrade Now</div>
+				</a>
+				<!--p>*Promotion ends 2 Dec, 2024 (23:59 ET)<br />*Valid for new Navicat perpetual licenses</p-->
+				<p>*Promotion ends on 16 Jan, 2025 (23:59 ET).<br />* Promotion valid for upgrade Navicat perpetual licenses; cannot be combined with other discounts.</p>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>
+
+
+<script>
+	/*Consent Banner*/
+	jQuery(".agree-btn").click(function() {
+		gtag('consent', 'update', {
+			'ad_storage': 'granted',
+			'ad_user_data': 'granted',
+			'ad_personalization': 'granted',
+			'analytics_storage': 'granted'
+		});
+		jQuery(".cookies-container, .consent-banner-background").hide();
+		setCookie("consent", "agreed", 30);
+			});
+
+	/*Promotion Banner*/
+	jQuery(".promotion-pop-up-banner .button").click(function() {
+		setCookie("promotion", "closed", 10)
+	});
+	jQuery(".promotion-pop-up-close").click(function() {
+		jQuery(".promotion-pop-up-banner-background").hide();
+		setCookie("promotion", "closed", 10)
+	});
+	jQuery(".promotion-top-banner-pop-up-button").click(function() {
+		jQuery(".promotion-pop-up-banner-background").css("display", "flex");
+	});
+	
+	function setCookie(cname, cvalue, exdays) {
+		var d = new Date();
+		d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+		var expires = "expires=" + d.toUTCString();
+		document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+	}
+</script>
