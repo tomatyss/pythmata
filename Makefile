@@ -33,7 +33,7 @@ install:
 # Start development servers
 dev:
 	@echo "Starting development environment..."
-	docker-compose up
+	sudo docker-compose up
 
 # Build for production
 build:
