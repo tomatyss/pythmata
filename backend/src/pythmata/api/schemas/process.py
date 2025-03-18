@@ -1,7 +1,7 @@
 """Process-related schemas."""
 
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Literal, Optional, TypeVar, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -79,29 +79,6 @@ class ProcessDefinitionResponse(ProcessDefinitionBase):
     total_instances: int = 0
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
-
-
-T = TypeVar("T")
-
-
-class PaginatedResponse(BaseModel, Generic[T]):
-    """Schema for paginated response."""
-
-    items: List[T]
-    total: int
-    page: int
-    pageSize: int
-    totalPages: int
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class ApiResponse(BaseModel, Generic[T]):
-    """Schema for API response."""
-
-    data: T
-
-    model_config = ConfigDict(extra="forbid")
 
 
 class ProcessVariableValue(BaseModel):

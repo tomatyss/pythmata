@@ -1,23 +1,22 @@
-"""Activity log schemas."""
+"""Activity related schemas."""
 
 from datetime import datetime
-from typing import Dict, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from pythmata.models.process import ActivityType
-
 
 class ActivityLogResponse(BaseModel):
-    """Activity log response schema."""
+    """Schema for activity log response."""
 
     id: UUID
     instance_id: UUID
-    activity_type: ActivityType
-    node_id: Optional[str] = None
-    details: Optional[Dict] = None
-    timestamp: datetime
-    created_at: datetime
-
+    activity_id: str
+    activity_name: str
+    activity_type: str
+    start_time: datetime
+    end_time: datetime
+    duration: float  # in seconds
+    status: str
+    
     model_config = ConfigDict(from_attributes=True)

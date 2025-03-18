@@ -52,5 +52,12 @@ class ProcessDefinitionResponse(ProcessDefinitionBase):
     updated_at: datetime
     active_instances: int = 0
     total_instances: int = 0
+    
+    # Version control fields
+    current_version_number: Optional[str] = None
+    current_branch: Optional[str] = None
+    latest_commit_message: Optional[str] = None
+    latest_commit_author: Optional[str] = None
+    latest_commit_timestamp: Optional[datetime] = None
 
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, extra="allow") 

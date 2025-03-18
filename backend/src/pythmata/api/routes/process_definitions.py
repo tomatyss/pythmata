@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,9 +64,20 @@ async def get_process_stats(
     "",
     response_model=ApiResponse[PaginatedResponse[ProcessDefinitionResponse]],
 )
-async def get_processes(session: AsyncSession = Depends(get_session)):
+async def get_processes(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    session: AsyncSession = Depends(get_session)
+):
     """Get all process definitions with their instance statistics."""
     processes = await get_process_stats(session)
+    
+    # Apply pagination
+    total = len(processes)
+    total_pages = (total + page_size - 1) // page_size
+    start_idx = (page - 1) * page_size
+    end_idx = min(start_idx + page_size, total)
+    page_processes = processes[start_idx:end_idx]
 
     return {
         "data": {
@@ -79,12 +90,12 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
                     }
                     | {"active_instances": process[1], "total_instances": process[2]}
                 )
-                for process in processes
+                for process in page_processes
             ],
-            "total": len(processes),
-            "page": 1,
-            "pageSize": len(processes),
-            "totalPages": 1,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "totalPages": total_pages,
         }
     }
 
