@@ -16,6 +16,13 @@ import {
   StartProcessInstanceRequest,
   UpdateScriptRequest,
 } from '@/types/process';
+import {
+  VersionBase,
+  VersionCreate,
+  VersionDetailResponse,
+  VersionListResponse,
+  VersionResponse,
+} from '@/types/version';
 
 // Chat and LLM types
 interface ChatSession {
@@ -364,6 +371,50 @@ class ApiService {
       );
       throw error;
     }
+  }
+
+  // Version Control
+  async getProcessVersions(
+    processId: string,
+    options?: {
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<ApiResponse<VersionListResponse>> {
+    const params = {
+      ...(options?.limit ? { limit: options.limit } : {}),
+      ...(options?.offset ? { offset: options.offset } : {}),
+    };
+
+    const response = await this.client.get(`/versions/process/${processId}`, {
+      params,
+    });
+    return response.data;
+  }
+
+  async getVersion(
+    versionId: string
+  ): Promise<ApiResponse<VersionDetailResponse>> {
+    const response = await this.client.get(`/versions/${versionId}`);
+    return response.data;
+  }
+
+  async createVersion(
+    data: VersionCreate
+  ): Promise<ApiResponse<VersionResponse>> {
+    const response = await this.client.post('/versions', data);
+    return response.data;
+  }
+
+  async restoreVersion(
+    versionId: string,
+    data: VersionBase
+  ): Promise<ApiResponse<VersionResponse>> {
+    const response = await this.client.post(
+      `/versions/restore/${versionId}`,
+      data
+    );
+    return response.data;
   }
 }
 

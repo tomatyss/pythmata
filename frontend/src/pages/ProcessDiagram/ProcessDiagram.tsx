@@ -2,8 +2,10 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import apiService from '@/services/api';
 import ProcessDiagramViewer from '@/components/shared/ProcessDiagramViewer';
+import { VersionSelector } from '@/components/VersionControl';
 import { useProcessTokens } from '@/hooks/useProcessTokens';
 import { ProcessInstance, ProcessStatus } from '@/types/process';
+import { Version } from '@/types/version';
 import {
   Box,
   Card,
@@ -174,6 +176,27 @@ const ProcessDiagram = (): React.ReactElement => {
     fetchProcessDetails();
   }, [fetchProcessDetails]);
 
+  // Handle version change
+  const handleVersionChange = async (selectedVersion: Version) => {
+    try {
+      setLoading(true);
+      const response = await apiService.getVersion(selectedVersion.id);
+      if (response.data.bpmnXml) {
+        setProcess({
+          name: process?.name || '',
+          bpmnXml: response.data.bpmnXml,
+          version: Number(selectedVersion.versionNumber),
+          updatedAt: response.data.createdAt,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load version:', error);
+      setError('Failed to load selected version');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Render loading state
   if (loading) {
     return (
@@ -250,10 +273,14 @@ const ProcessDiagram = (): React.ReactElement => {
         <Box>
           <Typography variant="h4" gutterBottom>
             {process.name}
-            {process.version && (
-              <Typography component="span" variant="subtitle1" sx={{ ml: 2 }}>
-                v{process.version}
-              </Typography>
+            {id && process.version && (
+              <Box sx={{ display: 'inline-block', ml: 2 }}>
+                <VersionSelector
+                  processId={id}
+                  version={process.version}
+                  onVersionChange={handleVersionChange}
+                />
+              </Box>
             )}
           </Typography>
           {process.updatedAt && (
