@@ -100,6 +100,9 @@ class TaskBuilder(ElementBuilder):
         """Build and return an immutable Task instance."""
         incoming, outgoing = self._get_flows()
         extensions, script, input_vars, output_vars = self._parse_extensions()
+        
+        # Check if task is for compensation
+        is_for_compensation = self.element.get("isForCompensation", "false").lower() == "true"
 
         return Task(
             id=self.element.get("id"),
@@ -111,6 +114,7 @@ class TaskBuilder(ElementBuilder):
             script=script,
             input_variables=input_vars,
             output_variables=output_vars,
+            is_for_compensation=is_for_compensation,
         )
 
 

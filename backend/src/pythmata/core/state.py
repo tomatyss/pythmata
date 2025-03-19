@@ -496,3 +496,83 @@ class StateManager:
         # Replace the token list
         await self.redis.delete(key)
         await self.redis.rpush(key, *[json.dumps(token) for token in tokens])
+
+    async def store_compensation_handler(
+        self, instance_id: str, activity_id: str, handler_data: Dict
+    ) -> None:
+        """
+        Store compensation handler mapping for an activity.
+        
+        Args:
+            instance_id: Process instance ID
+            activity_id: ID of the activity the handler is attached to
+            handler_data: Handler details (handler ID, boundary event ID, etc.)
+        """
+        key = f"compensation:{instance_id}:{activity_id}"
+        await self.redis.set(key, json.dumps(handler_data))
+        
+        # Also add this to the list of all compensation handlers for this instance
+        all_handlers_key = f"compensation:{instance_id}:all"
+        await self.redis.rpush(all_handlers_key, json.dumps({
+            "activity_id": activity_id,
+            **handler_data
+        }))
+    
+    async def get_compensation_handler(
+        self, instance_id: str, activity_id: str
+    ) -> Optional[Dict]:
+        """
+        Get compensation handler for an activity.
+        
+        Args:
+            instance_id: Process instance ID
+            activity_id: ID of the activity with compensation handler
+            
+        Returns:
+            Handler data or None if not found
+        """
+        key = f"compensation:{instance_id}:{activity_id}"
+        handler_json = await self.redis.get(key)
+        if handler_json:
+            return json.loads(handler_json)
+        return None
+    
+    async def get_all_compensation_handlers(
+        self, instance_id: str
+    ) -> List[Dict]:
+        """
+        Get all compensation handlers for an instance.
+        
+        Args:
+            instance_id: Process instance ID
+            
+        Returns:
+            List of handler data
+        """
+        key = f"compensation:{instance_id}:all"
+        handlers_json = await self.redis.lrange(key, 0, -1)
+        return [json.loads(handler) for handler in handlers_json]
+    
+    async def clear_compensation_handlers(
+        self, instance_id: str
+    ) -> None:
+        """
+        Clear all compensation handlers for an instance.
+        
+        Args:
+            instance_id: Process instance ID
+        """
+        # Get all handler keys
+        all_handlers_key = f"compensation:{instance_id}:all"
+        handlers_json = await self.redis.lrange(all_handlers_key, 0, -1)
+        handlers = [json.loads(handler) for handler in handlers_json]
+        
+        # Delete individual handler mappings
+        for handler in handlers:
+            activity_id = handler.get("activity_id")
+            if activity_id:
+                key = f"compensation:{instance_id}:{activity_id}"
+                await self.redis.delete(key)
+        
+        # Delete the list of all handlers
+        await self.redis.delete(all_handlers_key)
