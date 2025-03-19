@@ -1,10 +1,9 @@
 from logging.config import fileConfig
-
+import os
 from alembic import context
 from sqlalchemy import create_engine, pool
 from sqlalchemy.engine import Connection
 
-from pythmata.core.config import Settings
 from pythmata.models.process import Base
 
 # this is the Alembic Config object, which provides
@@ -20,12 +19,28 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
-# Load settings from config file
-settings = Settings()
+# Get DB URL from environment variable or use a default for migrations
+# Get database connection details from environment variables
+postgres_user = os.getenv("POSTGRES_USER", "postgres")
+postgres_password = os.getenv("POSTGRES_PASSWORD", "postgres")
 
-# Override sqlalchemy.url from alembic.ini with config
-# Convert async URL to sync URL for Alembic
-db_url = str(settings.database.url)
+# In Docker, we need to use the service name instead of localhost
+# Check if we're running in a container by looking for /.dockerenv
+if os.path.exists('/.dockerenv'):
+    postgres_host = os.getenv("POSTGRES_HOST", "postgres")  # Use service name from docker-compose
+else:
+    postgres_host = os.getenv("POSTGRES_HOST", "localhost")
+
+postgres_port = os.getenv("POSTGRES_PORT", "5432")
+postgres_db = os.getenv("POSTGRES_DB", "pythmata")
+
+# Construct the database URL
+db_url = os.getenv(
+    "DATABASE_URL", 
+    f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+)
+
+# Convert async URL to sync URL for Alembic if needed
 if db_url.startswith("postgresql+asyncpg://"):
     db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
 

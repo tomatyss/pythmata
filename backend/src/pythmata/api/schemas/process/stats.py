@@ -1,4 +1,4 @@
-"""Process statistics related schemas."""
+"""Process statistics schemas."""
 
 from typing import Dict, Optional
 
