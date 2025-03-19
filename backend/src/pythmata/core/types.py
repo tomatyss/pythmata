@@ -31,6 +31,7 @@ class EventType(str, Enum):
     START = "start"
     END = "end"
     INTERMEDIATE = "intermediate"
+    BOUNDARY = "boundary"
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class Task(FlowNode):
     script: Optional[str] = None
     input_variables: Optional[Dict[str, str]] = field(default_factory=dict)
     output_variables: Optional[Dict[str, str]] = field(default_factory=dict)
+    is_for_compensation: bool = False
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,10 @@ class Event(FlowNode):
 
     event_type: EventType = field(default=EventType.START)
     event_definition: Optional[str] = None
+    activity_ref: Optional[str] = None  # Reference to activity for compensation
+    attached_to: Optional[str] = None  # For boundary events
+    cancelling: bool = True  # For boundary events, true if canceling the activity
+    wait_for_completion: bool = False  # For compensation events
 
 
 @dataclass(frozen=True)
