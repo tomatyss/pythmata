@@ -418,3 +418,12 @@ def test_settings() -> Settings:
         settings.process.cleanup_interval = int(os.getenv("CLEANUP_INTERVAL"))
 
     return settings
+
+
+def pytest_collection_modifyitems(session, config, items):
+    # Move 'test_imports.py' to the end of the test execution order
+    test_imports = [item for item in items if "test_imports.py" in str(item.fspath)]
+    other_tests = [item for item in items if "test_imports.py" not in str(item.fspath)]
+
+    # Rearrange the tests so 'test_imports.py' runs last
+    items[:] = other_tests + test_imports
