@@ -1,0 +1,1 @@
+# BPMN tests package initialization

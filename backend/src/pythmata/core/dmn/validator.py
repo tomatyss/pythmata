@@ -7,16 +7,10 @@ class DMNValidator:
     def __init__(self, xml_content):
         self.tree = ET.ElementTree(ET.fromstring(xml_content))
         self.root = self.tree.getroot()
-        schema_dir = Path(__file__).parent / "schemas"
-        dmn_dir = schema_dir / "dmn13"
-        self.schema = xmlschema.XMLSchema(
-            dmn_dir / "DMN13.xsd",
-            validation="lax",  # Use lax validation to handle missing imports
-            base_url=str(dmn_dir.absolute()),  # Set base URL for imports
-        )
+        self.namespace = {"dmn": "https://www.omg.org/spec/DMN/20191111/MODEL/"}
 
     def validate_structure(self):
-        if self.root.tag != "definitions":
+        if self.root.tag != f"{{{self.namespace['dmn']}}}definitions":
             return False, "Root element must be <definitions>."
         
         for decision in self.root.findall(".//decision"):
@@ -48,12 +42,3 @@ class DMNValidator:
                     return False, "Each <rule> must have output entries matching the number of <output> elements."
         
         return True, "DMN structure is valid."
-    
-    def validate_against_xsd(self, xml_path):
-        try:
-            if self.schema.is_valid(xml_path):
-                return True, "DMN XML is valid against DMN 1.3 XSD."
-            else:
-                return False, "DMN XML does not conform to DMN 1.3 standard."
-        except Exception as e:
-            return False, f"XSD Validation error: {str(e)}"
