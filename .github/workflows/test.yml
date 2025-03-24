@@ -24,6 +24,27 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
+      rabbitmq:
+        image: rabbitmq:4-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmqctl status"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     - uses: actions/checkout@v3
@@ -58,6 +79,8 @@ jobs:
       working-directory: ./backend
       env:
         DATABASE_URL: postgresql://pythmata:pythmata@localhost:5432/pythmata_test
+        REDIS_URL: redis://localhost:6379/0
+        RABBITMQ_URL: amqp://guest:guest@localhost:5672/
       run: |
         poetry run pytest -v
 
