@@ -1,18 +1,7 @@
 """API schemas package."""
 
 from pythmata.api.schemas.activity import ActivityLogResponse
-from pythmata.api.schemas.base import ApiResponse, PaginatedResponse
-from pythmata.api.schemas.llm import (
-    ChatMessageResponse,
-    ChatRequest,
-    ChatResponse,
-    ChatSessionCreate,
-    ChatSessionResponse,
-    Message,
-    XmlGenerationRequest,
-    XmlModificationRequest,
-    XmlResponse,
-)
+from pythmata.api.schemas.common import ApiResponse, PaginatedResponse
 from pythmata.api.schemas.process import (
     ProcessDefinitionBase,
     ProcessDefinitionCreate,
@@ -26,48 +15,20 @@ from pythmata.api.schemas.process import (
     ProcessVariableValidation,
     ProcessVariableValue,
 )
-from pythmata.api.schemas.script import ScriptContent, ScriptResponse
-from pythmata.api.schemas.token import TokenResponse
-
-from .auth import (
-    Role,
-    RoleCreate,
-    RoleUpdate,
-    Token,
-    TokenData,
-    User,
-    UserCreate,
-    UserInDB,
-    UserUpdate,
+from pythmata.api.schemas.scripts import ScriptContent, ScriptResponse
+from pythmata.api.schemas.tokens import TokenResponse
+from pythmata.api.schemas.version import (
+    VersionBase,
+    VersionCreate,
+    VersionDetailResponse,
+    VersionListResponse,
+    VersionResponse,
 )
 
 __all__ = [
-    # Auth schemas
-    "Token",
-    "TokenData",
-    "User",
-    "UserCreate",
-    "UserUpdate",
-    "Role",
-    "RoleCreate",
-    "RoleUpdate",
-    "UserInDB",
-    # Activity schemas
     "ActivityLogResponse",
-    # Base schemas
     "ApiResponse",
     "PaginatedResponse",
-    # LLM schemas
-    "Message",
-    "ChatRequest",
-    "ChatResponse",
-    "ChatSessionCreate",
-    "ChatSessionResponse",
-    "ChatMessageResponse",
-    "XmlGenerationRequest",
-    "XmlModificationRequest",
-    "XmlResponse",
-    # Process schemas
     "ProcessDefinitionBase",
     "ProcessDefinitionCreate",
     "ProcessDefinitionResponse",
@@ -79,9 +40,12 @@ __all__ = [
     "ProcessVariableDefinition",
     "ProcessVariableValidation",
     "ProcessVariableValue",
-    # Script schemas
     "ScriptContent",
     "ScriptResponse",
-    # Token schemas
     "TokenResponse",
+    "VersionBase",
+    "VersionCreate",
+    "VersionDetailResponse",
+    "VersionListResponse",
+    "VersionResponse",
 ]

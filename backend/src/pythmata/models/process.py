@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, DateTime
+from sqlalchemy import JSON, DateTime, Boolean
 from sqlalchemy import Enum as SQLAEnum
 from sqlalchemy import ForeignKey, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
@@ -54,6 +54,102 @@ class ProcessVariableDefinition(TypeDecorator):
         return value
 
 
+class BranchType(str, Enum):
+    """Process version branch types."""
+
+    MAIN = "MAIN"
+    FEATURE = "FEATURE"
+    HOTFIX = "HOTFIX"
+    DEVELOPMENT = "DEVELOPMENT"
+
+
+class ProcessVersion(Base):
+    """Version history for process definitions."""
+
+    __tablename__ = "process_versions"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    process_definition_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("process_definitions.id"), nullable=False
+    )
+    parent_version_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("process_versions.id"), nullable=True
+    )
+    version_number: Mapped[str] = mapped_column(String(50), nullable=False)
+    major_version: Mapped[int] = mapped_column(nullable=False)
+    minor_version: Mapped[int] = mapped_column(nullable=False)
+    patch_version: Mapped[int] = mapped_column(nullable=False)
+    branch_type: Mapped[BranchType] = mapped_column(
+        SQLAEnum(BranchType), nullable=False, default=BranchType.MAIN
+    )
+    branch_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    commit_message: Mapped[str] = mapped_column(Text, nullable=False)
+    author: Mapped[str] = mapped_column(String(255), nullable=False)
+    bpmn_xml_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    variable_definitions_snapshot: Mapped[List[Dict[str, Any]]] = mapped_column(
+        ProcessVariableDefinition, nullable=False
+    )
+    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    process_definition: Mapped["ProcessDefinition"] = relationship(
+        "ProcessDefinition", back_populates="versions"
+    )
+    parent_version: Mapped[Optional["ProcessVersion"]] = relationship(
+        "ProcessVersion", remote_side=[id], backref="child_versions"
+    )
+    version_elements: Mapped[list["ProcessElementChange"]] = relationship(
+        "ProcessElementChange", back_populates="version", cascade="all, delete-orphan"
+    )
+
+
+class ChangeType(str, Enum):
+    """Process element change types."""
+
+    ADDED = "ADDED"
+    MODIFIED = "MODIFIED"
+    DELETED = "DELETED"
+    MOVED = "MOVED"
+    RENAMED = "RENAMED"
+
+
+class ProcessElementChange(Base):
+    """Tracks changes to individual process elements between versions."""
+
+    __tablename__ = "process_element_changes"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    version_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("process_versions.id"), nullable=False
+    )
+    element_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    element_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    change_type: Mapped[ChangeType] = mapped_column(
+        SQLAEnum(ChangeType), nullable=False
+    )
+    previous_values: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    new_values: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    version: Mapped[ProcessVersion] = relationship(
+        "ProcessVersion", back_populates="version_elements"
+    )
+
+
 class ProcessDefinition(Base):
     """BPMN process definition."""
 
@@ -79,6 +175,14 @@ class ProcessDefinition(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+    # Version metadata fields
+    current_version_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    current_branch: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    latest_commit_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True) 
+    latest_commit_author: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    latest_commit_timestamp: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     instances: Mapped[list["ProcessInstance"]] = relationship(
@@ -90,6 +194,9 @@ class ProcessDefinition(Base):
     # Use string reference to avoid circular import
     chat_sessions: Mapped[list["ChatSession"]] = relationship(
         "ChatSession", back_populates="process_definition", cascade="all, delete-orphan"
+    )
+    versions: Mapped[list["ProcessVersion"]] = relationship(
+        "ProcessVersion", back_populates="process_definition", cascade="all, delete-orphan"
     )
 
 

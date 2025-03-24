@@ -25,7 +25,7 @@ class ProcessVariableDefinition(BaseModel):
     required: bool = True
     default_value: Optional[Any] = None
     validation: Optional[ProcessVariableValidation] = None
-    label: str
+    label: Optional[str] = None
     description: Optional[str] = None
 
     model_config = ConfigDict(extra="forbid")

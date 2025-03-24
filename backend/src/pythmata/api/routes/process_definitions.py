@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,9 +13,10 @@ from pythmata.api.schemas import (
     ProcessDefinitionResponse,
     ProcessDefinitionUpdate,
 )
+from pythmata.core.services.versioning.manager import VersionManager
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
-from pythmata.models.process import ProcessStatus
+from pythmata.models.process import ProcessStatus, BranchType
 from pythmata.utils.logger import get_logger, log_error
 
 logger = get_logger(__name__)
@@ -64,9 +65,20 @@ async def get_process_stats(
     "",
     response_model=ApiResponse[PaginatedResponse[ProcessDefinitionResponse]],
 )
-async def get_processes(session: AsyncSession = Depends(get_session)):
+async def get_processes(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    session: AsyncSession = Depends(get_session)
+):
     """Get all process definitions with their instance statistics."""
     processes = await get_process_stats(session)
+    
+    # Apply pagination
+    total = len(processes)
+    total_pages = (total + page_size - 1) // page_size
+    start_idx = (page - 1) * page_size
+    end_idx = min(start_idx + page_size, total)
+    page_processes = processes[start_idx:end_idx]
 
     return {
         "data": {
@@ -79,12 +91,12 @@ async def get_processes(session: AsyncSession = Depends(get_session)):
                     }
                     | {"active_instances": process[1], "total_instances": process[2]}
                 )
-                for process in processes
+                for process in page_processes
             ],
-            "total": len(processes),
-            "page": 1,
-            "pageSize": len(processes),
-            "totalPages": 1,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "totalPages": total_pages,
         }
     }
 
@@ -146,6 +158,22 @@ async def create_process(
         session.add(process)
         await session.commit()
         await session.refresh(process)
+        
+        # Create initial version for the new process
+        try:
+            version_manager = VersionManager(session)
+            await version_manager.create_initial_version(
+                process_definition_id=process.id,
+                author="system",  # Could be improved to capture actual user
+                commit_message="Initial process creation",
+                branch_type=BranchType.MAIN,
+                branch_name="main",
+            )
+            logger.info(f"Created initial version for new process: {process.id}")
+        except Exception as version_error:
+            # Log error but don't fail the process creation if version creation fails
+            logger.error(f"Failed to create initial version for process: {str(version_error)}", exc_info=True)
+            
         return {"data": process}
     except Exception as e:
         await session.rollback()
@@ -173,6 +201,11 @@ async def update_process(
         if not process:
             raise HTTPException(status_code=404, detail="Process not found")
 
+        # Store original state for version tracking
+        old_bpmn_xml = process.bpmn_xml
+        old_variable_definitions = process.variable_definitions
+        old_version = process.version
+
         if data.name is not None:
             process.name = data.name
         if data.bpmn_xml is not None:
@@ -190,6 +223,38 @@ async def update_process(
                 definition.model_dump() for definition in data.variable_definitions
             ]
         process.updated_at = datetime.now(timezone.utc)
+
+        # Create version record for this update
+        try:
+            # Initialize version manager and create version record
+            version_manager = VersionManager(session)
+            
+            # Determine if this is a bpmn or variable definitions change
+            changes_description = []
+            if data.bpmn_xml is not None and data.bpmn_xml != old_bpmn_xml:
+                changes_description.append("BPMN diagram")
+            if data.variable_definitions is not None and process.variable_definitions != old_variable_definitions:
+                changes_description.append("variable definitions")
+            
+            # Default commit message based on what changed
+            commit_message = f"Updated {', '.join(changes_description)}" if changes_description else "Updated process"
+            
+            # Create new version
+            await version_manager.create_new_version(
+                process_definition_id=process.id,
+                author="system",  # Could be improved to get the actual user
+                bpmn_xml=process.bpmn_xml,
+                variable_definitions=process.variable_definitions,
+                commit_message=commit_message,
+                version_increment="patch",  # Using patch for regular updates
+                branch_type=BranchType.MAIN,  # Default to main branch
+                branch_name="main",
+            )
+            
+            logger.info(f"Created version for process update: {process.id}")
+        except Exception as version_error:
+            # Log error but don't fail the update if version creation fails
+            logger.error(f"Failed to create version for process update: {str(version_error)}", exc_info=True)
 
         await session.commit()
         await session.refresh(process)
