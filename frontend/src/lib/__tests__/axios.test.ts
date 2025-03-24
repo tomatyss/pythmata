@@ -13,7 +13,12 @@ describe('Axios Instance', () => {
 
   describe('Request Interceptor', () => {
     // Recreate the exact same interceptor logic here for testing
-    const requestInterceptor = (config) => {
+    interface AxiosRequestConfig {
+      url?: string;
+      headers?: Record<string, string>;
+    }
+
+    const requestInterceptor = (config: AxiosRequestConfig) => {
       // Get token from storage
       const token = localStorage.getItem(AUTH_TOKEN_KEY);
 

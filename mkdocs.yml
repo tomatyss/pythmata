@@ -57,10 +57,16 @@ nav:
       - Error Handling: reference/bpmn/error-handling.md
       - Service Tasks: reference/bpmn/service-tasks.md
       - Custom Service Tasks: reference/bpmn/custom-service-tasks.md
+      - Gateway Conditions: reference/bpmn/gateway-conditions.md
+      - Timer Events: reference/bpmn/timer-events.md
       - Advanced Features: reference/bpmn/advanced-features.md
     - API: reference/api.md
+    - API WebSockets: reference/api/websockets.md
     - Configuration: reference/configuration.md
     - Security: reference/security.md
     - Performance: reference/performance.md
   - Guides:
     - Testing: guides/testing.md
+    - BPMN Import/Export: guides/bpmn-import-export.md
+  - Development:
+    - Naming Conventions: naming-conventions.md
