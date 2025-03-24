@@ -48,6 +48,7 @@ build/
 *.pyc
 *.pyo
 *.pyd
+site/
 
 # IDE
 .idea/

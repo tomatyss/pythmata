@@ -8,7 +8,7 @@ Pythmata supports three types of gateways, each with different behavior regardin
 
 ### Exclusive Gateway (XOR)
 
-![Exclusive Gateway](../images/exclusive-gateway.png)
+![Exclusive Gateway](images/exclusive-gateway.svg)
 
 - Only one outgoing path is taken
 - The first path with a condition that evaluates to `true` is selected
@@ -17,7 +17,7 @@ Pythmata supports three types of gateways, each with different behavior regardin
 
 ### Inclusive Gateway (OR)
 
-![Inclusive Gateway](../images/inclusive-gateway.png)
+![Inclusive Gateway](images/inclusive-gateway.svg)
 
 - Multiple outgoing paths can be taken
 - All paths with conditions that evaluate to `true` are selected
@@ -26,7 +26,7 @@ Pythmata supports three types of gateways, each with different behavior regardin
 
 ### Parallel Gateway (AND)
 
-![Parallel Gateway](../images/parallel-gateway.png)
+![Parallel Gateway](images/parallel-gateway.svg)
 
 - All outgoing paths are always taken
 - Conditions are not used on parallel gateways
