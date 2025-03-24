@@ -16,45 +16,31 @@ export type WebSocketMessageType =
 
 export type WebSocketMessageContentMap = {
   chat_message: { content: string };
-  token: { messageId: string; timestamp: string };
+  token: { content: string };
   message_received: { messageId: string; timestamp: string; xml?: string };
-  message_complete: { messageId: string; timestamp: string };
+  message_complete: { messageId: string; timestamp: string; xml?: string };
   join_session: { sessionId: string };
   leave_session: { status?: string }; // Allow optional status
   typing_indicator: { isTyping: boolean; sessionId?: string };
-  assistant_typing: {
+  assistant_typing: { status: string };
+  client_joined: { clientId: string; timestamp: string };
+  client_left: { clientId: string; timestamp: string };
+  new_message: {
     messageId: string;
     role: 'user' | 'assistant' | 'system';
     content: string;
     xml?: string;
     timestamp: string;
   };
-  client_joined: { clientId: string; timestamp: string };
-  client_left: { clientId: string; timestamp: string };
-  new_message: { content: string };
   error: { message: string };
   status: { status: string };
-} & {
-  [key in WebSocketMessageType]: unknown; // Allow additional types dynamically
 };
 
-export interface WebSocketMessage {
-  type: WebSocketMessageType;
-  content:
-    | { content: string }
-    | { messageId: string; timestamp: string }
-    | { messageId: string; timestamp: string; xml?: string }
-    | { status: string }
-    | { clientId: string; isTyping: boolean }
-    | { clientId: string; timestamp: string }
-    | {
-        messageId: string;
-        role: 'user' | 'assistant' | 'system';
-        content: string;
-        xml?: string;
-        timestamp: string;
-      }
-    | { message: string };
+export interface WebSocketMessage<
+  T extends WebSocketMessageType = WebSocketMessageType,
+> {
+  type: T;
+  content: WebSocketMessageContentMap[T]; // Using the mapped type instead of any
 }
 
 type MessageCallback<T> = (data: T) => void;
@@ -77,7 +63,7 @@ class WebSocketService {
   private clientId: string;
   private messageCallbacks: Map<
     WebSocketMessageType,
-    Set<MessageCallback<WebSocketMessageContentMap[WebSocketMessageType]>>
+    Set<MessageCallback<unknown>>
   > = new Map();
   private connectionStateCallbacks: Set<ConnectionStateCallback> = new Set();
   private connectionState: ConnectionState = 'disconnected';
@@ -162,7 +148,10 @@ class WebSocketService {
   private handleMessage(message: WebSocketMessage): void {
     const callbacks = this.messageCallbacks.get(message.type);
     if (callbacks) {
-      callbacks.forEach((callback) => callback(message.content));
+      callbacks.forEach((callback) => {
+        // Use type assertion to handle the type mismatch
+        callback(message.content);
+      });
     }
   }
 
@@ -265,7 +254,8 @@ class WebSocketService {
     if (!this.messageCallbacks.has(type)) {
       this.messageCallbacks.set(type, new Set());
     }
-    this.messageCallbacks.get(type)?.add(callback);
+    // Use type assertion to handle the type compatibility
+    this.messageCallbacks.get(type)?.add(callback as MessageCallback<unknown>);
   }
 
   /**
@@ -274,11 +264,14 @@ class WebSocketService {
    * @param type The message type to unsubscribe from
    * @param callback The callback function to remove
    */
-  unsubscribe(
-    type: WebSocketMessageType,
-    callback: MessageCallback<WebSocketMessage['content']>
+  unsubscribe<K extends WebSocketMessageType>(
+    type: K,
+    callback: MessageCallback<WebSocketMessageContentMap[K]>
   ): void {
-    this.messageCallbacks.get(type)?.delete(callback);
+    // Use type assertion to handle the type compatibility
+    this.messageCallbacks
+      .get(type)
+      ?.delete(callback as MessageCallback<unknown>);
   }
 
   /**

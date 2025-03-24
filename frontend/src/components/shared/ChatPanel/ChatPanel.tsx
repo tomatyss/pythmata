@@ -175,13 +175,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   }, []);
 
   const handleTypingIndicator = useCallback(
-    (data: { clientId: string; isTyping: boolean }) => {
+    (data: { isTyping: boolean; sessionId?: string }) => {
+      // Since we don't have clientId in the updated type, we can use sessionId as an identifier
+      // or if that's not available, use a default identifier
+      const identifier = data.sessionId || 'anonymous-user';
+
       setTypingUsers((prev) => {
         const newTypingUsers = new Set(prev);
         if (data.isTyping) {
-          newTypingUsers.add(data.clientId);
+          newTypingUsers.add(identifier);
         } else {
-          newTypingUsers.delete(data.clientId);
+          newTypingUsers.delete(identifier);
         }
         return newTypingUsers;
       });
@@ -282,8 +286,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     const assistantTypingCallback = (data: { status: string }) =>
       handleAssistantTyping(data);
     const typingIndicatorCallback = (data: {
-      clientId: string;
       isTyping: boolean;
+      sessionId?: string;
     }) => handleTypingIndicator(data);
     const clientJoinedCallback = (data: {
       clientId: string;
