@@ -39,6 +39,7 @@ The frontend is built with modern React and TypeScript, following a component-ba
 - **Key Features**:
   - Real-time process monitoring
   - Visual BPMN process designer
+  - BPMN diagram import and export
   - Script editor for task automation
   - Gateway condition configuration
   - Process instance management

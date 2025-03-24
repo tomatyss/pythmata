@@ -64,3 +64,4 @@ nav:
     - Performance: reference/performance.md
   - Guides:
     - Testing: guides/testing.md
+    - BPMN Import/Export: guides/bpmn-import-export.md

@@ -23,6 +23,7 @@ import {
   ContentCopy as ContentCopyIcon,
   Chat as ChatIcon,
 } from '@mui/icons-material';
+import { ImportExportButtons } from '@/components/BpmnModeler/ImportExport';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
 
 // Import components
@@ -643,6 +644,13 @@ const ProcessDesigner: React.FC = () => {
           >
             Copy XML
           </Button>
+          {modelerRef.current && (
+            <ImportExportButtons
+              modeler={modelerRef.current}
+              processName={processName}
+              onBpmnXmlChange={setBpmnXml}
+            />
+          )}
           <Button
             variant="contained"
             startIcon={<SaveIcon />}

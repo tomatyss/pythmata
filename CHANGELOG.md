@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- BPMN diagram import and export functionality
+  - Export diagrams as standard BPMN files
+  - Import BPMN files with drag-and-drop support
+  - Automatic conversion between Pythmata extensions and standard BPMN
+  - Validation of imported BPMN files
+  - User-friendly error handling and notifications
 - WebSocket-based chat system for BPMN Process Assistant
   - Real-time streaming of LLM responses
   - Typing indicators
