@@ -7,6 +7,7 @@ import ProtectedRoute from '@/components/shared/ProtectedRoute';
 
 // Lazy load components
 const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const ProcessList = lazy(() => import('@/pages/ProcessList'));
 const ProcessDesigner = lazy(() => import('@/pages/ProcessDesigner'));
@@ -27,6 +28,10 @@ const routes: RouteObject[] = [
   {
     path: ROUTES.LOGIN,
     element: withSuspense(Login),
+  },
+  {
+    path: ROUTES.REGISTER,
+    element: withSuspense(Register),
   },
   {
     path: ROUTES.HOME,
