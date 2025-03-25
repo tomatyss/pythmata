@@ -53,6 +53,10 @@ class BPMNParser:
                 nodes.append(self._parse_event(elem, EventType.START))
             elif elem.tag.endswith("}endEvent"):
                 nodes.append(self._parse_event(elem, EventType.END))
+            elif elem.tag.endswith("}intermediateThrowEvent") or elem.tag.endswith("}intermediateCatchEvent"):
+                nodes.append(self._parse_event(elem, EventType.INTERMEDIATE))
+            elif elem.tag.endswith("}boundaryEvent"):
+                nodes.append(self._parse_boundary_event(elem))
             elif "Gateway" in elem.tag:
                 nodes.append(self.parse_element(elem))
             elif elem.tag.endswith("}subProcess"):
@@ -99,6 +103,14 @@ class BPMNParser:
             else:
                 event_definition = tag
 
+        # Parse extended properties for compensation events
+        activity_ref = None
+        if event_definition == "compensation":
+            # Look for activityRef in compensation event definition
+            if definitions:
+                compensation_def = definitions[0]
+                activity_ref = compensation_def.get("activityRef")
+
         return Event(
             id=elem.get("id"),
             type="event",
@@ -107,6 +119,52 @@ class BPMNParser:
             event_definition=event_definition,
             incoming=incoming,
             outgoing=outgoing,
+            activity_ref=activity_ref,  # Add activity_ref for compensation events
+        )
+
+    def _parse_boundary_event(self, elem: ET.Element) -> Event:
+        """Parse a BPMN boundary event element."""
+        incoming = []  # Boundary events don't have incoming flows
+        outgoing = [e.text for e in elem.findall("bpmn:outgoing", self.ns)]
+        
+        attached_to = elem.get("attachedToRef")
+        cancelling = elem.get("cancelActivity", "true").lower() == "true"
+        
+        # Check for event definitions
+        definitions = elem.findall("./bpmn:*EventDefinition", self.ns)
+        
+        event_definition = None
+        if definitions:
+            tag = definitions[0].tag.split("}")[-1]
+            if tag.endswith("EventDefinition"):
+                event_definition = tag[:-14].lower()
+            else:
+                event_definition = tag
+                
+        # Additional data for compensation boundary events
+        activity_ref = None
+        wait_for_completion = False
+        
+        if event_definition == "compensation":
+            # Look for activityRef in compensation event definition
+            if definitions:
+                compensation_def = definitions[0]
+                activity_ref = compensation_def.get("activityRef")
+                wait_for_completion_str = compensation_def.get("waitForCompletion", "false")
+                wait_for_completion = wait_for_completion_str.lower() == "true"
+        
+        return Event(
+            id=elem.get("id"),
+            type="boundaryEvent",
+            name=elem.get("name"),
+            event_type=EventType.BOUNDARY,
+            event_definition=event_definition,
+            incoming=incoming,
+            outgoing=outgoing,
+            attached_to=attached_to,
+            cancelling=cancelling,
+            activity_ref=activity_ref,
+            wait_for_completion=wait_for_completion,
         )
 
     def _parse_sequence_flow(self, elem: ET.Element) -> SequenceFlow:

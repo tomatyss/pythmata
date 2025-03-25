@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="CompensationProcess" name="Travel Booking with Compensation" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Start Booking">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <!-- Book Hotel Task with Compensation Handler -->
+    <bpmn:task id="Task_BookHotel" name="Book Hotel">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <pythmata:taskConfig>
+          <pythmata:script>
+            # Book hotel logic
+            reservation_id = "H-123456"
+            return {"hotel_reservation_id": reservation_id, "hotel_name": "Grand Hotel"}
+          </pythmata:script>
+        </pythmata:taskConfig>
+      </bpmn:extensionElements>
+    </bpmn:task>
+    
+    <bpmn:boundaryEvent id="BoundaryEvent_Hotel" attachedToRef="Task_BookHotel" cancelActivity="false">
+      <bpmn:compensateEventDefinition />
+      <bpmn:outgoing>Flow_Comp_Hotel</bpmn:outgoing>
+    </bpmn:boundaryEvent>
+    
+    <bpmn:task id="Task_CancelHotel" name="Cancel Hotel Booking" isForCompensation="true">
+      <bpmn:incoming>Flow_Comp_Hotel</bpmn:incoming>
+      <bpmn:extensionElements>
+        <pythmata:taskConfig>
+          <pythmata:script>
+            # Cancel hotel logic
+            reservation_id = data.get("hotel_reservation_id")
+            print(f"Cancelling hotel reservation: {reservation_id}")
+            return {"hotel_cancelled": True, "cancellation_id": "HC-" + reservation_id}
+          </pythmata:script>
+        </pythmata:taskConfig>
+      </bpmn:extensionElements>
+    </bpmn:task>
+    
+    <!-- Book Flight Task with Compensation Handler -->
+    <bpmn:task id="Task_BookFlight" name="Book Flight">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <pythmata:taskConfig>
+          <pythmata:script>
+            # Book flight logic
+            reservation_id = "F-789012"
+            return {"flight_reservation_id": reservation_id, "flight_number": "AB123"}
+          </pythmata:script>
+        </pythmata:taskConfig>
+      </bpmn:extensionElements>
+    </bpmn:task>
+    
+    <bpmn:boundaryEvent id="BoundaryEvent_Flight" attachedToRef="Task_BookFlight" cancelActivity="false">
+      <bpmn:compensateEventDefinition />
+      <bpmn:outgoing>Flow_Comp_Flight</bpmn:outgoing>
+    </bpmn:boundaryEvent>
+    
+    <bpmn:task id="Task_CancelFlight" name="Cancel Flight Booking" isForCompensation="true">
+      <bpmn:incoming>Flow_Comp_Flight</bpmn:incoming>
+      <bpmn:extensionElements>
+        <pythmata:taskConfig>
+          <pythmata:script>
+            # Cancel flight logic
+            reservation_id = data.get("flight_reservation_id")
+            print(f"Cancelling flight reservation: {reservation_id}")
+            return {"flight_cancelled": True, "cancellation_id": "FC-" + reservation_id}
+          </pythmata:script>
+        </pythmata:taskConfig>
+      </bpmn:extensionElements>
+    </bpmn:task>
+    
+    <!-- Payment with Potential Failure -->
+    <bpmn:task id="Task_ProcessPayment" name="Process Payment">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <pythmata:taskConfig>
+          <pythmata:script>
+            # Payment processing logic
+            # Simulate payment failure if payment_success is False
+            payment_success = data.get("payment_success", True)
+            
+            if payment_success:
+                return {"payment_id": "P-345678", "payment_status": "completed"}
+            else:
+                raise ValueError("Payment failed: insufficient funds")
+          </pythmata:script>
+        </pythmata:taskConfig>
+      </bpmn:extensionElements>
+    </bpmn:task>
+    
+    <!-- Gateway to handle payment result -->
+    <bpmn:exclusiveGateway id="Gateway_PaymentResult" name="Payment Successful?">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_PaymentSuccess</bpmn:outgoing>
+      <bpmn:outgoing>Flow_PaymentFailed</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- Successful path -->
+    <bpmn:task id="Task_SendConfirmation" name="Send Confirmation">
+      <bpmn:incoming>Flow_PaymentSuccess</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <pythmata:taskConfig>
+          <pythmata:script>
+            # Send confirmation logic
+            return {"confirmation_sent": True, "confirmation_id": "C-" + data.get("payment_id", "")}
+          </pythmata:script>
+        </pythmata:taskConfig>
+      </bpmn:extensionElements>
+    </bpmn:task>
+    
+    <bpmn:endEvent id="EndEvent_Success" name="Booking Completed">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- Failure path with compensation -->
+    <bpmn:intermediateThrowEvent id="ThrowEvent_Compensation" name="Trigger Compensation">
+      <bpmn:incoming>Flow_PaymentFailed</bpmn:incoming>
+      <bpmn:outgoing>Flow_AfterCompensation</bpmn:outgoing>
+      <bpmn:compensateEventDefinition />
+    </bpmn:intermediateThrowEvent>
+    
+    <bpmn:task id="Task_NotifyFailure" name="Notify Booking Failure">
+      <bpmn:incoming>Flow_AfterCompensation</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <pythmata:taskConfig>
+          <pythmata:script>
+            # Notify failure logic
+            return {"notification_sent": True, "reason": "Payment failed"}
+          </pythmata:script>
+        </pythmata:taskConfig>
+      </bpmn:extensionElements>
+    </bpmn:task>
+    
+    <bpmn:endEvent id="EndEvent_Failure" name="Booking Failed">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <!-- Sequence flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_BookHotel" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_BookHotel" targetRef="Task_BookFlight" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_BookFlight" targetRef="Task_ProcessPayment" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_ProcessPayment" targetRef="Gateway_PaymentResult" />
+    <bpmn:sequenceFlow id="Flow_PaymentSuccess" sourceRef="Gateway_PaymentResult" targetRef="Task_SendConfirmation">
+      <bpmn:conditionExpression>${data.payment_status == "completed"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_PaymentFailed" sourceRef="Gateway_PaymentResult" targetRef="ThrowEvent_Compensation">
+      <bpmn:conditionExpression>${data.payment_status != "completed"}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_SendConfirmation" targetRef="EndEvent_Success" />
+    <bpmn:sequenceFlow id="Flow_AfterCompensation" sourceRef="ThrowEvent_Compensation" targetRef="Task_NotifyFailure" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_NotifyFailure" targetRef="EndEvent_Failure" />
+    
+    <!-- Compensation flows -->
+    <bpmn:sequenceFlow id="Flow_Comp_Hotel" sourceRef="BoundaryEvent_Hotel" targetRef="Task_CancelHotel" />
+    <bpmn:sequenceFlow id="Flow_Comp_Flight" sourceRef="BoundaryEvent_Flight" targetRef="Task_CancelFlight" />
+    
+  </bpmn:process>
+</bpmn:definitions> 
