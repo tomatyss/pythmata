@@ -13,6 +13,18 @@ declare module 'bpmn-js/lib/Modeler' {
   }
 }
 
+declare module 'dmn-js/lib/Modeler' {
+  export default class DmnModeler {
+    constructor(options: {
+      container: HTMLElement;
+      keyboard?: { bindTo: Document };
+    });
+    importXML(xml: string): Promise<{ warnings: Array<string> }>;
+    saveXML(options?: { format?: boolean }): Promise<{ xml: string }>;
+    destroy(): void;
+  }
+}
+
 // Declare module for any static assets
 declare module '*.svg' {
   const content: string;

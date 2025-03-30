@@ -24,6 +24,7 @@ import {
   Chat as ChatIcon,
 } from '@mui/icons-material';
 import BpmnModeler from 'bpmn-js/lib/Modeler';
+import DmnModeler from 'dmn-js/lib/Modeler';
 
 // Import components
 import ChatPanel from '@/components/shared/ChatPanel';
@@ -39,12 +40,20 @@ import 'bpmn-js/dist/assets/diagram-js.css';
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 import '@/components/BpmnModeler/PaletteLeft.css';
 import '@/components/BpmnModeler/PropertiesPanelOverlay.css';
+// Import DMN-JS styles
+import 'dmn-js/dist/assets/diagram-js.css';
+import 'dmn-js/dist/assets/dmn-js-shared.css';
+import 'dmn-js/dist/assets/dmn-js-drd.css';
+import 'dmn-js/dist/assets/dmn-js-decision-table.css';
+import 'dmn-js/dist/assets/dmn-js-literal-expression.css';
+import 'dmn-js/dist/assets/dmn-font/css/dmn.css';
 
 // Import pythmata moddle extension for service tasks
 import pythmataModdleDescriptor from '@/components/BpmnModeler/moddle/pythmata.json';
 
 // Import types
 import * as BpmnTypes from './types';
+import * as DmnTypes from './dmn.types';
 
 // Define validation rule interface
 interface ValidationRule {
@@ -134,6 +143,29 @@ const DEFAULT_EMPTY_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>`;
+const DEFAULT_EMPTY_DMN = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" 
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" 
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" 
+             namespace="http://camunda.org/schema/1.0/dmn">
+  <decision id="Decision_1" name="Decision 1">
+    <decisionTable id="DecisionTable_1">
+      <input id="Input_1">
+        <inputExpression id="InputExpression_1" typeRef="string">
+          <text>input1</text>
+        </inputExpression>
+      </input>
+      <output id="Output_1" typeRef="string" />
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="DMNDiagram_1">
+      <dmndi:DMNShape id="DMNShape_1" dmnElementRef="Decision_1">
+        <dc:Bounds height="80" width="180" x="160" y="100" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>`;
 
 /**
  * ProcessDesigner component
@@ -156,26 +188,30 @@ const ProcessDesigner: React.FC = () => {
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
+  const dmnContainerRef = useRef<HTMLDivElement>(null);
   const propertiesPanelRef = useRef<HTMLDivElement>(null);
   const modelerRef = useRef<BpmnTypes.ExtendedBpmnModeler | undefined>(
     undefined
   );
+  const dmnModelerRef = useRef<DmnTypes.ExtendedDmnModeler | undefined>(undefined);
 
   // State - Process data
   const [processName, setProcessName] = useState<string>('');
   const [bpmnXml, setBpmnXml] = useState<string>(DEFAULT_EMPTY_BPMN);
+  const [dmnXml, setDmnXml] = useState<string>(DEFAULT_EMPTY_DMN);
   const [variableDefinitions, setVariableDefinitions] = useState<
     ProcessVariableDefinition[]
   >([]);
 
   // State - UI
-  const [activeTab, setActiveTab] = useState<'modeler' | 'xmlEditor'>(
+  const [activeTab, setActiveTab] = useState<'modeler' | 'xmlEditor' | 'dmnModeler' | 'dmnXmlEditor'>(
     'modeler'
   );
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [xmlError, setXmlError] = useState<string | null>(null);
+  const [dmnXmlError, setDmnXmlError] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
 
@@ -368,6 +404,100 @@ const ProcessDesigner: React.FC = () => {
     };
   }, [loading, bpmnXml, activeTab]);
 
+  // Initialize DMN modeler
+  useEffect(() => {
+    if (loading || !dmnContainerRef.current || activeTab !== 'dmnModeler') return;
+
+    const initializeDmnModeler = async () => {
+      try {
+        if (!dmnContainerRef.current) return;
+
+        // Create DMN modeler instance
+        dmnModelerRef.current = new DmnModeler({
+          container: dmnContainerRef.current,
+          drd: {
+            additionalModules: []
+          },
+          decisionTable: {
+            additionalModules: []
+          },
+          literalExpression: {
+            additionalModules: []
+          }
+        } as DmnTypes.DmnModelerOptions) as DmnTypes.ExtendedDmnModeler;
+
+        // Import XML to the modeler
+        await dmnModelerRef.current.importXML(dmnXml);
+
+        // Set up event listeners
+        const activeViewer = dmnModelerRef.current.getActiveViewer();
+
+        {
+          const eventBus = activeViewer.get('eventBus');
+          eventBus.on(
+            'selection.changed',
+            (e: { newSelection: Array<DmnTypes.DmnElement> }) => {
+              const selection = e.newSelection;
+              if (selection.length === 1) {
+                const element = selection[0];
+                if (element) {
+                  setSelectedElement(element.id);
+                } else {
+                  setElementDrawerOpen(false);
+                }
+              } else {
+                setElementDrawerOpen(false);
+              }
+            }
+          );
+          eventBus.on(
+            'element.dblclick',
+            (e: { element: DmnTypes.DmnElement }) => {
+              if (e.element) {
+                setSelectedElement(e.element.id);
+                setElementDrawerOpen(true);
+              }
+            }
+          );
+          let updateXmlTimeout: NodeJS.Timeout | null = null;
+          eventBus.on('commandStack.changed', async () => {
+            if (dmnModelerRef.current && activeTab === 'dmnModeler') {
+              if (updateXmlTimeout) {
+                clearTimeout(updateXmlTimeout);
+              }
+              updateXmlTimeout = setTimeout(async () => {
+                const modeler = dmnModelerRef.current;
+                if (!modeler) return;
+                try {
+                  const { xml } = await modeler.saveXML({ format: true });
+                  setDmnXml(xml);
+                } catch (error) {
+                  console.error(
+                    'Failed to update XML after diagram change:',
+                    error
+                  );
+                }
+              }, 500);
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to initialize DMN modeler:', error);
+        setError('Failed to initialize DMN modeler. Please try refreshing the page.');
+      }
+    };
+
+    initializeDmnModeler();
+    // Cleanup function
+    return () => {
+      if (dmnModelerRef.current) {
+        dmnModelerRef.current.destroy();
+        dmnModelerRef.current = undefined;
+      }
+    };
+
+  }, [loading, dmnXml, activeTab]);
+
   // Removed unused setupEventListeners function
 
   // Position the palette on the left side
@@ -546,6 +676,50 @@ const ProcessDesigner: React.FC = () => {
     }
   };
 
+  // Apply DMN XML from editor to DMN modeler
+  const applyDmnXmlChanges = async () => {
+    if (!dmnModelerRef.current) return;
+    setDmnXmlError(null); // Clear previous errors
+
+    try {
+      const result = await dmnModelerRef.current.importXML(dmnXml);
+
+      // Check for warnings
+      if (result.warnings && result.warnings.length > 0) {
+        setSnackbarMessage(
+          'XML applied with warnings. Check console for details.'
+        );
+        setSnackbarOpen(true);
+        console.warn('XML import warnings:', result.warnings);
+      } else {
+        setSnackbarMessage('XML applied successfully');
+        setSnackbarOpen(true);
+      }
+    } catch (error) {
+      console.error('Error applying XML changes:', error);
+
+      // Extract meaningful error message
+      let errorMessage = 'Unknown error occurred';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+
+        // Try to extract more specific error details
+        if (error.message.includes('unparsable')) {
+          errorMessage =
+            'XML syntax error. Please check for missing tags or invalid characters.';
+        } else if (error.message.includes('unknown element')) {
+          const match = error.message.match(/unknown element <([^>]+)>/);
+          if (match) {
+            errorMessage = `Unknown element "${match[1]}". Check for typos or missing namespace declarations.`;
+          }
+        }
+      }
+
+      setDmnXmlError(errorMessage);
+    }
+  };
+
   // Handle XML changes from chat panel
   const handleApplyXmlFromChat = (xml: string) => {
     if (modelerRef.current) {
@@ -657,15 +831,17 @@ const ProcessDesigner: React.FC = () => {
       {/* Tabs */}
       <Tabs
         value={activeTab}
-        onChange={(_e, newValue: 'modeler' | 'xmlEditor') =>
+        onChange={(_e, newValue: 'modeler' | 'xmlEditor' | 'dmnModeler' | 'dmnXmlEditor') =>
           setActiveTab(newValue)
         }
         indicatorColor="primary"
         textColor="primary"
         sx={{ borderBottom: 1, borderColor: 'divider' }}
       >
-        <Tab label="Modeler" value="modeler" />
-        <Tab label="XML Editor" value="xmlEditor" />
+        <Tab label="BPMN Modeler" value="modeler" />
+        <Tab label="BPMN XML Editor" value="xmlEditor" />
+        <Tab label="DMN Modeler" value="dmnModeler" />
+        <Tab label="DMN XML Editor" value="dmnXmlEditor" />
       </Tabs>
 
       {/* Content */}
@@ -699,7 +875,7 @@ const ProcessDesigner: React.FC = () => {
             </div>
           </Paper>
         </Box>
-      ) : (
+      ) : activeTab === 'xmlEditor' ? (
         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
           <Box
             sx={{
@@ -743,7 +919,72 @@ const ProcessDesigner: React.FC = () => {
             </Button>
           </Box>
         </Box>
-      )}
+      ) : activeTab === 'dmnModeler' ? (
+        <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+          <Paper
+            sx={{
+              flexGrow: 1,
+              position: 'relative',
+              bgcolor: '#fff',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div
+              ref={dmnContainerRef}
+              style={{
+                width: '100%',
+                height: '100%'
+              }}
+            />
+          </Paper>
+        </Box>
+      ) : (
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              overflow: 'auto',
+              maxHeight: 'calc(100% - 80px)',
+            }}
+          >
+            <MonacoEditor
+              language="xml"
+              value={dmnXml}
+              onChange={(newValue: string | undefined): void =>
+                setDmnXml(newValue || '')
+              }
+              options={{ theme: 'light', automaticLayout: true }}
+              height="100%"
+            />
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            {dmnXmlError && (
+              <Paper
+                sx={{
+                  p: 2,
+                  mb: 2,
+                  bgcolor: 'error.light',
+                  color: 'error.contrastText',
+                }}
+              >
+                <Typography variant="subtitle2">Error in DMN XML:</Typography>
+                <Typography
+                  variant="body2"
+                  component="pre"
+                  sx={{ whiteSpace: 'pre-wrap' }}
+                >
+                  {dmnXmlError}
+                </Typography>
+              </Paper>
+            )}
+            <Button variant="contained" onClick={applyDmnXmlChanges}>
+              Apply DMN XML
+            </Button>
+          </Box>
+        </Box>
+      ) }
 
       {/* Variables Drawer */}
       <Drawer
