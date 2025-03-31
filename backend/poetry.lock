@@ -165,27 +165,29 @@ frozenlist = ">=1.1.0"
 
 [[package]]
 name = "aisuite"
-version = "0.1.10"
+version = "0.1.11"
 description = "Uniform access layer for LLMs"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main"]
 files = [
-    {file = "aisuite-0.1.10-py3-none-any.whl", hash = "sha256:c8510ebe38d6546b6a06819171e201fcaf0bf9ae020ffcfe19b6bd90430781ad"},
-    {file = "aisuite-0.1.10.tar.gz", hash = "sha256:170e62d4c91fecb22e82a04e058154a111cef473681171e5df7346272e77f414"},
+    {file = "aisuite-0.1.11-py3-none-any.whl", hash = "sha256:14293e9b7d81268dabe9b1cbb41cab64ca6c0272b52166213a7fa80196140d7c"},
+    {file = "aisuite-0.1.11.tar.gz", hash = "sha256:27260075f8502b9cb40ef476cae29544e39316bbf4b4318464eb4c728e72146a"},
 ]
 
 [package.dependencies]
 anthropic = {version = ">=0.30.1,<0.31.0", optional = true, markers = "extra == \"anthropic\" or extra == \"all\""}
+cerebras_cloud_sdk = {version = ">=1.19.0,<2.0.0", optional = true, markers = "extra == \"cerebras\" or extra == \"all\""}
 cohere = {version = ">=5.12.0,<6.0.0", optional = true, markers = "extra == \"cohere\" or extra == \"all\""}
 groq = {version = ">=0.9.0,<0.10.0", optional = true, markers = "extra == \"groq\" or extra == \"all\""}
 httpx = ">=0.27.0,<0.28.0"
 openai = {version = ">=1.35.8,<2.0.0", optional = true, markers = "extra == \"deepseek\" or extra == \"openai\" or extra == \"all\""}
 
 [package.extras]
-all = ["anthropic (>=0.30.1,<0.31.0)", "cohere (>=5.12.0,<6.0.0)", "groq (>=0.9.0,<0.10.0)", "openai (>=1.35.8,<2.0.0)"]
+all = ["anthropic (>=0.30.1,<0.31.0)", "cerebras_cloud_sdk (>=1.19.0,<2.0.0)", "cohere (>=5.12.0,<6.0.0)", "groq (>=0.9.0,<0.10.0)", "openai (>=1.35.8,<2.0.0)"]
 anthropic = ["anthropic (>=0.30.1,<0.31.0)"]
 aws = ["boto3 (>=1.34.144,<2.0.0)"]
+cerebras = ["cerebras_cloud_sdk (>=1.19.0,<2.0.0)"]
 cohere = ["cohere (>=5.12.0,<6.0.0)"]
 deepseek = ["openai (>=1.35.8,<2.0.0)"]
 google = ["vertexai (>=1.63.0,<2.0.0)"]
@@ -523,6 +525,26 @@ colorama = ["colorama (>=0.4.3)"]
 d = ["aiohttp (>=3.10)"]
 jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
+
+[[package]]
+name = "cerebras-cloud-sdk"
+version = "1.26.0"
+description = "The official Python library for the cerebras API"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "cerebras_cloud_sdk-1.26.0-py3-none-any.whl", hash = "sha256:5c1292f39ec06384c8367638a6a82fb47357dd1aa2e8464c25d8acd18e779fe4"},
+    {file = "cerebras_cloud_sdk-1.26.0.tar.gz", hash = "sha256:889e982c81477506590b825911389d1fbf550b6ee7601f1c903ad07717e51bd3"},
+]
+
+[package.dependencies]
+anyio = ">=3.5.0,<5"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+pydantic = ">=1.9.0,<3"
+sniffio = "*"
+typing-extensions = ">=4.10,<5"
 
 [[package]]
 name = "certifi"
