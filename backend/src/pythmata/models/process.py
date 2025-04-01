@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, DateTime
+from sqlalchemy import JSON, DateTime, Integer
 from sqlalchemy import Enum as SQLAEnum
 from sqlalchemy import ForeignKey, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
@@ -90,6 +90,9 @@ class ProcessDefinition(Base):
     # Use string reference to avoid circular import
     chat_sessions: Mapped[list["ChatSession"]] = relationship(
         "ChatSession", back_populates="process_definition", cascade="all, delete-orphan"
+    )
+    versions: Mapped[list["ProcessVersion"]] = relationship(
+        "ProcessVersion", back_populates="process_definition", cascade="all, delete-orphan", order_by="ProcessVersion.number"
     )
 
 
@@ -277,6 +280,34 @@ class Variable(Base):
 ProcessInstance.activities: Mapped[list["ActivityLog"]] = relationship(
     "ActivityLog", back_populates="instance", cascade="all, delete-orphan"
 )
+
+
+# New ProcessVersion Model
+class ProcessVersion(Base):
+    """Represents a specific version of a process definition."""
+
+    __tablename__ = "process_versions"
+
+    id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    process_id: Mapped[UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("process_definitions.id"), nullable=False, index=True
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    bpmn_xml: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Relationship
+    process_definition: Mapped[ProcessDefinition] = relationship(
+        "ProcessDefinition", back_populates="versions"
+    )
+
 
 # Import ChatSession at the end to avoid circular imports
 from pythmata.models.chat import ChatSession  # noqa
