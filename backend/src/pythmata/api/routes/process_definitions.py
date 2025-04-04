@@ -12,10 +12,12 @@ from pythmata.api.schemas import (
     ProcessDefinitionCreate,
     ProcessDefinitionResponse,
     ProcessDefinitionUpdate,
+    ProcessVersionResponse,
 )
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
+from pythmata.models.process import ProcessVersion
 from pythmata.utils.logger import get_logger, log_error
 
 logger = get_logger(__name__)
@@ -115,42 +117,58 @@ async def create_process(
     data: ProcessDefinitionCreate = Body(...),
     session: AsyncSession = Depends(get_session),
 ):
-    """Create a new process definition."""
+    """Create a new process definition and its initial version."""
     try:
-        # Check if process with same name exists and get max version
+        # Determine version number
         result = await session.execute(
-            select(ProcessDefinitionModel.version)
+            select(func.max(ProcessDefinitionModel.version))
             .filter(ProcessDefinitionModel.name == data.name)
-            .order_by(ProcessDefinitionModel.version.desc())
         )
-        existing_version = result.scalar_one_or_none()
+        max_existing_version = result.scalar() or 0
+        version = max_existing_version + 1
 
-        # If process exists, increment version
-        version = (existing_version or 0) + 1 if data.version is None else data.version
-
-        # Log variable definitions for debugging
         logger.info(
-            f"Creating process with {len(data.variable_definitions or [])} variable definitions"
+            f"Creating process '{data.name}' version {version} with {len(data.variable_definitions or [])} vars."
         )
         if data.variable_definitions:
             logger.debug(f"Variable definitions: {data.variable_definitions}")
 
+        # Create Process Definition
         process = ProcessDefinitionModel(
             name=data.name,
             bpmn_xml=data.bpmn_xml,
             version=version,
             variable_definitions=[
-                definition.dict() for definition in data.variable_definitions or []
+                definition.model_dump() for definition in data.variable_definitions or []
             ],
         )
         session.add(process)
-        await session.commit()
-        await session.refresh(process)
-        return {"data": process}
+        await session.flush()  # Assign ID to process object
+
+        # Create initial Process Version
+        process_version = ProcessVersion(
+            process_id=process.id,
+            number=process.version,
+            bpmn_xml=process.bpmn_xml,
+            notes="Initial version created."
+        )
+        session.add(process_version)
+
+        await session.commit()  # Commit both objects
+        await session.refresh(process) # Refresh to load relationships if needed later
+
+        # Manually construct response data including stats
+        # We know stats are 0 for a new process
+        response_data = ProcessDefinitionResponse.model_validate(
+             {k: v for k, v in process.__dict__.items() if k != '_sa_instance_state'}
+             | {"active_instances": 0, "total_instances": 0}
+         )
+        return {"data": response_data}
+
     except Exception as e:
         await session.rollback()
-        logger.error(f"Error updating process: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error creating process '{data.name}': {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error creating process: {str(e)}")
 
 
 @router.put(
@@ -214,3 +232,35 @@ async def delete_process(process_id: str, session: AsyncSession = Depends(get_se
     await session.delete(process)
     await session.commit()
     return {"message": "Process deleted successfully"}
+
+
+# New endpoint for version history
+@router.get(
+    "/{process_id}/versions",
+    response_model=ApiResponse[list[ProcessVersionResponse]],
+)
+async def get_process_versions(
+    process_id: str, session: AsyncSession = Depends(get_session)
+):
+    """Get the version history for a specific process definition."""
+    try:
+        # Verify process definition exists first
+        process_check = await session.execute(
+            select(ProcessDefinitionModel.id).filter(ProcessDefinitionModel.id == process_id)
+        )
+        if not process_check.scalar_one_or_none():
+             raise HTTPException(status_code=404, detail="Process definition not found")
+
+        # Fetch versions ordered by number descending
+        result = await session.execute(
+            select(ProcessVersion)
+            .filter(ProcessVersion.process_id == process_id)
+            .order_by(ProcessVersion.number.desc())
+        )
+        versions = result.scalars().all()
+        return {"data": versions}
+    except HTTPException:
+        raise # Re-raise HTTP exceptions
+    except Exception as e:
+        logger.error(f"Error fetching versions for process {process_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching process versions: {str(e)}")

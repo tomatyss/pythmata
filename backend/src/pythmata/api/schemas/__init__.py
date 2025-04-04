@@ -25,6 +25,7 @@ from pythmata.api.schemas.process import (
     ProcessVariableDefinition,
     ProcessVariableValidation,
     ProcessVariableValue,
+    ProcessVersionResponse,
 )
 from pythmata.api.schemas.script import ScriptContent, ScriptResponse
 from pythmata.api.schemas.token import TokenResponse
@@ -79,6 +80,7 @@ __all__ = [
     "ProcessVariableDefinition",
     "ProcessVariableValidation",
     "ProcessVariableValue",
+    "ProcessVersionResponse",
     # Script schemas
     "ScriptContent",
     "ScriptResponse",
