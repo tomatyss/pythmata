@@ -1,5 +1,8 @@
 // Define types for BPMN elements and properties
 export interface BusinessObject {
+  id: string;
+  scriptFormat?: string;
+  resultVariable?: string;
   extensionElements?: {
     values: ExtensionElement[];
   };
@@ -15,6 +18,7 @@ export interface BpmnElement {
 export interface ExtensionElement {
   $type: string;
   taskName?: string;
+  timeout?: string;
   properties?: {
     values: PropertyValue[];
   };

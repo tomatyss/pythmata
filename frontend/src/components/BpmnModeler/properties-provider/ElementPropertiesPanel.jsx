@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
 import { Box, Tabs, Tab } from '@mui/material';
 import CommonProperties from './CommonProperties';
 import InputOutputProperties from './InputOutputProperties';
 import ServiceTaskPropertiesPanel from './ServiceTaskPropertiesPanel';
+import ScriptTaskPropertiesPanel from './ScriptTaskPropertiesPanel';
 import TimerEventPropertiesPanel from './TimerEventPropertiesPanel';
 import SequenceFlowPropertiesPanel from './SequenceFlowPropertiesPanel';
 import GatewayPropertiesPanel from './GatewayPropertiesPanel';
@@ -16,14 +17,30 @@ import GatewayPropertiesPanel from './GatewayPropertiesPanel';
  * @param {Object} props - Component props
  * @param {Object} props.element - The BPMN element
  * @param {Object} props.modeler - The BPMN modeler instance
+ * @param {Object} ref - Forwarded ref for parent components to access methods
  */
-const ElementPropertiesPanel = ({ element, modeler }) => {
+const ElementPropertiesPanel = React.forwardRef((props, ref) => {
+  const { element, modeler } = props;
+  
   const [currentTab, setCurrentTab] = useState(0);
   const [elementType, setElementType] = useState('');
   const [hasTimerDefinition, setHasTimerDefinition] = useState(false);
   const [isSequenceFlow, setIsSequenceFlow] = useState(false);
   const [isGateway, setIsGateway] = useState(false);
+  const [isScriptTask, setIsScriptTask] = useState(false);
   const [processVariables, setProcessVariables] = useState([]);
+  
+  // Create refs for child components
+  const scriptTaskPanelRef = useRef(null);
+  
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    saveScript: () => {
+      if (isScriptTask && scriptTaskPanelRef.current && scriptTaskPanelRef.current.handleSave) {
+        scriptTaskPanelRef.current.handleSave();
+      }
+    }
+  }));
   
   // Set element type when element changes
   useEffect(() => {
@@ -41,6 +58,9 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
         element.type === 'bpmn:ComplexGateway' ||
         element.type === 'bpmn:EventBasedGateway'
       );
+      
+      // Check if element is a script task
+      setIsScriptTask(element.type === 'bpmn:ScriptTask');
       
       // Check if element has timer definition or is a type that can have timer definitions
       const businessObject = element.businessObject;
@@ -128,6 +148,7 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
             >
               <Tab label="General" />
               {isServiceTask && <Tab label="Service" />}
+              {isScriptTask && <Tab label="Script" />}
               {isGateway && <Tab label="Gateway" />}
               {hasTimerDefinition && <Tab label="Timer" />}
               {isTask && <Tab label="I/O Mapping" />}
@@ -144,21 +165,30 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
             <ServiceTaskPropertiesPanel element={element} modeler={modeler} />
           )}
           
+          {/* Script Task Properties Tab */}
+          {currentTab === 1 && isScriptTask && (
+            <ScriptTaskPropertiesPanel 
+              ref={scriptTaskPanelRef}
+              element={element} 
+              modeler={modeler} 
+            />
+          )}
+          
           {/* Gateway Properties Tab */}
-          {currentTab === (isServiceTask ? 2 : 1) && isGateway && (
+          {currentTab === (isServiceTask || isScriptTask ? 2 : 1) && isGateway && (
             <GatewayPropertiesPanel element={element} modeler={modeler} />
           )}
           
           {/* Timer Properties Tab */}
           {currentTab === (
-            isServiceTask ? (isGateway ? 3 : 2) : (isGateway ? 2 : 1)
+            (isServiceTask || isScriptTask) ? (isGateway ? 3 : 2) : (isGateway ? 2 : 1)
           ) && hasTimerDefinition && (
             <TimerEventPropertiesPanel element={element} modeler={modeler} />
           )}
           
           {/* Input/Output Mappings Tab */}
           {currentTab === (
-            isServiceTask ? 
+            (isServiceTask || isScriptTask) ? 
               (isGateway ? 
                 (hasTimerDefinition ? 4 : 3) : 
                 (hasTimerDefinition ? 3 : 2)
@@ -174,6 +204,6 @@ const ElementPropertiesPanel = ({ element, modeler }) => {
       )}
     </Box>
   );
-};
+});
 
 export default ElementPropertiesPanel;

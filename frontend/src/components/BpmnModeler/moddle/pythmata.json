@@ -71,6 +71,27 @@
       ]
     },
     {
+      "name": "ScriptConfig",
+      "superClass": ["ElementConfig"],
+      "properties": [
+        {
+          "name": "timeout",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "language",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "scriptContent",
+          "isBody": true,
+          "type": "String"
+        }
+      ]
+    },
+    {
       "name": "Properties",
       "properties": [
         {
