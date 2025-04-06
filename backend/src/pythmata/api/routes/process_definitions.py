@@ -191,6 +191,9 @@ async def update_process(
         if not process:
             raise HTTPException(status_code=404, detail="Process not found")
 
+        # Store old version number before updating
+        old_version = process.version
+
         if data.name is not None:
             process.name = data.name
         if data.bpmn_xml is not None:
@@ -208,6 +211,15 @@ async def update_process(
                 definition.model_dump() for definition in data.variable_definitions
             ]
         process.updated_at = datetime.now(timezone.utc)
+
+        # Create new version record
+        process_version = ProcessVersion(
+            process_id=process.id,
+            number=process.version,
+            bpmn_xml=process.bpmn_xml,
+            notes=f"Updated from version {old_version} to {process.version}"
+        )
+        session.add(process_version)
 
         await session.commit()
         await session.refresh(process)
