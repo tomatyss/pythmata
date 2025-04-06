@@ -10,6 +10,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "009"
@@ -27,6 +28,25 @@ def upgrade() -> None:
         ["number"],
     )
 
+    # Add current_version_id column to process_definitions
+    op.add_column(
+        "process_definitions",
+        sa.Column(
+            "current_version_id",
+            postgresql.UUID(as_uuid=True),
+            nullable=True,
+        ),
+    )
+
+    # Add foreign key constraint
+    op.create_foreign_key(
+        "fk_process_definitions_current_version_id_process_versions",
+        "process_definitions",
+        "process_versions",
+        ["current_version_id"],
+        ["id"],
+    )
+
     # Drop columns from process_definitions that are now in process_versions
     op.drop_column("process_definitions", "bpmn_xml")
     op.drop_column("process_definitions", "updated_at")
@@ -35,6 +55,16 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Restore dropped columns and remove index."""
+    # Drop the foreign key constraint first
+    op.drop_constraint(
+        "fk_process_definitions_current_version_id_process_versions",
+        "process_definitions",
+        type_="foreignkey",
+    )
+
+    # Drop the current_version_id column
+    op.drop_column("process_definitions", "current_version_id")
+
     # Restore columns to process_definitions
     op.add_column(
         "process_definitions",
