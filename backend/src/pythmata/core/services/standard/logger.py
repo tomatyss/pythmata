@@ -122,21 +122,21 @@ class LoggerServiceTask(ServiceTask):
         }
 
         if variables:
-            log_data["variables"] = variables
+            log_data["variables"] = {k: v.model_dump_json() for k, v in variables.items()},
 
-        log_message = f"{message} [Process: {context['token'].instance_id}, Task: {context['task_id']}]"
+        log_message = f"{message} [Process: {context['token'].instance_id}, Task: {context['task_id']}, Data: {log_data}]"
 
         # Log at appropriate level
         if level == "info":
-            logger.info(log_message, extra={"data": log_data})
+            logger.info(log_message)
         elif level == "warning":
-            logger.warning(log_message, extra={"data": log_data})
+            logger.warning(log_message)
         elif level == "error":
-            logger.error(log_message, extra={"data": log_data})
+            logger.error(log_message)
         elif level == "debug":
-            logger.debug(log_message, extra={"data": log_data})
+            logger.debug(log_message)
         else:
-            logger.info(log_message, extra={"data": log_data})
+            logger.info(log_message)
 
         return {
             "level": level,
