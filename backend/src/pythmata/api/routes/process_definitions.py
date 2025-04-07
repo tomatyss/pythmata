@@ -119,16 +119,8 @@ async def create_process(
 ):
     """Create a new process definition and its initial version."""
     try:
-        # Determine version number
-        result = await session.execute(
-            select(func.max(ProcessDefinitionModel.version))
-            .filter(ProcessDefinitionModel.name == data.name)
-        )
-        max_existing_version = result.scalar() or 0
-        version = max_existing_version + 1
-
         logger.info(
-            f"Creating process '{data.name}' version {version} with {len(data.variable_definitions or [])} vars."
+            f"Creating process '{data.name}' with {len(data.variable_definitions or [])} vars."
         )
         if data.variable_definitions:
             logger.debug(f"Variable definitions: {data.variable_definitions}")
@@ -136,8 +128,6 @@ async def create_process(
         # Create Process Definition
         process = ProcessDefinitionModel(
             name=data.name,
-            bpmn_xml=data.bpmn_xml,
-            version=version,
             variable_definitions=[
                 definition.model_dump() for definition in data.variable_definitions or []
             ],
@@ -148,21 +138,32 @@ async def create_process(
         # Create initial Process Version
         process_version = ProcessVersion(
             process_id=process.id,
-            number=process.version,
-            bpmn_xml=process.bpmn_xml,
-            notes="Initial version created."
+            number=1,  # Initial version is always 1
+            bpmn_xml=data.bpmn_xml,
+            notes=data.notes or "Initial version created."
         )
         session.add(process_version)
+        await session.flush()
 
-        await session.commit()  # Commit both objects
-        await session.refresh(process) # Refresh to load relationships if needed later
+        # Set the current version
+        process.current_version_id = process_version.id
 
-        # Manually construct response data including stats
-        # We know stats are 0 for a new process
+        await session.commit()
+        await session.refresh(process)
+
+        # Get process stats for response
+        processes = await get_process_stats(session, str(process.id))
+        process_obj, active_instances, total_instances = processes[0]
+
+        # Construct response with version info
         response_data = ProcessDefinitionResponse.model_validate(
-             {k: v for k, v in process.__dict__.items() if k != '_sa_instance_state'}
-             | {"active_instances": 0, "total_instances": 0}
-         )
+            {k: v for k, v in process_obj.__dict__.items() if k != '_sa_instance_state'}
+            | {
+                "active_instances": active_instances,
+                "total_instances": total_instances,
+                "current_version": process_version
+            }
+        )
         return {"data": response_data}
 
     except Exception as e:
@@ -191,17 +192,9 @@ async def update_process(
         if not process:
             raise HTTPException(status_code=404, detail="Process not found")
 
-        # Store old version number before updating
-        old_version = process.version
-
+        # Update basic process definition fields
         if data.name is not None:
             process.name = data.name
-        if data.bpmn_xml is not None:
-            process.bpmn_xml = data.bpmn_xml
-        if data.version is not None:
-            process.version = data.version
-        else:
-            process.version += 1  # Auto-increment version if not specified
         if data.variable_definitions is not None:
             logger.info(
                 f"Updating process with {len(data.variable_definitions)} variable definitions"
@@ -210,20 +203,49 @@ async def update_process(
             process.variable_definitions = [
                 definition.model_dump() for definition in data.variable_definitions
             ]
-        process.updated_at = datetime.now(timezone.utc)
-
-        # Create new version record
-        process_version = ProcessVersion(
-            process_id=process.id,
-            number=process.version,
-            bpmn_xml=process.bpmn_xml,
-            notes=f"Updated from version {old_version} to {process.version}"
-        )
-        session.add(process_version)
+        if data.current_version_id is not None:
+            # Verify the version exists and belongs to this process
+            version_result = await session.execute(
+                select(ProcessVersion).filter(
+                    ProcessVersion.id == data.current_version_id,
+                    ProcessVersion.process_id == process_id
+                )
+            )
+            version = version_result.scalar_one_or_none()
+            if not version:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid version ID or version does not belong to this process"
+                )
+            process.current_version_id = data.current_version_id
 
         await session.commit()
         await session.refresh(process)
-        return {"data": process}
+
+        # Get process stats for response
+        processes = await get_process_stats(session, process_id)
+        process_obj, active_instances, total_instances = processes[0]
+
+        # Include current version in response if it exists
+        current_version = None
+        if process.current_version_id:
+            version_result = await session.execute(
+                select(ProcessVersion).filter(ProcessVersion.id == process.current_version_id)
+            )
+            current_version = version_result.scalar_one_or_none()
+
+        return {
+            "data": ProcessDefinitionResponse.model_validate(
+                {k: v for k, v in process_obj.__dict__.items() if k != '_sa_instance_state'}
+                | {
+                    "active_instances": active_instances,
+                    "total_instances": total_instances,
+                    "current_version": current_version
+                }
+            )
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         await session.rollback()
         logger.error(f"Error updating process: {str(e)}", exc_info=True)
@@ -245,8 +267,6 @@ async def delete_process(process_id: str, session: AsyncSession = Depends(get_se
     await session.commit()
     return {"message": "Process deleted successfully"}
 
-
-# New endpoint for version history
 @router.get(
     "/{process_id}/versions",
     response_model=ApiResponse[list[ProcessVersionResponse]],

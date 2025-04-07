@@ -62,22 +62,17 @@ class ProcessDefinition(Base):
     id: Mapped[UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
     variable_definitions: Mapped[List[Dict[str, Any]]] = mapped_column(
         ProcessVariableDefinition, nullable=False, default=list
     )
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    version: Mapped[int] = mapped_column(nullable=False)
-    bpmn_xml: Mapped[str] = mapped_column(Text, nullable=False)
+    current_version_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("process_versions.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -87,12 +82,22 @@ class ProcessDefinition(Base):
     scripts: Mapped[list["Script"]] = relationship(
         "Script", back_populates="process_definition", cascade="all, delete-orphan"
     )
-    # Use string reference to avoid circular import
     chat_sessions: Mapped[list["ChatSession"]] = relationship(
         "ChatSession", back_populates="process_definition", cascade="all, delete-orphan"
     )
     versions: Mapped[list["ProcessVersion"]] = relationship(
-        "ProcessVersion", back_populates="process_definition", cascade="all, delete-orphan", order_by="ProcessVersion.number"
+        "ProcessVersion",
+        back_populates="process_definition",
+        cascade="all, delete-orphan",
+        order_by="ProcessVersion.number",
+        foreign_keys="ProcessVersion.process_id",
+        overlaps="current_version"
+    )
+    current_version: Mapped[Optional["ProcessVersion"]] = relationship(
+        "ProcessVersion",
+        foreign_keys=[current_version_id],
+        overlaps="versions",
+        post_update=True
     )
 
 
@@ -123,12 +128,6 @@ class ProcessInstance(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-    )
 
     # Relationships
     definition: Mapped[ProcessDefinition] = relationship(
@@ -155,17 +154,10 @@ class Script(Base):
     )
     node_id: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    version: Mapped[int] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -305,7 +297,10 @@ class ProcessVersion(Base):
 
     # Relationship
     process_definition: Mapped[ProcessDefinition] = relationship(
-        "ProcessDefinition", back_populates="versions"
+        "ProcessDefinition",
+        back_populates="versions",
+        foreign_keys=[process_id],
+        overlaps="current_version"
     )
 
 

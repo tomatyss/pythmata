@@ -228,13 +228,13 @@ class TimerScheduler:
             db = get_db()
             async with db.session() as session:
                 result = await session.execute(
-                    select(ProcessDefinition.id, ProcessDefinition.updated_at)
+                    select(ProcessDefinition.id)
                 )
                 definitions = result.all()
 
-                # Create a string representation of all definition IDs and update timestamps
+                # Create a string representation of all definition IDs
                 definitions_str = "|".join(
-                    f"{d.id}:{d.updated_at.isoformat()}" for d in definitions
+                    f"{d.id}" for d in definitions
                 )
 
                 # Use a simple hash function
