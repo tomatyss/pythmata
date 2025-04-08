@@ -68,6 +68,12 @@ class ProcessDefinition(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     version: Mapped[int] = mapped_column(nullable=False)
     bpmn_xml: Mapped[str] = mapped_column(Text, nullable=False)
+    project_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
+    )
+    source_description_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("project_descriptions.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -93,6 +99,13 @@ class ProcessDefinition(Base):
     )
     versions: Mapped[list["ProcessVersion"]] = relationship(
         "ProcessVersion", back_populates="process_definition", cascade="all, delete-orphan", order_by="ProcessVersion.number"
+    )
+    # Project relationships
+    project: Mapped[Optional["Project"]] = relationship(
+        "Project", back_populates="process_definitions"
+    )
+    source_description: Mapped[Optional["ProjectDescription"]] = relationship(
+        "ProjectDescription", back_populates="process_definitions"
     )
 
 
@@ -309,5 +322,6 @@ class ProcessVersion(Base):
     )
 
 
-# Import ChatSession at the end to avoid circular imports
+# Import ChatSession and project models at the end to avoid circular imports
 from pythmata.models.chat import ChatSession  # noqa
+from pythmata.models.project import Project, ProjectDescription  # noqa
