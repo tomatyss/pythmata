@@ -122,7 +122,7 @@ class LoggerServiceTask(ServiceTask):
         }
 
         if variables:
-            log_data["variables"] = {k: v.model_dump_json() for k, v in variables.items()},
+            log_data["variables"] = {k: v.model_dump_json() for k, v in variables.items()}
 
         log_message = f"{message} [Process: {context['token'].instance_id}, Task: {context['task_id']}, Data: {log_data}]"
 

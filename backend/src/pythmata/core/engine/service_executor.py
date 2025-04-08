@@ -117,7 +117,7 @@ class ServiceTaskExecutor:
                             instance_id=token.instance_id,
                             name=var_name,
                             variable=ProcessVariableValue(
-                                type=PYTHON_TYPES_NAMES_TO_BPMN.get(type(value).__name__), value=value
+                                type=PYTHON_TYPES_NAMES_TO_BPMN.get(type(value).__name__, 'none'), value=value
                             ),
                             scope_id=token.scope_id,
                         )

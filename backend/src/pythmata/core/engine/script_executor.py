@@ -40,7 +40,7 @@ class ExecutionContextBuilder:
             "set_variable": lambda name, value: state_manager.set_variable(
                 instance_id=token.instance_id,
                 name=name,
-                variable=ProcessVariableValue(type=PYTHON_TYPES_NAMES_TO_BPMN.get(type(value).__name__), value=value),
+                variable=ProcessVariableValue(type=PYTHON_TYPES_NAMES_TO_BPMN.get(type(value).__name__, 'none'), value=value),
                 scope_id=token.scope_id,
             ),
             # Safe built-ins
@@ -116,7 +116,7 @@ class ScriptExecutor:
                     instance_id=token.instance_id,
                     name=f"{task.id}_result",
                     variable=ProcessVariableValue(
-                        type=type(context["result"]).__name__,
+                        type=PYTHON_TYPES_NAMES_TO_BPMN.get(type(context["result"]).__name__, 'none'),
                         value=context["result"],
                     ),
                     scope_id=token.scope_id,
