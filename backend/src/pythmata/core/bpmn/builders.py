@@ -96,7 +96,9 @@ class TaskBuilder(ElementBuilder):
                     outputs_elem = ext_elem.find(".//pythmata:outputs", self.ns)
                     if outputs_elem is not None:
                         output_mapping = {}
-                        for prop in outputs_elem.findall(".//pythmata:property", self.ns):
+                        for prop in outputs_elem.findall(
+                            ".//pythmata:property", self.ns
+                        ):
                             source = prop.get("name")  # e.g., "response.fact"
                             target = prop.get("value")  # e.g., "pr_var1"
                             if source and target:
@@ -105,7 +107,9 @@ class TaskBuilder(ElementBuilder):
                         # If there are output mappings, add them to the service task config
                         if output_mapping:
                             # Check if there's already an output_mapping property
-                            existing_mapping = service_task_config["properties"].get("output_mapping")
+                            existing_mapping = service_task_config["properties"].get(
+                                "output_mapping"
+                            )
                             if existing_mapping:
                                 # If it's a string, try to parse it as a dict
                                 if isinstance(existing_mapping, str):
@@ -113,17 +117,25 @@ class TaskBuilder(ElementBuilder):
                                         existing_mapping = eval(existing_mapping)
                                         # Merge the mappings
                                         existing_mapping.update(output_mapping)
-                                        service_task_config["properties"]["output_mapping"] = str(existing_mapping)
+                                        service_task_config["properties"][
+                                            "output_mapping"
+                                        ] = str(existing_mapping)
                                     except:
                                         # If parsing fails, just use the new mapping
-                                        service_task_config["properties"]["output_mapping"] = str(output_mapping)
+                                        service_task_config["properties"][
+                                            "output_mapping"
+                                        ] = str(output_mapping)
                                 else:
                                     # If it's already a dict, update it
                                     existing_mapping.update(output_mapping)
-                                    service_task_config["properties"]["output_mapping"] = existing_mapping
+                                    service_task_config["properties"][
+                                        "output_mapping"
+                                    ] = existing_mapping
                             else:
                                 # If there's no existing mapping, add the new one
-                                service_task_config["properties"]["output_mapping"] = str(output_mapping)
+                                service_task_config["properties"]["output_mapping"] = (
+                                    str(output_mapping)
+                                )
 
                     extensions["serviceTaskConfig"] = service_task_config
 

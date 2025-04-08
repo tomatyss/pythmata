@@ -1,12 +1,7 @@
 import pytest
 
 from pythmata.core.bpmn.parser import BPMNParser
-from pythmata.core.types import (
-    Event,
-    Gateway,
-    SubProcess,
-    Task,
-)
+from pythmata.core.types import Event, Gateway, SubProcess, Task
 
 # Sample BPMN XML for testing basic flow elements
 BASIC_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -455,7 +450,7 @@ class TestBPMNParser:
 
         # Test output mappings from I/O Mappings tab
         assert "output_mapping" in properties
-        
+
         # The output_mapping is stored as a string representation of a dict
         output_mapping = eval(properties["output_mapping"])
         assert isinstance(output_mapping, dict)
@@ -485,11 +480,11 @@ class TestBPMNParser:
 
         # Test combined output mappings
         assert "output_mapping" in properties
-        
+
         # The output_mapping is stored as a string representation of a dict
         output_mapping = eval(properties["output_mapping"])
         assert isinstance(output_mapping, dict)
-        
+
         # Should contain mappings from both sources
         assert output_mapping["pr_var1"] == "response.fact"
         assert output_mapping["pr_var2"] == "response.data.value"
