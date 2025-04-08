@@ -4,6 +4,17 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+PYTHON_TYPES_NAMES_TO_BPMN = {
+    'str': "string",
+    'int': "integer",
+    'float': "float",
+    'bool': "boolean",
+    'datetime': 'date',
+    'dict': "json",
+    'list': "json",
+    'NoneType': "none",
+}
+
 
 class TokenState(str, Enum):
     """Token execution states."""

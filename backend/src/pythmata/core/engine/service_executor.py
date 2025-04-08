@@ -7,7 +7,7 @@ from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.token import Token
 from pythmata.core.services.registry import get_service_task_registry
 from pythmata.core.state import StateManager
-from pythmata.core.types import Task
+from pythmata.core.types import Task, PYTHON_TYPES_NAMES_TO_BPMN
 from pythmata.models.process import ActivityType
 from pythmata.utils.logger import get_logger
 
@@ -117,7 +117,7 @@ class ServiceTaskExecutor:
                             instance_id=token.instance_id,
                             name=var_name,
                             variable=ProcessVariableValue(
-                                type=type(value).__name__, value=value
+                                type=PYTHON_TYPES_NAMES_TO_BPMN.get(type(value).__name__, 'none'), value=value
                             ),
                             scope_id=token.scope_id,
                         )
