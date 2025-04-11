@@ -355,34 +355,80 @@ async def test_get_process_versions(
     async_client: AsyncClient,
     process_with_multiple_versions: ProcessDefinition,
 ):
-    """Test GET /processes/{process_id}/versions endpoint."""
+    """Test GET /processes/{process_id}/versions endpoint with pagination."""
     process = process_with_multiple_versions
     process_id = process.id
+    total_versions = 3 # Based on the fixture
 
-    response = await async_client.get(f"/processes/{process_id}/versions")
+    # Test fetching the first page with default page size
+    response = await async_client.get(f"/processes/{process_id}/versions?page=1&pageSize=10")
     assert response.status_code == 200
 
     data = response.json()["data"]
-    assert isinstance(data, list)
-    assert len(data) == 3
+    assert isinstance(data, dict)
+    assert "items" in data
+    assert "total" in data
+    assert "page" in data
+    assert "pageSize" in data
+    assert "totalPages" in data
+
+    assert data["total"] == total_versions
+    assert data["page"] == 1
+    assert data["pageSize"] == 10
+    assert data["totalPages"] == 1 # 3 items / 10 per page = 1 page
+    assert len(data["items"]) == total_versions # All versions fit on the first page
 
     # Validate structure using ProcessVersionResponse schema
-    validated_versions = TypeAdapter(list[ProcessVersionResponse]).validate_python(data)
+    validated_versions = TypeAdapter(list[ProcessVersionResponse]).validate_python(data["items"])
 
     # Versions should be ordered by number descending
     assert validated_versions[0].number == 3
-    assert validated_versions[1].number == 2
-    assert validated_versions[2].number == 1
-
-    # Check details of the latest version
-    assert validated_versions[0].process_id == process_id
-    assert validated_versions[0].bpmn_xml == "<bpmn>Version 3</bpmn>"
-    assert validated_versions[0].notes == "Third version"
 
     # Check details of the first version
     assert validated_versions[2].process_id == process_id
     assert validated_versions[2].bpmn_xml == SIMPLE_PROCESS_XML
     assert validated_versions[2].notes == "Initial version"
+
+    # Test fetching with a smaller page size (page 1)
+    response_page1_size2 = await async_client.get(f"/processes/{process_id}/versions?page=1&pageSize=2")
+    assert response_page1_size2.status_code == 200
+    data_page1_size2 = response_page1_size2.json()["data"]
+    assert data_page1_size2["total"] == total_versions
+    assert data_page1_size2["page"] == 1
+    assert data_page1_size2["pageSize"] == 2
+    assert data_page1_size2["totalPages"] == 2 # 3 items / 2 per page = 2 pages
+    assert len(data_page1_size2["items"]) == 2
+    assert data_page1_size2["items"][0]["number"] == 3
+    assert data_page1_size2["items"][1]["number"] == 2
+
+    # Test fetching with a smaller page size (page 2)
+    response_page2_size2 = await async_client.get(f"/processes/{process_id}/versions?page=2&pageSize=2")
+    assert response_page2_size2.status_code == 200
+    data_page2_size2 = response_page2_size2.json()["data"]
+    assert data_page2_size2["total"] == total_versions
+    assert data_page2_size2["page"] == 2
+    assert data_page2_size2["pageSize"] == 2
+    assert data_page2_size2["totalPages"] == 2
+    assert len(data_page2_size2["items"]) == 1 # Remaining item
+    assert data_page2_size2["items"][0]["number"] == 1
+
+
+async def test_get_process_versions_invalid_pagination(async_client: AsyncClient, process_with_multiple_versions: ProcessDefinition):
+    """Test GET /processes/{process_id}/versions with invalid pagination params."""
+    process = process_with_multiple_versions
+    process_id = process.id
+
+    # Test invalid page number (less than 1)
+    response_invalid_page = await async_client.get(f"/processes/{process_id}/versions?page=0&pageSize=5")
+    assert response_invalid_page.status_code == 422 # Unprocessable Entity for validation errors
+
+    # Test invalid page size (less than 1)
+    response_invalid_size_small = await async_client.get(f"/processes/{process_id}/versions?page=1&pageSize=0")
+    assert response_invalid_size_small.status_code == 422
+
+    # Test invalid page size (greater than max)
+    response_invalid_size_large = await async_client.get(f"/processes/{process_id}/versions?page=1&pageSize=200")
+    assert response_invalid_size_large.status_code == 422
 
 
 async def test_get_process_versions_not_found(async_client: AsyncClient):
@@ -440,10 +486,13 @@ async def test_get_process_versions_single_version(
     assert response.status_code == 200
 
     data = response.json()["data"]
-    assert isinstance(data, list)
-    assert len(data) == 1
+    assert isinstance(data, dict)
+    assert "items" in data
+    assert data["total"] == 1
+    assert data["page"] == 1
+    assert len(data["items"]) == 1
 
-    validated_version = ProcessVersionResponse.model_validate(data[0])
+    validated_version = ProcessVersionResponse.model_validate(data["items"][0])
     assert validated_version.number == 1
     assert validated_version.process_id == process_id
     assert validated_version.bpmn_xml == SIMPLE_PROCESS_XML
@@ -478,8 +527,10 @@ async def test_update_process_creates_new_version(
     # Verify new version was created
     versions_response = await async_client.get(f"/processes/{process_id}/versions")
     assert versions_response.status_code == 200
-    versions = versions_response.json()["data"]
-    assert len(versions) == 2  # Should have initial version and new version
+    versions_data = versions_response.json()["data"]
+    assert versions_data["total"] == 2
+    assert len(versions_data["items"]) == 2
+    versions = versions_data["items"]
 
     # Latest version should be first
     latest_version = versions[0]
@@ -514,8 +565,9 @@ async def test_update_process_without_xml_change(
     # Verify no new version was created
     versions_response = await async_client.get(f"/processes/{process_id}/versions")
     assert versions_response.status_code == 200
-    versions = versions_response.json()["data"]
-    assert len(versions) == 1  # Should still only have initial version
+    versions_data = versions_response.json()["data"]
+    assert versions_data["total"] == 1
+    assert len(versions_data["items"]) == 1
 
 
 async def test_multiple_bpmn_updates(
@@ -549,8 +601,13 @@ async def test_multiple_bpmn_updates(
     # Verify all versions exist and are in correct order
     versions_response = await async_client.get(f"/processes/{process_id}/versions")
     assert versions_response.status_code == 200
-    versions = versions_response.json()["data"]
-    assert len(versions) == 4  # Initial + 3 updates
+    versions_data = versions_response.json()["data"]
+    expected_total = 4 # Initial + 3 updates
+    assert versions_data["total"] == expected_total
+    assert versions_data["page"] == 1
+    # Assuming default page size is >= 4, all items should be on the first page
+    assert len(versions_data["items"]) == expected_total
+    versions = versions_data["items"]
 
     # Verify version order (newest first)
     for i, version in enumerate(versions):
@@ -581,7 +638,114 @@ async def test_update_process_with_empty_notes(
 
     # Verify new version was created with default notes
     versions_response = await async_client.get(f"/processes/{process_id}/versions")
-    versions = versions_response.json()["data"]
-    latest_version = versions[0]
+    versions_data = versions_response.json()["data"]
+    assert versions_data["total"] == 2
+    assert len(versions_data["items"]) == 2
+    latest_version = versions_data["items"][0]
     assert latest_version["number"] == 2
     assert latest_version["notes"] == "Version 2 created via update."
+
+
+# --- Tests for GET /processes/{process_id}/versions/{version_number} ---
+
+
+async def test_get_specific_process_version(
+    async_client: AsyncClient,
+    process_with_multiple_versions: ProcessDefinition,
+):
+    """Test getting a specific version of a process."""
+    process = process_with_multiple_versions
+    process_id = process.id
+    version_to_get = 2
+
+    response = await async_client.get(
+        f"/processes/{process_id}/versions/{version_to_get}"
+    )
+    assert response.status_code == 200
+
+    data = response.json()["data"]
+    validated_version = ProcessVersionResponse.model_validate(data)
+
+    assert validated_version.number == version_to_get
+    assert validated_version.process_id == process_id
+    assert validated_version.bpmn_xml == "<bpmn>Version 2</bpmn>"
+    assert validated_version.notes == "Second version"
+
+
+async def test_get_specific_process_version_latest(
+    async_client: AsyncClient,
+    process_with_multiple_versions: ProcessDefinition,
+):
+    """Test getting the latest version of a process."""
+    process = process_with_multiple_versions
+    process_id = process.id
+    version_to_get = 3
+
+    response = await async_client.get(
+        f"/processes/{process_id}/versions/{version_to_get}"
+    )
+    assert response.status_code == 200
+
+    data = response.json()["data"]
+    validated_version = ProcessVersionResponse.model_validate(data)
+
+    assert validated_version.number == version_to_get
+    assert validated_version.process_id == process_id
+    assert validated_version.bpmn_xml == "<bpmn>Version 3</bpmn>"
+    assert validated_version.notes == "Third version"
+
+
+async def test_get_specific_process_version_first(
+    async_client: AsyncClient,
+    process_with_multiple_versions: ProcessDefinition,
+):
+    """Test getting the first version of a process."""
+    process = process_with_multiple_versions
+    process_id = process.id
+    version_to_get = 1
+
+    response = await async_client.get(
+        f"/processes/{process_id}/versions/{version_to_get}"
+    )
+    assert response.status_code == 200
+
+    data = response.json()["data"]
+    validated_version = ProcessVersionResponse.model_validate(data)
+
+    assert validated_version.number == version_to_get
+    assert validated_version.process_id == process_id
+    assert validated_version.bpmn_xml == SIMPLE_PROCESS_XML
+    assert validated_version.notes == "Initial version"
+
+
+async def test_get_specific_process_version_not_found(
+    async_client: AsyncClient,
+    process_with_multiple_versions: ProcessDefinition,
+):
+    """Test getting a version number that doesn't exist for a process."""
+    process = process_with_multiple_versions
+    process_id = process.id
+    non_existent_version = 99
+
+    response = await async_client.get(
+        f"/processes/{process_id}/versions/{non_existent_version}"
+    )
+    assert response.status_code == 404
+    assert (
+        f"Version {non_existent_version} not found for process {process_id}"
+        in response.json()["detail"]
+    )
+
+
+async def test_get_specific_process_version_process_not_found(
+    async_client: AsyncClient,
+):
+    """Test getting a version for a process ID that doesn't exist."""
+    non_existent_process_id = uuid4()
+    version_number = 1
+
+    response = await async_client.get(
+        f"/processes/{non_existent_process_id}/versions/{version_number}"
+    )
+    assert response.status_code == 404
+    assert "Process definition not found" in response.json()["detail"]

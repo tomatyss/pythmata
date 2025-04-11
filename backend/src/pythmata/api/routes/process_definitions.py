@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -282,33 +282,101 @@ async def delete_process(process_id: str, session: AsyncSession = Depends(get_se
     return {"message": "Process deleted successfully"}
 
 
-# New endpoint for version history
 @router.get(
     "/{process_id}/versions",
-    response_model=ApiResponse[list[ProcessVersionResponse]],
+    response_model=ApiResponse[PaginatedResponse[ProcessVersionResponse]],
 )
 async def get_process_versions(
-    process_id: str, session: AsyncSession = Depends(get_session)
+    process_id: str,
+    session: AsyncSession = Depends(get_session),
+    page: int = Query(1, ge=1, description="Page number"),
+    pageSize: int = Query(10, ge=1, le=100, description="Number of items per page"),
 ):
-    """Get the version history for a specific process definition."""
+    """Get the version history for a specific process definition with pagination."""
     try:
         # Verify process definition exists first
+        process_check_result = await session.execute(
+            select(ProcessDefinitionModel.id).filter(ProcessDefinitionModel.id == process_id)
+        )
+        if not process_check_result.scalar_one_or_none():
+             raise HTTPException(status_code=404, detail="Process definition not found")
+
+        # Count total versions for pagination
+        total_count_result = await session.execute(
+            select(func.count(ProcessVersion.id))
+            .filter(ProcessVersion.process_id == process_id)
+        )
+        total_count = total_count_result.scalar_one()
+
+        # Fetch versions for the current page, ordered by number descending
+        offset = (page - 1) * pageSize
+        versions_result = await session.execute(
+            select(ProcessVersion)
+            .filter(ProcessVersion.process_id == process_id)
+            .order_by(ProcessVersion.number.desc())
+            .limit(pageSize)
+            .offset(offset)
+        )
+        versions = versions_result.scalars().all()
+
+        total_pages = (total_count + pageSize - 1) // pageSize
+
+        return {
+            "data": {
+                "items": versions,
+                "total": total_count,
+                "page": page,
+                "pageSize": pageSize,
+                "totalPages": total_pages,
+            }
+        }
+    except HTTPException:
+        raise # Re-raise HTTP exceptions
+    except Exception as e:
+        logger.error(f"Error fetching versions for process {process_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error fetching process versions: {str(e)}")
+
+
+@router.get(
+    "/{process_id}/versions/{version_number}",
+    response_model=ApiResponse[ProcessVersionResponse],
+)
+async def get_process_version_by_number(
+    process_id: str,
+    version_number: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Get a specific version of a process definition by its number."""
+    try:
+        # Verify process definition exists first (optional but good practice)
         process_check = await session.execute(
             select(ProcessDefinitionModel.id).filter(ProcessDefinitionModel.id == process_id)
         )
         if not process_check.scalar_one_or_none():
              raise HTTPException(status_code=404, detail="Process definition not found")
 
-        # Fetch versions ordered by number descending
+        # Fetch the specific version
         result = await session.execute(
             select(ProcessVersion)
             .filter(ProcessVersion.process_id == process_id)
-            .order_by(ProcessVersion.number.desc())
+            .filter(ProcessVersion.number == version_number)
         )
-        versions = result.scalars().all()
-        return {"data": versions}
-    except HTTPException:
-        raise # Re-raise HTTP exceptions
+        version = result.scalar_one_or_none()
+
+        if not version:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Version {version_number} not found for process {process_id}",
+            )
+
+        return {"data": version}
+    except HTTPException as http_exc:
+        raise http_exc # Re-raise HTTP exceptions
     except Exception as e:
-        logger.error(f"Error fetching versions for process {process_id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error fetching process versions: {str(e)}")
+        logger.error(
+            f"Error fetching version {version_number} for process {process_id}: {str(e)}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching process version: {str(e)}"
+        )
