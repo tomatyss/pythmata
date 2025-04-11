@@ -504,10 +504,12 @@ async def test_update_process_creates_new_version(
     process_definition: ProcessDefinition,
     session: AsyncSession,
 ):
-    """Test that updating BPMN XML creates a new version."""
+    """Test that updating BPMN XML creates a new version with optimistic locking."""
     process_id = process_definition.id
     new_xml = "<bpmn>Updated XML</bpmn>"
     update_notes = "Updated process flow"
+    # Fetch current timestamp for optimistic locking
+    current_updated_at = process_definition.updated_at
 
     # Update the process with new BPMN XML
     response = await async_client.put(
@@ -515,6 +517,7 @@ async def test_update_process_creates_new_version(
         json={
             "bpmn_xml": new_xml,
             "notes": update_notes,
+            "expected_updated_at": current_updated_at.isoformat(), # Send timestamp
         },
     )
     assert response.status_code == 200
@@ -547,12 +550,15 @@ async def test_update_process_without_xml_change(
     """Test that updating fields other than BPMN XML doesn't create a new version."""
     process_id = process_definition.id
     new_name = "Updated Process Name"
+    # Fetch current timestamp for optimistic locking
+    current_updated_at = process_definition.updated_at
 
     # Update only the name
     response = await async_client.put(
         f"/processes/{process_id}",
         json={
             "name": new_name,
+            "expected_updated_at": current_updated_at.isoformat(), # Send timestamp
         },
     )
     assert response.status_code == 200
@@ -575,7 +581,7 @@ async def test_multiple_bpmn_updates(
     process_definition: ProcessDefinition,
     session: AsyncSession,
 ):
-    """Test that multiple BPMN XML updates create sequential versions."""
+    """Test that multiple BPMN XML updates create sequential versions with optimistic locking."""
     process_id = process_definition.id
     updates = [
         ("<bpmn>Version 2</bpmn>", "Second version"),
@@ -584,6 +590,9 @@ async def test_multiple_bpmn_updates(
     ]
 
     current_version = 1
+    # Fetch initial timestamp
+    current_updated_at = process_definition.updated_at
+
     for xml, notes in updates:
         current_version += 1
         response = await async_client.put(
@@ -591,12 +600,15 @@ async def test_multiple_bpmn_updates(
             json={
                 "bpmn_xml": xml,
                 "notes": notes,
+                "expected_updated_at": current_updated_at.isoformat(), # Send current timestamp
             },
         )
         assert response.status_code == 200
         data = response.json()["data"]
         assert data["version"] == current_version
         assert data["bpmn_xml"] == xml
+        # Update timestamp for the next request from the response
+        current_updated_at = datetime.fromisoformat(data["updated_at"])
 
     # Verify all versions exist and are in correct order
     versions_response = await async_client.get(f"/processes/{process_id}/versions")
@@ -627,11 +639,14 @@ async def test_update_process_with_empty_notes(
     """Test that updating BPMN XML without notes creates default note text."""
     process_id = process_definition.id
     new_xml = "<bpmn>Updated without notes</bpmn>"
+    # Fetch current timestamp for optimistic locking
+    current_updated_at = process_definition.updated_at
 
     response = await async_client.put(
         f"/processes/{process_id}",
         json={
             "bpmn_xml": new_xml,
+            "expected_updated_at": current_updated_at.isoformat(), # Send timestamp
         },
     )
     assert response.status_code == 200
@@ -644,6 +659,41 @@ async def test_update_process_with_empty_notes(
     latest_version = versions_data["items"][0]
     assert latest_version["number"] == 2
     assert latest_version["notes"] == "Version 2 created via update."
+
+
+async def test_update_process_conflict(
+    async_client: AsyncClient,
+    process_definition: ProcessDefinition,
+    session: AsyncSession,
+):
+    """Test that updating with a stale timestamp results in a 409 Conflict."""
+    process_id = process_definition.id
+    stale_updated_at = process_definition.updated_at
+    original_name = process_definition.name
+
+    # Simulate another update happening before our request
+    process_definition.name = "Conflicting Update"
+    session.add(process_definition)
+    await session.commit()
+    await session.refresh(process_definition)
+    # Ensure the timestamp actually changed
+    assert process_definition.updated_at > stale_updated_at
+
+    # Attempt to update using the stale timestamp
+    response = await async_client.put(
+        f"/processes/{process_id}",
+        json={
+            "name": "My Update Attempt",
+            "expected_updated_at": stale_updated_at.isoformat(), # Send stale timestamp
+        },
+    )
+
+    assert response.status_code == 409
+    assert "Conflict detected" in response.json()["detail"]
+
+    # Verify the process name wasn't changed by the failed request
+    await session.refresh(process_definition)
+    assert process_definition.name == "Conflicting Update"
 
 
 # --- Tests for GET /processes/{process_id}/versions/{version_number} ---

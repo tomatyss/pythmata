@@ -38,9 +38,9 @@ class ProcessDefinitionUpdate(BaseModel):
 
     name: Optional[str] = None
     bpmn_xml: Optional[str] = None
-    version: Optional[int] = None  # Allow updating version
     variable_definitions: Optional[List[ProcessVariableDefinition]] = None
     notes: Optional[str] = None  # Add notes for the new version
+    expected_updated_at: datetime # Add timestamp for optimistic locking
 
     model_config = ConfigDict(extra="forbid")
 

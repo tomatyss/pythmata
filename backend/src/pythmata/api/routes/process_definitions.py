@@ -193,6 +193,24 @@ async def update_process(
         if not process:
             raise HTTPException(status_code=404, detail="Process not found")
 
+        # --- Optimistic Locking Check --- 
+        # Compare the timestamp provided by the client with the current db timestamp
+        # Make timezone-aware for comparison if necessary (assuming UTC)
+        # Ensure both datetimes are timezone-aware or both are naive.
+        # Assuming process.updated_at is timezone-aware (UTC from the model)
+        # and data.expected_updated_at is parsed correctly by Pydantic.
+        if process.updated_at != data.expected_updated_at:
+            logger.warning(
+                f"Conflict detected for process {process_id}. "
+                f"Expected updated_at: {data.expected_updated_at}, "
+                f"Actual updated_at: {process.updated_at}"
+            )
+            raise HTTPException(
+                status_code=409, 
+                detail="Conflict detected. The process definition has been modified since you loaded it. Please refresh and try again."
+            )
+        # --- End Optimistic Locking Check ---
+
         updated = False
         version_created = False
 
@@ -233,7 +251,9 @@ async def update_process(
             logger.info(f"Created ProcessVersion record number {process.version} for process {process_id}")
 
         if updated:
-            process.updated_at = datetime.now(timezone.utc)
+            # updated_at is handled by onupdate in the model, but setting explicitly ensures
+            # the value is updated in the object state immediately if needed before commit.
+            process.updated_at = datetime.now(timezone.utc) 
             session.add(process) # Add process to session if any changes occurred
             await session.commit()
             await session.refresh(process)
