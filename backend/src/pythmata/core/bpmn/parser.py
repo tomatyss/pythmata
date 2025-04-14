@@ -53,6 +53,8 @@ class BPMNParser:
                 nodes.append(self._parse_event(elem, EventType.START))
             elif elem.tag.endswith("}endEvent"):
                 nodes.append(self._parse_event(elem, EventType.END))
+            elif elem.tag.endswith("}intermediateCatchEvent"):
+                nodes.append(self._parse_event(elem, EventType.INTERMEDIATE))
             elif "Gateway" in elem.tag:
                 nodes.append(self.parse_element(elem))
             elif elem.tag.endswith("}subProcess"):
@@ -95,7 +97,7 @@ class BPMNParser:
             tag = definitions[0].tag.split("}")[-1]
             # Convert timerEventDefinition to timer, messageEventDefinition to message, etc.
             if tag.endswith("EventDefinition"):
-                event_definition = tag[:-14].lower()  # Remove "EventDefinition" suffix
+                event_definition = tag[:-len('EventDefinition')+1].lower()  # Remove "EventDefinition" suffix
             else:
                 event_definition = tag
 
