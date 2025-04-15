@@ -97,8 +97,7 @@ class BPMNParser:
             tag = definitions[0].tag.split("}")[-1]
             # Convert timerEventDefinition to timer, messageEventDefinition to message, etc.
             if tag.endswith("EventDefinition"):
-                event_definition = tag[:-len('EventDefinition')+1].lower()  # Remove "EventDefinition" suffix
-            else:
+                event_definition = tag[:-len('EventDefinition')].lower()  # Remove "EventDefinition" suffix
                 event_definition = tag
 
         return Event(
