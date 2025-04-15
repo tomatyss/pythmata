@@ -15,6 +15,8 @@ Welcome to the BPMN reference documentation for Pythmata. This section covers al
 
 - Activities
 - Events
+  - [Start Events](start-events.md)
+  - [Timer Events](timer-events.md)
 - Gateways
 
 ### Connecting Objects
