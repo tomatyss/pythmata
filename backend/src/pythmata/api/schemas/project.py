@@ -1,10 +1,9 @@
 """API schemas for project management."""
 
-import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, UUID4
+from pydantic import UUID4, BaseModel, Field
 
 from pythmata.api.schemas.user import UserResponse
 
@@ -21,7 +20,6 @@ class ProjectRoleBase(BaseModel):
 class ProjectRoleCreate(ProjectRoleBase):
     """Schema for creating a project role."""
 
-    pass
 
 
 class ProjectRoleUpdate(ProjectRoleBase):
@@ -35,7 +33,9 @@ class ProjectRoleResponse(ProjectRoleBase):
 
     id: UUID4 = Field(..., description="Unique identifier for the role")
     created_at: datetime = Field(..., description="Timestamp when the role was created")
-    updated_at: datetime = Field(..., description="Timestamp when the role was last updated")
+    updated_at: datetime = Field(
+        ..., description="Timestamp when the role was last updated"
+    )
 
     class Config:
         """Pydantic config."""
@@ -53,7 +53,6 @@ class ProjectMemberBase(BaseModel):
 class ProjectMemberCreate(ProjectMemberBase):
     """Schema for creating a project member."""
 
-    pass
 
 
 class ProjectMemberUpdate(BaseModel):
@@ -68,9 +67,15 @@ class ProjectMemberResponse(BaseModel):
     id: UUID4 = Field(..., description="Unique identifier for the membership")
     user: UserResponse = Field(..., description="User information")
     role: ProjectRoleResponse = Field(..., description="Role information")
-    joined_at: datetime = Field(..., description="Timestamp when the user joined the project")
-    created_at: datetime = Field(..., description="Timestamp when the membership was created")
-    updated_at: datetime = Field(..., description="Timestamp when the membership was last updated")
+    joined_at: datetime = Field(
+        ..., description="Timestamp when the user joined the project"
+    )
+    created_at: datetime = Field(
+        ..., description="Timestamp when the membership was created"
+    )
+    updated_at: datetime = Field(
+        ..., description="Timestamp when the membership was last updated"
+    )
 
     class Config:
         """Pydantic config."""
@@ -88,7 +93,6 @@ class TagBase(BaseModel):
 class TagCreate(TagBase):
     """Schema for creating a tag."""
 
-    pass
 
 
 class TagUpdate(TagBase):
@@ -120,7 +124,8 @@ class ProjectDescriptionCreate(ProjectDescriptionBase):
     """Schema for creating a project description."""
 
     tag_ids: Optional[List[UUID4]] = Field(
-        default_factory=list, description="IDs of tags to associate with the description"
+        default_factory=list,
+        description="IDs of tags to associate with the description",
     )
 
 
@@ -140,8 +145,12 @@ class ProjectDescriptionResponse(ProjectDescriptionBase):
     project_id: UUID4 = Field(..., description="ID of the project")
     version: int = Field(..., description="Version number of the description")
     is_current: bool = Field(..., description="Whether this is the current version")
-    created_at: datetime = Field(..., description="Timestamp when the description was created")
-    tags: List[TagResponse] = Field(default_factory=list, description="Tags associated with the description")
+    created_at: datetime = Field(
+        ..., description="Timestamp when the description was created"
+    )
+    tags: List[TagResponse] = Field(
+        default_factory=list, description="Tags associated with the description"
+    )
 
     class Config:
         """Pydantic config."""
@@ -160,7 +169,6 @@ class ProjectBase(BaseModel):
 class ProjectCreate(ProjectBase):
     """Schema for creating a project."""
 
-    pass
 
 
 class ProjectUpdate(ProjectBase):
@@ -176,8 +184,12 @@ class ProjectResponse(ProjectBase):
 
     id: UUID4 = Field(..., description="Unique identifier for the project")
     owner_id: UUID4 = Field(..., description="ID of the user who owns the project")
-    created_at: datetime = Field(..., description="Timestamp when the project was created")
-    updated_at: datetime = Field(..., description="Timestamp when the project was last updated")
+    created_at: datetime = Field(
+        ..., description="Timestamp when the project was created"
+    )
+    updated_at: datetime = Field(
+        ..., description="Timestamp when the project was last updated"
+    )
     owner: UserResponse = Field(..., description="Owner information")
     members: List[ProjectMemberResponse] = Field(
         default_factory=list, description="Project members"
@@ -198,7 +210,9 @@ class ProjectDetailResponse(ProjectResponse):
     descriptions: List[ProjectDescriptionResponse] = Field(
         default_factory=list, description="Project descriptions"
     )
-    process_count: int = Field(0, description="Number of process definitions in the project")
+    process_count: int = Field(
+        0, description="Number of process definitions in the project"
+    )
 
     class Config:
         """Pydantic config."""

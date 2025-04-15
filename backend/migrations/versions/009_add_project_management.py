@@ -1,10 +1,11 @@
 """Add project management tables.
 
 Revision ID: 009
-Revises: 008_create_process_versions_table
+Revises: 008
 Create Date: 2025-04-07
 
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -13,7 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID
 
 # revision identifiers, used by Alembic.
 revision: str = "009"
-down_revision: Union[str, None] = "008_create_process_versions_table"
+down_revision: Union[str, None] = "008"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -41,7 +42,9 @@ def upgrade() -> None:
             sa.Enum("DRAFT", "ACTIVE", "ARCHIVED", "COMPLETED", name="projectstatus"),
             nullable=False,
         ),
-        sa.Column("owner_id", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column(
+            "owner_id", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -51,11 +54,19 @@ def upgrade() -> None:
         "project_members",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
         sa.Column(
-            "project_id", UUID(as_uuid=True), sa.ForeignKey("projects.id"), nullable=False
+            "project_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("projects.id"),
+            nullable=False,
         ),
-        sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
         sa.Column(
-            "role_id", UUID(as_uuid=True), sa.ForeignKey("project_roles.id"), nullable=False
+            "user_id", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False
+        ),
+        sa.Column(
+            "role_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("project_roles.id"),
+            nullable=False,
         ),
         sa.Column("joined_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
@@ -76,7 +87,10 @@ def upgrade() -> None:
         "project_descriptions",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
         sa.Column(
-            "project_id", UUID(as_uuid=True), sa.ForeignKey("projects.id"), nullable=False
+            "project_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("projects.id"),
+            nullable=False,
         ),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("version", sa.Integer(), nullable=False),
@@ -93,13 +107,20 @@ def upgrade() -> None:
             sa.ForeignKey("project_descriptions.id"),
             primary_key=True,
         ),
-        sa.Column("tag_id", UUID(as_uuid=True), sa.ForeignKey("tags.id"), primary_key=True),
+        sa.Column(
+            "tag_id", UUID(as_uuid=True), sa.ForeignKey("tags.id"), primary_key=True
+        ),
     )
 
     # Add project_id and source_description_id columns to process_definitions table
     op.add_column(
         "process_definitions",
-        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("projects.id"), nullable=True),
+        sa.Column(
+            "project_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("projects.id"),
+            nullable=True,
+        ),
     )
     op.add_column(
         "process_definitions",
@@ -110,11 +131,16 @@ def upgrade() -> None:
             nullable=True,
         ),
     )
-    
+
     # Add project_id and context columns to chat_sessions table
     op.add_column(
         "chat_sessions",
-        sa.Column("project_id", UUID(as_uuid=True), sa.ForeignKey("projects.id"), nullable=True),
+        sa.Column(
+            "project_id",
+            UUID(as_uuid=True),
+            sa.ForeignKey("projects.id"),
+            nullable=True,
+        ),
     )
     op.add_column(
         "chat_sessions",
@@ -122,9 +148,7 @@ def upgrade() -> None:
     )
 
     # Create indexes
-    op.create_index(
-        "ix_projects_owner_id", "projects", ["owner_id"], unique=False
-    )
+    op.create_index("ix_projects_owner_id", "projects", ["owner_id"], unique=False)
     op.create_index(
         "ix_chat_sessions_project_id", "chat_sessions", ["project_id"], unique=False
     )

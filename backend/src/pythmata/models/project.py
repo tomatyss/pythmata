@@ -3,9 +3,19 @@
 import enum
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String, Table, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+    Table,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -27,9 +37,8 @@ class ProjectStatus(str, enum.Enum):
 description_tags = Table(
     "description_tags",
     Base.metadata,
-    mapped_column("description_id", ForeignKey(
-        "project_descriptions.id"), primary_key=True),
-    mapped_column("tag_id", ForeignKey("tags.id"), primary_key=True),
+    Column("description_id", ForeignKey("project_descriptions.id"), primary_key=True),
+    Column("tag_id", ForeignKey("tags.id"), primary_key=True),
 )
 
 
@@ -111,8 +120,7 @@ class ProjectRole(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    permissions: Mapped[Dict] = mapped_column(
-        JSON, nullable=False, default=dict)
+    permissions: Mapped[Dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -180,12 +188,9 @@ class ProjectMember(Base):
     )
 
     # Relationships
-    project: Mapped[Project] = relationship(
-        "Project", back_populates="members")
-    user: Mapped[User] = relationship(
-        "User", back_populates="project_memberships")
-    role: Mapped[ProjectRole] = relationship(
-        "ProjectRole", back_populates="members")
+    project: Mapped[Project] = relationship("Project", back_populates="members")
+    user: Mapped[User] = relationship("User", back_populates="project_memberships")
+    role: Mapped[ProjectRole] = relationship("ProjectRole", back_populates="members")
 
 
 class Tag(Base):
@@ -206,8 +211,7 @@ class Tag(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
-    color: Mapped[str] = mapped_column(
-        String(7), nullable=False, default="#808080")
+    color: Mapped[str] = mapped_column(String(7), nullable=False, default="#808080")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -246,8 +250,7 @@ class ProjectDescription(Base):
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[int] = mapped_column(nullable=False, default=1)
-    is_current: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True)
+    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -255,8 +258,7 @@ class ProjectDescription(Base):
     )
 
     # Relationships
-    project: Mapped[Project] = relationship(
-        "Project", back_populates="descriptions")
+    project: Mapped[Project] = relationship("Project", back_populates="descriptions")
     tags: Mapped[List[Tag]] = relationship(
         secondary=description_tags, back_populates="descriptions"
     )
@@ -276,16 +278,5 @@ User.project_memberships: Mapped[List[ProjectMember]] = relationship(
 # Import ChatSession at the end to avoid circular imports
 from pythmata.models.chat import ChatSession  # noqa
 
-# Update ProcessDefinition model relationships
-ProcessDefinition.project_id: Mapped[Optional[UUID]] = mapped_column(
-    UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
-)
-ProcessDefinition.source_description_id: Mapped[Optional[UUID]] = mapped_column(
-    UUID(as_uuid=True), ForeignKey("project_descriptions.id"), nullable=True
-)
-ProcessDefinition.project: Mapped[Optional[Project]] = relationship(
-    "Project", back_populates="process_definitions"
-)
-ProcessDefinition.source_description: Mapped[Optional[ProjectDescription]] = relationship(
-    "ProjectDescription", back_populates="process_definitions"
-)
+# ProcessDefinition relationships are already defined in process.py
+# No need to redefine them here

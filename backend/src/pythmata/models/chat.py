@@ -1,11 +1,10 @@
 """Models for chat functionality."""
 
 import uuid
-from typing import Optional
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from pythmata.models.base import Base
@@ -34,11 +33,11 @@ class ChatSession(Base):
     process_definition_id = Column(
         UUID(as_uuid=True), ForeignKey("process_definitions.id"), nullable=True
     )
-    project_id = Column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
-    )
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
     title = Column(String(255), nullable=False)
-    context = Column(Text, nullable=True)  # Store additional context for the conversation
+    context = Column(
+        Text, nullable=True
+    )  # Store additional context for the conversation
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -46,9 +45,7 @@ class ChatSession(Base):
     process_definition = relationship(
         "ProcessDefinition", back_populates="chat_sessions"
     )
-    project = relationship(
-        "Project", back_populates="chat_sessions"
-    )
+    project = relationship("Project", back_populates="chat_sessions")
     messages = relationship(
         "ChatMessage", back_populates="session", cascade="all, delete-orphan"
     )

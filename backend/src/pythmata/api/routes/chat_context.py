@@ -1,16 +1,16 @@
 """API routes for chat context management."""
 
 import uuid
-from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pythmata.api.dependencies import get_current_user, get_db
+from pythmata.api.dependencies import get_db
 from pythmata.api.schemas.llm import ChatSessionResponse
+from pythmata.core.auth import get_current_user
 from pythmata.models.chat import ChatSession
-from pythmata.models.project import Project, ProjectMember, ProjectRole
+from pythmata.models.project import Project, ProjectMember
 from pythmata.models.user import User
 from pythmata.utils.logger import get_logger
 
@@ -76,26 +76,26 @@ async def switch_chat_session_project(
 
     # Update chat session with new project context
     session.project_id = project_id
-    
+
     # Add context information about the project switch
     context = f"Switched to project: {project.name}"
     if project.description:
         context += f"\nDescription: {project.description}"
-    
+
     # If there's existing context, append to it
     if session.context:
         session.context += f"\n\n{context}"
     else:
         session.context = context
-    
+
     await db.commit()
     await db.refresh(session)
-    
+
     # Log the action
     logger.info(
         f"Chat session {session_id} switched to project {project_id} by user {current_user.id}"
     )
-    
+
     # Prepare response
     response = {
         "id": str(session.id),
@@ -104,13 +104,13 @@ async def switch_chat_session_project(
         "created_at": session.created_at,
         "updated_at": session.updated_at,
     }
-    
+
     if session.process_definition_id:
         response["process_definition_id"] = str(session.process_definition_id)
-        
+
     if session.project_id:
         response["project_id"] = str(session.project_id)
-        
+
     return response
 
 
@@ -146,24 +146,24 @@ async def clear_chat_session_project(
 
     # Clear project context
     session.project_id = None
-    
+
     # Add context information about clearing the project
     context = "Project context cleared from chat session."
-    
+
     # If there's existing context, append to it
     if session.context:
         session.context += f"\n\n{context}"
     else:
         session.context = context
-    
+
     await db.commit()
     await db.refresh(session)
-    
+
     # Log the action
     logger.info(
         f"Project context cleared from chat session {session_id} by user {current_user.id}"
     )
-    
+
     # Prepare response
     response = {
         "id": str(session.id),
@@ -172,8 +172,8 @@ async def clear_chat_session_project(
         "created_at": session.created_at,
         "updated_at": session.updated_at,
     }
-    
+
     if session.process_definition_id:
         response["process_definition_id"] = str(session.process_definition_id)
-        
+
     return response

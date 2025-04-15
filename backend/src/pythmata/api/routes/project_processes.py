@@ -1,15 +1,15 @@
 """API routes for project process management."""
 
 import uuid
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
-from pythmata.api.dependencies import get_current_user, get_db
+from pythmata.api.dependencies import get_db
 from pythmata.api.schemas.process import ProcessDefinitionResponse
+from pythmata.core.auth import get_current_user
 from pythmata.models.process import ProcessDefinition
 from pythmata.models.project import Project, ProjectMember, ProjectRole
 from pythmata.models.user import User

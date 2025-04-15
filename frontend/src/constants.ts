@@ -92,6 +92,22 @@ export const SUCCESS_MESSAGES = {
   LOGOUT_SUCCESS: 'Logged out successfully',
 } as const;
 
+// Project Status
+export const PROJECT_STATUS = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  ARCHIVED: 'ARCHIVED',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+// Project Status Colors
+export const PROJECT_STATUS_COLORS = {
+  [PROJECT_STATUS.DRAFT]: 'info',
+  [PROJECT_STATUS.ACTIVE]: 'primary',
+  [PROJECT_STATUS.ARCHIVED]: 'warning',
+  [PROJECT_STATUS.COMPLETED]: 'success',
+} as const;
+
 // Routes
 export const ROUTES = {
   HOME: '/',
@@ -103,6 +119,14 @@ export const ROUTES = {
   PROCESS_DETAILS: (id: string) => `/processes/${id}`,
   PROCESS_INSTANCE: (id: string, instanceId: string) =>
     `/processes/${id}/instances/${instanceId}`,
+  PROJECTS: '/projects',
+  NEW_PROJECT: '/projects/new',
+  PROJECT_DETAILS: (id: string) => `/projects/${id}`,
+  PROJECT_PROCESSES: (id: string) => `/projects/${id}/processes`,
+  PROJECT_MEMBERS: (id: string) => `/projects/${id}/members`,
+  PROJECT_DESCRIPTIONS: (id: string) => `/projects/${id}/descriptions`,
+  PROJECT_DESCRIPTION: (projectId: string, descriptionId: string) =>
+    `/projects/${projectId}/descriptions/${descriptionId}`,
 } as const;
 
 // API Endpoints
@@ -120,6 +144,25 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/processes/${id}`,
     DELETE: (id: string) => `/processes/${id}`,
     INSTANCES: (id: string) => `/processes/${id}/instances`,
+  },
+  PROJECT: {
+    LIST: '/projects',
+    CREATE: '/projects',
+    GET: (id: string) => `/projects/${id}`,
+    UPDATE: (id: string) => `/projects/${id}`,
+    DELETE: (id: string) => `/projects/${id}`,
+    MEMBERS: (id: string) => `/projects/${id}/members`,
+    MEMBER: (projectId: string, userId: string) =>
+      `/projects/${projectId}/members/${userId}`,
+    DESCRIPTIONS: (id: string) => `/projects/${id}/descriptions`,
+    DESCRIPTION: (projectId: string, descriptionId: string) =>
+      `/projects/${projectId}/descriptions/${descriptionId}`,
+    SET_CURRENT_DESCRIPTION: (projectId: string, descriptionId: string) =>
+      `/projects/${projectId}/descriptions/${descriptionId}/set-current`,
+    ROLES: (id: string) => `/projects/${id}/roles`,
+    ROLE: (id: string) => `/projects/roles/${id}`,
+    TAGS: '/projects/tags',
+    TAG: (id: string) => `/projects/tags/${id}`,
   },
 } as const;
 

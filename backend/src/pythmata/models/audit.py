@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,7 +30,7 @@ class AuditActionType(str, Enum):
 class AuditLog(Base):
     """
     Audit log model for tracking system actions.
-    
+
     Attributes:
         id: Unique identifier for the audit log entry
         user_id: ID of the user who performed the action
@@ -139,13 +139,13 @@ async def log_permission_change(
         "project_id": str(project_id),
         "new_role_id": str(new_role_id),
     }
-    
+
     if old_role_id:
         details["old_role_id"] = str(old_role_id)
         action_type = AuditActionType.ROLE_CHANGE
     else:
         action_type = AuditActionType.PERMISSION_CHANGE
-    
+
     return await log_audit_event(
         db=db,
         user_id=user_id,

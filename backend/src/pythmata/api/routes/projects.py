@@ -3,19 +3,16 @@
 import uuid
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from fastapi import Request
-from pythmata.api.dependencies import get_current_user, get_db
-from pythmata.models.audit import log_permission_change
+from pythmata.api.dependencies import get_db
 from pythmata.api.schemas.project import (
     ProjectCreate,
     ProjectDescriptionCreate,
     ProjectDescriptionResponse,
-    ProjectDescriptionUpdate,
     ProjectDetailResponse,
     ProjectMemberCreate,
     ProjectMemberResponse,
@@ -29,6 +26,8 @@ from pythmata.api.schemas.project import (
     TagResponse,
     TagUpdate,
 )
+from pythmata.core.auth import get_current_user
+from pythmata.models.audit import log_permission_change
 from pythmata.models.process import ProcessDefinition
 from pythmata.models.project import (
     Project,
@@ -348,6 +347,7 @@ async def delete_project(
 
 # Project Members API
 
+
 @router.get("/{project_id}/members", response_model=List[ProjectMemberResponse])
 async def list_project_members(
     project_id: uuid.UUID,
@@ -393,7 +393,9 @@ async def list_project_members(
 
 
 @router.post(
-    "/{project_id}/members", response_model=ProjectMemberResponse, status_code=status.HTTP_201_CREATED
+    "/{project_id}/members",
+    response_model=ProjectMemberResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 async def add_project_member(
     project_id: uuid.UUID,
@@ -476,7 +478,7 @@ async def add_project_member(
         role_id=member_data.role_id,
     )
     db.add(project_member)
-    
+
     # Log the permission change
     await log_permission_change(
         db=db,
@@ -487,7 +489,7 @@ async def add_project_member(
         new_role_id=member_data.role_id,
         ip_address=request.client.host if request.client else None,
     )
-    
+
     await db.commit()
     await db.refresh(project_member)
 
@@ -566,10 +568,10 @@ async def update_project_member(
 
     # Store old role ID for audit log
     old_role_id = target_member.role_id
-    
+
     # Update member
     target_member.role_id = member_data.role_id
-    
+
     # Log the role change
     await log_permission_change(
         db=db,
@@ -580,7 +582,7 @@ async def update_project_member(
         new_role_id=member_data.role_id,
         ip_address=request.client.host if request.client else None,
     )
-    
+
     await db.commit()
     await db.refresh(target_member)
 
@@ -590,7 +592,9 @@ async def update_project_member(
     return target_member
 
 
-@router.delete("/{project_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{project_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def remove_project_member(
     project_id: uuid.UUID,
     user_id: uuid.UUID,
@@ -656,13 +660,13 @@ async def remove_project_member(
 
     # Store role ID for audit log
     role_id = target_member.role_id
-    
+
     # Remove member
     await db.delete(target_member)
-    
+
     # Log the permission change
     from pythmata.models.audit import AuditActionType, log_audit_event
-    
+
     await log_audit_event(
         db=db,
         user_id=current_user.id,
@@ -677,11 +681,12 @@ async def remove_project_member(
         },
         ip_address=request.client.host if request.client else None,
     )
-    
+
     await db.commit()
 
 
 # Project Descriptions API
+
 
 @router.get(
     "/{project_id}/descriptions", response_model=List[ProjectDescriptionResponse]
@@ -774,20 +779,16 @@ async def create_project_description(
         )
 
     # Get latest version
-    version_query = (
-        select(func.max(ProjectDescription.version))
-        .where(ProjectDescription.project_id == project_id)
+    version_query = select(func.max(ProjectDescription.version)).where(
+        ProjectDescription.project_id == project_id
     )
     version_result = await db.execute(version_query)
     latest_version = version_result.scalar_one_or_none() or 0
 
     # Set all existing descriptions to not current
-    update_query = (
-        select(ProjectDescription)
-        .where(
-            ProjectDescription.project_id == project_id,
-            ProjectDescription.is_current == True,
-        )
+    update_query = select(ProjectDescription).where(
+        ProjectDescription.project_id == project_id,
+        ProjectDescription.is_current == True,
     )
     update_result = await db.execute(update_query)
     for description in update_result.scalars().all():
@@ -919,12 +920,9 @@ async def set_current_description(
         )
 
     # Set all descriptions to not current
-    update_query = (
-        select(ProjectDescription)
-        .where(
-            ProjectDescription.project_id == project_id,
-            ProjectDescription.is_current == True,
-        )
+    update_query = select(ProjectDescription).where(
+        ProjectDescription.project_id == project_id,
+        ProjectDescription.is_current == True,
     )
     update_result = await db.execute(update_query)
     for description in update_result.scalars().all():
@@ -955,6 +953,7 @@ async def set_current_description(
 
 
 # Project Roles API
+
 
 @router.get("/{project_id}/roles", response_model=List[ProjectRoleResponse])
 async def list_project_roles(
@@ -1052,7 +1051,9 @@ async def update_project_role(
     if role_data.name is not None:
         # Check if role with same name already exists
         if role_data.name != role.name:
-            existing_role_query = select(ProjectRole).where(ProjectRole.name == role_data.name)
+            existing_role_query = select(ProjectRole).where(
+                ProjectRole.name == role_data.name
+            )
             existing_role_result = await db.execute(existing_role_query)
             existing_role = existing_role_result.scalar_one_or_none()
             if existing_role:
@@ -1072,6 +1073,7 @@ async def update_project_role(
 
 
 # Tags API
+
 
 @router.get("/tags", response_model=List[TagResponse])
 async def list_tags(

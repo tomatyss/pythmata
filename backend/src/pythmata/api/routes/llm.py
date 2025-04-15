@@ -64,7 +64,7 @@ async def chat_completion(
 
         # Determine the appropriate system prompt based on context
         system_prompt = BPMN_SYSTEM_PROMPT
-        
+
         # If project_id is provided, get project context
         if request.project_id:
             try:
@@ -72,35 +72,33 @@ async def chat_completion(
                 project_query = select(Project).where(Project.id == request.project_id)
                 project_result = await db.execute(project_query)
                 project = project_result.scalar_one_or_none()
-                
+
                 if project:
                     # Get current project description
-                    description_query = (
-                        select(ProjectDescription)
-                        .where(
-                            ProjectDescription.project_id == request.project_id,
-                            ProjectDescription.is_current == True,
-                        )
+                    description_query = select(ProjectDescription).where(
+                        ProjectDescription.project_id == request.project_id,
+                        ProjectDescription.is_current == True,
                     )
                     description_result = await db.execute(description_query)
                     description = description_result.scalar_one_or_none()
-                    
+
                     # Use project-based conversation prompt
                     additional_context = ""
                     if description:
                         additional_context = f"\n\n# Current Project Description\n\n{description.content}"
-                    
+
                     system_prompt = PROJECT_CONVERSATION_PROMPT.format(
                         project_name=project.name,
-                        project_description=project.description or "No description available",
+                        project_description=project.description
+                        or "No description available",
                         additional_context=additional_context,
                     )
-                    
+
                     logger.info(f"Using project context for chat: {project.name}")
             except Exception as e:
                 logger.warning(f"Failed to retrieve project context: {str(e)}")
                 # Continue with default system prompt if project context retrieval fails
-        
+
         # Add system prompt as the first message
         messages.append({"role": "system", "content": system_prompt})
 
@@ -248,7 +246,7 @@ async def generate_xml(
     """
     try:
         llm_service = LlmService()
-        
+
         # If project_id is provided, get project context
         if request.project_id:
             try:
@@ -256,17 +254,20 @@ async def generate_xml(
                 project_query = select(Project).where(Project.id == request.project_id)
                 project_result = await db.execute(project_query)
                 project = project_result.scalar_one_or_none()
-                
+
                 if project:
                     # Use project-based process generation prompt
                     system_prompt = PROJECT_PROCESS_GENERATION_PROMPT.format(
                         project_name=project.name,
-                        project_description=project.description or "No description available",
+                        project_description=project.description
+                        or "No description available",
                         description=request.description,
                     )
-                    
-                    logger.info(f"Using project context for XML generation: {project.name}")
-                    
+
+                    logger.info(
+                        f"Using project context for XML generation: {project.name}"
+                    )
+
                     # Call LLM service with project context
                     response = await llm_service.generate_xml(
                         description=request.description,
@@ -429,7 +430,7 @@ async def create_chat_session(
         db.add(chat_session)
         await db.commit()
         await db.refresh(chat_session)
-        
+
         # Convert UUID fields to strings for response
         response = {
             "id": str(chat_session.id),
@@ -438,13 +439,13 @@ async def create_chat_session(
             "created_at": chat_session.created_at,
             "updated_at": chat_session.updated_at,
         }
-        
+
         if chat_session.process_definition_id:
             response["process_definition_id"] = str(chat_session.process_definition_id)
-            
+
         if chat_session.project_id:
             response["project_id"] = str(chat_session.project_id)
-            
+
         return response
     except Exception as e:
         await db.rollback()
@@ -455,7 +456,9 @@ async def create_chat_session(
 
 
 @router.get("/sessions/process/{process_id}", response_model=List[ChatSessionResponse])
-async def list_process_chat_sessions(process_id: str, db: AsyncSession = Depends(get_session)):
+async def list_process_chat_sessions(
+    process_id: str, db: AsyncSession = Depends(get_session)
+):
     """
     List all chat sessions for a process definition.
 
@@ -484,15 +487,17 @@ async def list_process_chat_sessions(process_id: str, db: AsyncSession = Depends
                 "created_at": session.created_at,
                 "updated_at": session.updated_at,
             }
-            
+
             if session.process_definition_id:
-                session_data["process_definition_id"] = str(session.process_definition_id)
-                
+                session_data["process_definition_id"] = str(
+                    session.process_definition_id
+                )
+
             if session.project_id:
                 session_data["project_id"] = str(session.project_id)
-                
+
             sessions.append(session_data)
-            
+
         return sessions
     except Exception as e:
         logger.error(f"Failed to list chat sessions: {str(e)}")
@@ -502,7 +507,9 @@ async def list_process_chat_sessions(process_id: str, db: AsyncSession = Depends
 
 
 @router.get("/sessions/project/{project_id}", response_model=List[ChatSessionResponse])
-async def list_project_chat_sessions(project_id: str, db: AsyncSession = Depends(get_session)):
+async def list_project_chat_sessions(
+    project_id: str, db: AsyncSession = Depends(get_session)
+):
     """
     List all chat sessions for a project.
 
@@ -531,15 +538,17 @@ async def list_project_chat_sessions(project_id: str, db: AsyncSession = Depends
                 "created_at": session.created_at,
                 "updated_at": session.updated_at,
             }
-            
+
             if session.process_definition_id:
-                session_data["process_definition_id"] = str(session.process_definition_id)
-                
+                session_data["process_definition_id"] = str(
+                    session.process_definition_id
+                )
+
             if session.project_id:
                 session_data["project_id"] = str(session.project_id)
-                
+
             sessions.append(session_data)
-            
+
         return sessions
     except Exception as e:
         logger.error(f"Failed to list project chat sessions: {str(e)}")
