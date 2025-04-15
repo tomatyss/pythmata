@@ -29,6 +29,7 @@ Pythmata is a Python-based BPMN workflow engine designed to provide robust proce
 - **Execution Engine**: Token-based process execution
 - **State Management**: Redis-backed persistence with transaction support
 - **Event System**: Comprehensive BPMN event handling
+- **Timer System**: [Robust timer event scheduling and execution](timer-event-system.md)
 
 ### 2. Frontend Application
 - **Process Designer**: Visual BPMN modeling interface
