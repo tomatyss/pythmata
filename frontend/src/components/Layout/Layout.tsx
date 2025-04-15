@@ -23,6 +23,8 @@ import {
   List as ListIcon,
   Add as AddIcon,
   Logout as LogoutIcon,
+  Folder as FolderIcon,
+  CreateNewFolder as CreateNewFolderIcon,
 } from '@mui/icons-material';
 import { useAuthContext } from '@/context/AuthContext';
 
@@ -30,6 +32,16 @@ const drawerWidth = 240;
 
 const menuItems = [
   { text: 'Dashboard', icon: React.createElement(DashboardIcon), path: '/' },
+  {
+    text: 'Projects',
+    icon: React.createElement(FolderIcon),
+    path: '/projects',
+  },
+  {
+    text: 'New Project',
+    icon: React.createElement(CreateNewFolderIcon),
+    path: '/projects/new',
+  },
   {
     text: 'Processes',
     icon: React.createElement(ListIcon),

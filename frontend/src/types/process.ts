@@ -22,6 +22,9 @@ export interface ProcessDefinition {
   name: string;
   version: number;
   bpmnXml: string;
+  description?: string;
+  projectId?: string;
+  status?: string;
   variableDefinitions: ProcessVariableDefinition[];
   activeInstances: number;
   totalInstances: number;
@@ -139,6 +142,8 @@ export interface PaginatedResponse<T> {
 export interface CreateProcessDefinitionRequest {
   name: string;
   bpmnXml: string;
+  description?: string;
+  projectId?: string;
   version?: number; // Optional, defaults to 1
   variableDefinitions?: ProcessVariableDefinition[];
 }

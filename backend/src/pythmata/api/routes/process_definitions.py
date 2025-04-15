@@ -16,8 +16,7 @@ from pythmata.api.schemas import (
 )
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
-from pythmata.models.process import ProcessStatus
-from pythmata.models.process import ProcessVersion
+from pythmata.models.process import ProcessStatus, ProcessVersion
 from pythmata.utils.logger import get_logger, log_error
 
 logger = get_logger(__name__)
@@ -121,8 +120,9 @@ async def create_process(
     try:
         # Determine version number
         result = await session.execute(
-            select(func.max(ProcessDefinitionModel.version))
-            .filter(ProcessDefinitionModel.name == data.name)
+            select(func.max(ProcessDefinitionModel.version)).filter(
+                ProcessDefinitionModel.name == data.name
+            )
         )
         max_existing_version = result.scalar() or 0
         version = max_existing_version + 1
@@ -139,7 +139,8 @@ async def create_process(
             bpmn_xml=data.bpmn_xml,
             version=version,
             variable_definitions=[
-                definition.model_dump() for definition in data.variable_definitions or []
+                definition.model_dump()
+                for definition in data.variable_definitions or []
             ],
         )
         session.add(process)
@@ -150,19 +151,19 @@ async def create_process(
             process_id=process.id,
             number=process.version,
             bpmn_xml=process.bpmn_xml,
-            notes="Initial version created."
+            notes="Initial version created.",
         )
         session.add(process_version)
 
         await session.commit()  # Commit both objects
-        await session.refresh(process) # Refresh to load relationships if needed later
+        await session.refresh(process)  # Refresh to load relationships if needed later
 
         # Manually construct response data including stats
         # We know stats are 0 for a new process
         response_data = ProcessDefinitionResponse.model_validate(
-             {k: v for k, v in process.__dict__.items() if k != '_sa_instance_state'}
-             | {"active_instances": 0, "total_instances": 0}
-         )
+            {k: v for k, v in process.__dict__.items() if k != "_sa_instance_state"}
+            | {"active_instances": 0, "total_instances": 0}
+        )
         return {"data": response_data}
 
     except Exception as e:
@@ -246,10 +247,12 @@ async def get_process_versions(
     try:
         # Verify process definition exists first
         process_check = await session.execute(
-            select(ProcessDefinitionModel.id).filter(ProcessDefinitionModel.id == process_id)
+            select(ProcessDefinitionModel.id).filter(
+                ProcessDefinitionModel.id == process_id
+            )
         )
         if not process_check.scalar_one_or_none():
-             raise HTTPException(status_code=404, detail="Process definition not found")
+            raise HTTPException(status_code=404, detail="Process definition not found")
 
         # Fetch versions ordered by number descending
         result = await session.execute(
@@ -260,7 +263,11 @@ async def get_process_versions(
         versions = result.scalars().all()
         return {"data": versions}
     except HTTPException:
-        raise # Re-raise HTTP exceptions
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
-        logger.error(f"Error fetching versions for process {process_id}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error fetching process versions: {str(e)}")
+        logger.error(
+            f"Error fetching versions for process {process_id}: {str(e)}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching process versions: {str(e)}"
+        )

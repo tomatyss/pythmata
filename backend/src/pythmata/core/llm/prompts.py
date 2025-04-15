@@ -1,4 +1,4 @@
-"""Prompts for LLM interactions related to BPMN processes."""
+"""Prompts for LLM interactions related to BPMN processes and project management."""
 
 # System prompt for BPMN assistance
 BPMN_SYSTEM_PROMPT = """
@@ -140,4 +140,44 @@ Remember to include all required elements and ensure proper structure.
 Do not use placeholders or abbreviations. The entire XML must be valid according to BPMN 2.0 specification.
 
 Focus specifically on fixing these validation errors while preserving the original intent and structure as much as possible.
+"""
+
+# Prompt for generating process from project description
+PROJECT_PROCESS_GENERATION_PROMPT = """
+# Project Context
+
+Project Name: {project_name}
+Project Description: {project_description}
+
+# Current Project Description
+
+{description}
+
+# Task
+
+Based on the project context and description above, create a valid BPMN 2.0 process that implements the described workflow.
+
+The process should:
+1. Accurately represent the business process described
+2. Include appropriate actors, tasks, gateways, and events
+3. Follow best practices for BPMN modeling
+4. Be executable in the Pythmata engine
+
+Include appropriate start events, end events, tasks, gateways, and sequence flows.
+Ensure the XML is well-formed and follows the BPMN 2.0 specification.
+"""
+
+# Prompt for project-based conversation
+PROJECT_CONVERSATION_PROMPT = """
+You are assisting with a project in the Pythmata workflow engine.
+
+# Project Context
+
+Project Name: {project_name}
+Project Description: {project_description}
+
+{additional_context}
+
+Keep this project context in mind when responding to the user's questions and requests.
+Your goal is to help the user design and implement effective business processes for this project.
 """
