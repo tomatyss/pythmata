@@ -3,7 +3,7 @@ from typing import Dict
 from pythmata.api.schemas import ProcessVariableValue
 from pythmata.core.engine.token import Token
 from pythmata.core.state import StateManager
-from pythmata.core.types import Task
+from pythmata.core.types import Task, PYTHON_TYPES_NAMES_TO_BPMN
 from pythmata.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -40,7 +40,7 @@ class ExecutionContextBuilder:
             "set_variable": lambda name, value: state_manager.set_variable(
                 instance_id=token.instance_id,
                 name=name,
-                variable=ProcessVariableValue(type=type(value).__name__, value=value),
+                variable=ProcessVariableValue(type=PYTHON_TYPES_NAMES_TO_BPMN.get(type(value).__name__, 'none'), value=value),
                 scope_id=token.scope_id,
             ),
             # Safe built-ins
@@ -116,7 +116,7 @@ class ScriptExecutor:
                     instance_id=token.instance_id,
                     name=f"{task.id}_result",
                     variable=ProcessVariableValue(
-                        type=type(context["result"]).__name__,
+                        type=PYTHON_TYPES_NAMES_TO_BPMN.get(type(context["result"]).__name__, 'none'),
                         value=context["result"],
                     ),
                     scope_id=token.scope_id,
