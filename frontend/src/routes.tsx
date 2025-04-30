@@ -16,6 +16,15 @@ const ProcessInstanceList = lazy(() => import('@/pages/ProcessInstanceList'));
 const ProcessDiagram = lazy(() => import('@/pages/ProcessDiagram'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
+// Project pages
+const ProjectList = lazy(() => import('@/pages/ProjectList'));
+const ProjectDetails = lazy(() => import('@/pages/ProjectDetails'));
+const ProjectCreate = lazy(() => import('@/pages/ProjectCreate'));
+const ProjectMembers = lazy(() => import('@/pages/ProjectMembers'));
+const ProjectDescriptions = lazy(() => import('@/pages/ProjectDescriptions'));
+const ProjectDescription = lazy(() => import('@/pages/ProjectDescription'));
+const ProjectProcesses = lazy(() => import('@/pages/ProjectProcesses'));
+
 // Wrap lazy loaded components with Suspense
 const withSuspense = (Component: React.ComponentType) => (
   <Suspense fallback={<LoadingSpinner fullHeight />}>
@@ -84,6 +93,49 @@ const routes: RouteObject[] = [
                     element: withSuspense(ProcessInstance),
                   },
                 ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        path: 'projects',
+        children: [
+          {
+            index: true,
+            element: withSuspense(ProjectList),
+          },
+          {
+            path: 'new',
+            element: withSuspense(ProjectCreate),
+          },
+          {
+            path: ':id',
+            children: [
+              {
+                index: true,
+                element: withSuspense(ProjectDetails),
+              },
+              {
+                path: 'members',
+                element: withSuspense(ProjectMembers),
+              },
+              {
+                path: 'descriptions',
+                children: [
+                  {
+                    index: true,
+                    element: withSuspense(ProjectDescriptions),
+                  },
+                  {
+                    path: ':descriptionId',
+                    element: withSuspense(ProjectDescription),
+                  },
+                ],
+              },
+              {
+                path: 'processes',
+                element: withSuspense(ProjectProcesses),
               },
             ],
           },

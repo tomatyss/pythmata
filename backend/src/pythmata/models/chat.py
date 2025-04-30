@@ -12,15 +12,18 @@ from pythmata.models.base import Base
 
 class ChatSession(Base):
     """
-    Model for storing chat sessions related to process definitions.
+    Model for storing chat sessions related to process definitions or projects.
 
     Attributes:
         id: Unique identifier for the chat session
-        process_definition_id: ID of the related process definition
+        process_definition_id: ID of the related process definition (optional)
+        project_id: ID of the related project (optional)
         title: Title of the chat session
+        context: Additional context information for the chat session
         created_at: Timestamp when the session was created
         updated_at: Timestamp when the session was last updated
         process_definition: Relationship to the process definition
+        project: Relationship to the project
         messages: Relationship to the chat messages
     """
 
@@ -30,7 +33,11 @@ class ChatSession(Base):
     process_definition_id = Column(
         UUID(as_uuid=True), ForeignKey("process_definitions.id"), nullable=True
     )
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
     title = Column(String(255), nullable=False)
+    context = Column(
+        Text, nullable=True
+    )  # Store additional context for the conversation
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -38,6 +45,7 @@ class ChatSession(Base):
     process_definition = relationship(
         "ProcessDefinition", back_populates="chat_sessions"
     )
+    project = relationship("Project", back_populates="chat_sessions")
     messages = relationship(
         "ChatMessage", back_populates="session", cascade="all, delete-orphan"
     )
@@ -74,3 +82,7 @@ class ChatMessage(Base):
 
     # Relationships
     session = relationship("ChatSession", back_populates="messages")
+
+
+# Import project models at the end to avoid circular imports
+from pythmata.models.project import Project  # noqa

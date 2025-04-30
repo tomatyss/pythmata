@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, DateTime, Integer
+from sqlalchemy import JSON, DateTime
 from sqlalchemy import Enum as SQLAEnum
-from sqlalchemy import ForeignKey, String, Text, TypeDecorator
+from sqlalchemy import ForeignKey, Integer, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -68,6 +68,12 @@ class ProcessDefinition(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     version: Mapped[int] = mapped_column(nullable=False)
     bpmn_xml: Mapped[str] = mapped_column(Text, nullable=False)
+    project_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
+    )
+    source_description_id: Mapped[Optional[UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("project_descriptions.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -92,7 +98,17 @@ class ProcessDefinition(Base):
         "ChatSession", back_populates="process_definition", cascade="all, delete-orphan"
     )
     versions: Mapped[list["ProcessVersion"]] = relationship(
-        "ProcessVersion", back_populates="process_definition", cascade="all, delete-orphan", order_by="ProcessVersion.number"
+        "ProcessVersion",
+        back_populates="process_definition",
+        cascade="all, delete-orphan",
+        order_by="ProcessVersion.number",
+    )
+    # Project relationships
+    project: Mapped[Optional["Project"]] = relationship(
+        "Project", back_populates="process_definitions"
+    )
+    source_description: Mapped[Optional["ProjectDescription"]] = relationship(
+        "ProjectDescription", back_populates="process_definitions"
     )
 
 
@@ -292,7 +308,10 @@ class ProcessVersion(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     process_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("process_definitions.id"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("process_definitions.id"),
+        nullable=False,
+        index=True,
     )
     number: Mapped[int] = mapped_column(Integer, nullable=False)
     bpmn_xml: Mapped[str] = mapped_column(Text, nullable=False)
@@ -309,5 +328,6 @@ class ProcessVersion(Base):
     )
 
 
-# Import ChatSession at the end to avoid circular imports
+# Import ChatSession and project models at the end to avoid circular imports
 from pythmata.models.chat import ChatSession  # noqa
+from pythmata.models.project import Project, ProjectDescription  # noqa
