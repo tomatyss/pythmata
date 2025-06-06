@@ -142,17 +142,33 @@ def extract_timer_definition(bpmn_xml: str, node_id: str) -> Optional[str]:
         "pythmata": "http://pythmata.org/schema/1.0/bpmn",
         "xsi": "http://www.w3.org/2001/XMLSchema-instance",
     }
-
-    # Find the timer start event
+    
+    # Try to find the event (either startEvent or intermediateCatchEvent)
     event = root.find(f".//bpmn:startEvent[@id='{node_id}']", ns)
     if event is None:
-        logger.warning(f"No start event found with id {node_id}")
+        event = root.find(f".//bpmn:intermediateCatchEvent[@id='{node_id}']", ns)
+
+    if event is None:
+        logger.warning(f"No start or intermediate event found with id {node_id}")
         return None
 
     # Log event name if available
     event_name = event.get("name")
     if event_name:
-        logger.info(f"Found start event with name: {event_name}")
+        logger.info(f"Found start or intermediate event with name: {event_name}")
+    
+    # Check for extension elements
+    ext_elements = event.find("bpmn:extensionElements", ns)
+    if ext_elements is not None:
+        timer_config = ext_elements.find(".//pythmata:timerEventConfig", ns)
+        if timer_config is not None:
+            timer_type = timer_config.get("timerType")
+            timer_value = timer_config.get("timerValue")
+            if timer_type and timer_value:
+                logger.info(
+                    f"Found timer in extension elements: type={timer_type}, value={timer_value}"
+                )
+                return timer_value
 
     # Check for timer event definition
     timer_def = event.find(".//bpmn:timerEventDefinition", ns)
@@ -178,19 +194,6 @@ def extract_timer_definition(bpmn_xml: str, node_id: str) -> Optional[str]:
         timer_value = time_cycle.text.strip()
         logger.info(f"Found timeCycle: {timer_value}")
         return timer_value
-
-    # Check for extension elements
-    ext_elements = event.find("bpmn:extensionElements", ns)
-    if ext_elements is not None:
-        timer_config = ext_elements.find(".//pythmata:timerEventConfig", ns)
-        if timer_config is not None:
-            timer_type = timer_config.get("timerType")
-            timer_value = timer_config.get("timerValue")
-            if timer_type and timer_value:
-                logger.info(
-                    f"Found timer in extension elements: type={timer_type}, value={timer_value}"
-                )
-                return timer_value
 
     logger.warning(f"No timer definition found for {node_id}")
     return None
@@ -225,13 +228,19 @@ def find_timer_events_in_definition(
 
     # Find all start events with timer definitions
     timer_events_found = False
-    for start_event in root.findall(".//bpmn:startEvent", ns):
+    events = root.findall(".//bpmn:startEvent", ns) + root.findall(".//bpmn:intermediateCatchEvent", ns)
+
+    for event in events:
         # Check if it has a timer definition
-        timer_def_elem = start_event.find(".//bpmn:timerEventDefinition", ns)
+        timer_def_elem = event.find(".//bpmn:timerEventDefinition", ns)
         if timer_def_elem is not None:
             timer_events_found = True
-            node_id = start_event.get("id")
-            logger.info(f"Found timer start event with id: {node_id}")
+            node_id = event.get("id")
+            if event.tag.endswith("}startEvent"):
+                event_type = 'start'
+            else:
+                event_type = 'intermediate'
+            logger.info(f"Found timer {event_type} event with id: {node_id}")
 
             # Generate a unique ID for this timer
             timer_id = f"{timer_prefix}{definition_id}:{node_id}"
