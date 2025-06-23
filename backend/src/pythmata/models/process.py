@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON, DateTime, Integer
+from sqlalchemy import JSON, DateTime
 from sqlalchemy import Enum as SQLAEnum
-from sqlalchemy import ForeignKey, String, Text, TypeDecorator
+from sqlalchemy import ForeignKey, Integer, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -92,7 +92,10 @@ class ProcessDefinition(Base):
         "ChatSession", back_populates="process_definition", cascade="all, delete-orphan"
     )
     versions: Mapped[list["ProcessVersion"]] = relationship(
-        "ProcessVersion", back_populates="process_definition", cascade="all, delete-orphan", order_by="ProcessVersion.number"
+        "ProcessVersion",
+        back_populates="process_definition",
+        cascade="all, delete-orphan",
+        order_by="ProcessVersion.number",
     )
 
 
@@ -292,7 +295,10 @@ class ProcessVersion(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     process_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("process_definitions.id"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("process_definitions.id"),
+        nullable=False,
+        index=True,
     )
     number: Mapped[int] = mapped_column(Integer, nullable=False)
     bpmn_xml: Mapped[str] = mapped_column(Text, nullable=False)
