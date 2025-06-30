@@ -14,6 +14,7 @@ from pythmata.api.schemas import (
     ProcessDefinitionUpdate,
     ProcessVersionResponse,
 )
+from pythmata.api.schemas.process.definitions import ProcessDefinitionUpdate
 from pythmata.models.process import ProcessDefinition as ProcessDefinitionModel
 from pythmata.models.process import ProcessInstance as ProcessInstanceModel
 from pythmata.models.process import ProcessStatus
@@ -175,12 +176,13 @@ async def create_process(
     "/{process_id}",
     response_model=ApiResponse[ProcessDefinitionResponse],
 )
+@log_error(logger)
 async def update_process(
     process_id: str,
     data: ProcessDefinitionUpdate = Body(...),
     session: AsyncSession = Depends(get_session),
 ):
-    """Update a process definition."""
+    """Update a process definition. Creates a new version if BPMN XML changes."""
     try:
         result = await session.execute(
             select(ProcessDefinitionModel).filter(
@@ -191,31 +193,77 @@ async def update_process(
         if not process:
             raise HTTPException(status_code=404, detail="Process not found")
 
-        if data.name is not None:
-            process.name = data.name
-        if data.bpmn_xml is not None:
-            process.bpmn_xml = data.bpmn_xml
-        if data.version is not None:
-            process.version = data.version
-        else:
-            process.version += 1  # Auto-increment version if not specified
-        if data.variable_definitions is not None:
-            logger.info(
-                f"Updating process with {len(data.variable_definitions)} variable definitions"
-            )
-            logger.debug(f"Variable definitions: {data.variable_definitions}")
-            process.variable_definitions = [
-                definition.model_dump() for definition in data.variable_definitions
-            ]
-        process.updated_at = datetime.now(timezone.utc)
+        updated = False
+        version_created = False
 
-        await session.commit()
-        await session.refresh(process)
-        return {"data": process}
+        # Update name if provided and different
+        if data.name is not None and process.name != data.name:
+            logger.info(f"Updating name for process {process_id} to '{data.name}'")
+            process.name = data.name
+            updated = True
+
+        # Update variable definitions if provided
+        # Note: This comparison assumes list order matters. For a more robust check,
+        # consider converting to sets of tuples or using a deep comparison library.
+        if data.variable_definitions is not None:
+            new_defs = [d.model_dump() for d in data.variable_definitions]
+            if process.variable_definitions != new_defs:
+                logger.info(f"Updating variable definitions for process {process_id}")
+                process.variable_definitions = new_defs
+                updated = True
+
+        # Check if BPMN XML is provided and different
+        if data.bpmn_xml is not None and process.bpmn_xml != data.bpmn_xml:
+            logger.info(f"Updating BPMN XML and creating new version for process {process_id}")
+            # Increment version number
+            process.version += 1
+            # Update BPMN on the main definition
+            process.bpmn_xml = data.bpmn_xml
+            updated = True
+            version_created = True
+
+            # Create new ProcessVersion entry
+            new_version = ProcessVersion(
+                process_id=process.id,
+                number=process.version,
+                bpmn_xml=process.bpmn_xml,
+                notes=data.notes or f"Version {process.version} created via update.",
+            )
+            session.add(new_version)
+            logger.info(f"Created ProcessVersion record number {process.version} for process {process_id}")
+
+        if updated:
+            process.updated_at = datetime.now(timezone.utc)
+            session.add(process) # Add process to session if any changes occurred
+            await session.commit()
+            await session.refresh(process)
+            logger.info(f"Process {process_id} updated successfully.{' New version created.' if version_created else ''}")
+        else:
+            logger.info(f"No changes detected for process {process_id}. Update skipped.")
+
+        # Fetch stats for the response, regardless of update status
+        stats_result = await get_process_stats(session, process_id)
+        if not stats_result:
+             # Should not happen if process existed, but handle defensively
+             raise HTTPException(status_code=404, detail="Process not found after update attempt")
+
+        _, active_instances, total_instances = stats_result[0]
+
+        # Construct response using the (potentially updated) process data and fresh stats
+        response_data = ProcessDefinitionResponse.model_validate(
+             {k: v for k, v in process.__dict__.items() if k != '_sa_instance_state'}
+             | {"active_instances": active_instances, "total_instances": total_instances}
+         )
+
+        return {"data": response_data}
+
+    except HTTPException as http_exc:
+        await session.rollback()
+        raise http_exc # Re-raise HTTP exceptions directly
     except Exception as e:
         await session.rollback()
-        logger.error(f"Error updating process: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error updating process {process_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error updating process: {str(e)}")
 
 
 @router.delete("/{process_id}")
