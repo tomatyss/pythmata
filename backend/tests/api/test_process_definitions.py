@@ -1,14 +1,26 @@
 import json
+from datetime import datetime, timezone
+from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pythmata.api.routes import router
-from pythmata.api.schemas import ProcessDefinitionResponse, ProcessStats
-from pythmata.models.process import ProcessDefinition, ProcessInstance, ProcessStatus
+from pythmata.api.schemas import (
+    ProcessDefinitionResponse,
+    ProcessStats,
+    ProcessVersionResponse,
+)
+from pythmata.models.process import (
+    ProcessDefinition,
+    ProcessInstance,
+    ProcessStatus,
+    ProcessVersion,
+)
 from tests.data.process_samples import SIMPLE_PROCESS_XML
 
 # Setup test application
@@ -28,6 +40,18 @@ async def process_definition(session: AsyncSession) -> ProcessDefinition:
     session.add(definition)
     await session.commit()
     await session.refresh(definition)
+
+    # Add initial version entry
+    initial_version = ProcessVersion(
+        process_id=definition.id,
+        number=1,
+        bpmn_xml=SIMPLE_PROCESS_XML,
+        notes="Initial version",
+    )
+    session.add(initial_version)
+    await session.commit()
+    await session.refresh(definition)
+
     return definition
 
 
@@ -80,6 +104,45 @@ async def process_with_mixed_status_instances(
 
     await session.commit()
     return process_definition, status_counts
+
+
+@pytest.fixture
+async def process_with_multiple_versions(
+    session: AsyncSession, process_definition: ProcessDefinition
+) -> ProcessDefinition:
+    """Create a process definition with multiple versions."""
+    # Version 1 already created by process_definition fixture
+    version2_xml = "<bpmn>Version 2</bpmn>"
+    version3_xml = "<bpmn>Version 3</bpmn>"
+
+    version2 = ProcessVersion(
+        process_id=process_definition.id,
+        number=2,
+        bpmn_xml=version2_xml,
+        notes="Second version",
+        created_at=datetime.now(timezone.utc),
+    )
+    version3 = ProcessVersion(
+        process_id=process_definition.id,
+        number=3,
+        bpmn_xml=version3_xml,
+        notes="Third version",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    session.add_all([version2, version3])
+
+    # Update the main process definition to reflect the latest version info
+    process_definition.version = 3
+    process_definition.bpmn_xml = version3_xml
+    session.add(process_definition)
+
+    await session.commit()
+    await session.refresh(process_definition)
+
+    # Eager load versions for assertions later
+    await session.refresh(process_definition, attribute_names=["versions"])
+    return process_definition
 
 
 async def test_get_processes_serialization(
@@ -283,3 +346,242 @@ async def test_multiple_processes_instance_counting(
     processes = data_list["items"]
     assert processes[0]["name"] == "Process 2"  # Created later
     assert processes[1]["name"] == "Process 1"  # Created first
+
+
+# --- Process Version Tests ---
+
+
+async def test_get_process_versions(
+    async_client: AsyncClient,
+    process_with_multiple_versions: ProcessDefinition,
+):
+    """Test GET /processes/{process_id}/versions endpoint."""
+    process = process_with_multiple_versions
+    process_id = process.id
+
+    response = await async_client.get(f"/processes/{process_id}/versions")
+    assert response.status_code == 200
+
+    data = response.json()["data"]
+    assert isinstance(data, list)
+    assert len(data) == 3
+
+    # Validate structure using ProcessVersionResponse schema
+    validated_versions = TypeAdapter(list[ProcessVersionResponse]).validate_python(data)
+
+    # Versions should be ordered by number descending
+    assert validated_versions[0].number == 3
+    assert validated_versions[1].number == 2
+    assert validated_versions[2].number == 1
+
+    # Check details of the latest version
+    assert validated_versions[0].process_id == process_id
+    assert validated_versions[0].bpmn_xml == "<bpmn>Version 3</bpmn>"
+    assert validated_versions[0].notes == "Third version"
+
+    # Check details of the first version
+    assert validated_versions[2].process_id == process_id
+    assert validated_versions[2].bpmn_xml == SIMPLE_PROCESS_XML
+    assert validated_versions[2].notes == "Initial version"
+
+
+async def test_get_process_versions_not_found(async_client: AsyncClient):
+    """Test GET /processes/{process_id}/versions for non-existent process."""
+    non_existent_id = uuid4()
+    response = await async_client.get(f"/processes/{non_existent_id}/versions")
+    assert response.status_code == 404
+    assert "Process definition not found" in response.json()["detail"]
+
+
+async def test_create_process_creates_initial_version(
+    async_client: AsyncClient, session: AsyncSession
+):
+    """Test that POST /processes creates an initial ProcessVersion entry."""
+    process_name = "New Process with Version"
+    process_xml = "<bpmn>Initial XML</bpmn>"
+    payload = {
+        "name": process_name,
+        "bpmn_xml": process_xml,
+        "variable_definitions": [],
+    }
+
+    response = await async_client.post("/processes", json=payload)
+    assert response.status_code == 200
+
+    created_process_data = response.json()["data"]
+    process_id = created_process_data["id"]
+
+    # Verify the ProcessDefinition was created correctly
+    assert created_process_data["name"] == process_name
+    assert created_process_data["version"] == 1
+    assert created_process_data["bpmn_xml"] == process_xml
+
+    # Now verify the ProcessVersion was created in the database
+    result = await session.execute(
+        select(ProcessVersion).filter(ProcessVersion.process_id == process_id)
+    )
+    versions = result.scalars().all()
+
+    assert len(versions) == 1
+    initial_version = versions[0]
+    assert initial_version.number == 1
+    assert initial_version.bpmn_xml == process_xml
+    assert initial_version.notes == "Initial version created."
+    assert str(initial_version.process_id) == process_id
+
+
+async def test_get_process_versions_single_version(
+    async_client: AsyncClient, process_definition: ProcessDefinition
+):
+    """Test GET /processes/{process_id}/versions when only one version exists."""
+    process_id = process_definition.id
+
+    response = await async_client.get(f"/processes/{process_id}/versions")
+    assert response.status_code == 200
+
+    data = response.json()["data"]
+    assert isinstance(data, list)
+    assert len(data) == 1
+
+    validated_version = ProcessVersionResponse.model_validate(data[0])
+    assert validated_version.number == 1
+    assert validated_version.process_id == process_id
+    assert validated_version.bpmn_xml == SIMPLE_PROCESS_XML
+    assert validated_version.notes == "Initial version"
+
+
+async def test_update_process_creates_new_version(
+    async_client: AsyncClient,
+    process_definition: ProcessDefinition,
+    session: AsyncSession,
+):
+    """Test that updating BPMN XML creates a new version."""
+    process_id = process_definition.id
+    new_xml = "<bpmn>Updated XML</bpmn>"
+    update_notes = "Updated process flow"
+
+    # Update the process with new BPMN XML
+    response = await async_client.put(
+        f"/processes/{process_id}",
+        json={
+            "bpmn_xml": new_xml,
+            "notes": update_notes,
+        },
+    )
+    assert response.status_code == 200
+
+    # Verify process definition was updated
+    data = response.json()["data"]
+    assert data["bpmn_xml"] == new_xml
+    assert data["version"] == 2  # Version should increment
+
+    # Verify new version was created
+    versions_response = await async_client.get(f"/processes/{process_id}/versions")
+    assert versions_response.status_code == 200
+    versions = versions_response.json()["data"]
+    assert len(versions) == 2  # Should have initial version and new version
+
+    # Latest version should be first
+    latest_version = versions[0]
+    assert latest_version["number"] == 2
+    assert latest_version["bpmn_xml"] == new_xml
+    assert latest_version["notes"] == update_notes
+
+
+async def test_update_process_without_xml_change(
+    async_client: AsyncClient,
+    process_definition: ProcessDefinition,
+    session: AsyncSession,
+):
+    """Test that updating fields other than BPMN XML doesn't create a new version."""
+    process_id = process_definition.id
+    new_name = "Updated Process Name"
+
+    # Update only the name
+    response = await async_client.put(
+        f"/processes/{process_id}",
+        json={
+            "name": new_name,
+        },
+    )
+    assert response.status_code == 200
+
+    # Verify process name was updated
+    data = response.json()["data"]
+    assert data["name"] == new_name
+    assert data["version"] == 1  # Version should not change
+
+    # Verify no new version was created
+    versions_response = await async_client.get(f"/processes/{process_id}/versions")
+    assert versions_response.status_code == 200
+    versions = versions_response.json()["data"]
+    assert len(versions) == 1  # Should still only have initial version
+
+
+async def test_multiple_bpmn_updates(
+    async_client: AsyncClient,
+    process_definition: ProcessDefinition,
+    session: AsyncSession,
+):
+    """Test that multiple BPMN XML updates create sequential versions."""
+    process_id = process_definition.id
+    updates = [
+        ("<bpmn>Version 2</bpmn>", "Second version"),
+        ("<bpmn>Version 3</bpmn>", "Third version"),
+        ("<bpmn>Version 4</bpmn>", "Fourth version"),
+    ]
+
+    current_version = 1
+    for xml, notes in updates:
+        current_version += 1
+        response = await async_client.put(
+            f"/processes/{process_id}",
+            json={
+                "bpmn_xml": xml,
+                "notes": notes,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["version"] == current_version
+        assert data["bpmn_xml"] == xml
+
+    # Verify all versions exist and are in correct order
+    versions_response = await async_client.get(f"/processes/{process_id}/versions")
+    assert versions_response.status_code == 200
+    versions = versions_response.json()["data"]
+    assert len(versions) == 4  # Initial + 3 updates
+
+    # Verify version order (newest first)
+    for i, version in enumerate(versions):
+        expected_version = 4 - i
+        assert version["number"] == expected_version
+        if expected_version > 1:
+            update_index = expected_version - 2
+            assert version["bpmn_xml"] == updates[update_index][0]
+            assert version["notes"] == updates[update_index][1]
+
+
+async def test_update_process_with_empty_notes(
+    async_client: AsyncClient,
+    process_definition: ProcessDefinition,
+    session: AsyncSession,
+):
+    """Test that updating BPMN XML without notes creates default note text."""
+    process_id = process_definition.id
+    new_xml = "<bpmn>Updated without notes</bpmn>"
+
+    response = await async_client.put(
+        f"/processes/{process_id}",
+        json={
+            "bpmn_xml": new_xml,
+        },
+    )
+    assert response.status_code == 200
+
+    # Verify new version was created with default notes
+    versions_response = await async_client.get(f"/processes/{process_id}/versions")
+    versions = versions_response.json()["data"]
+    latest_version = versions[0]
+    assert latest_version["number"] == 2
+    assert latest_version["notes"] == "Version 2 created via update."
