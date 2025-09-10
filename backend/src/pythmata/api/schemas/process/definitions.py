@@ -40,6 +40,7 @@ class ProcessDefinitionUpdate(BaseModel):
     bpmn_xml: Optional[str] = None
     version: Optional[int] = None  # Allow updating version
     variable_definitions: Optional[List[ProcessVariableDefinition]] = None
+    notes: Optional[str] = None  # Add notes for the new version
 
     model_config = ConfigDict(extra="forbid")
 
