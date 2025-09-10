@@ -15,4 +15,4 @@ class ProcessVersionResponse(BaseModel):
     created_at: datetime
     notes: Optional[str] = None
 
-    model_config = ConfigDict(from_attributes=True) 
+    model_config = ConfigDict(from_attributes=True)

@@ -1,18 +1,7 @@
-from pathlib import Path
-from xml.etree import ElementTree as ET
-
 import pytest
 
 from pythmata.core.bpmn.parser import BPMNParser
-from pythmata.core.bpmn.validator import BPMNValidator
-from pythmata.core.types import (
-    DataObject,
-    Event,
-    Gateway,
-    SequenceFlow,
-    SubProcess,
-    Task,
-)
+from pythmata.core.types import Event, Gateway, SubProcess, Task
 
 # Sample BPMN XML for testing basic flow elements
 BASIC_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
@@ -179,6 +168,77 @@ SERVICE_TASK_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
             <pythmata:property name="variable_filter" value="var1,var2" />
           </pythmata:properties>
         </pythmata:serviceTaskConfig>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_1">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_1" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="EndEvent_1" />
+  </bpmn:process>
+</bpmn:definitions>"""
+
+# Sample BPMN XML for testing I/O Mappings - Output Mappings tab
+IO_MAPPINGS_PROCESS_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  id="Definitions_6"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_6" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_1">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <pythmata:serviceTaskConfig taskName="http">
+          <pythmata:properties>
+            <pythmata:property name="url" value="https://api.example.com/data" />
+            <pythmata:property name="method" value="GET" />
+          </pythmata:properties>
+        </pythmata:serviceTaskConfig>
+        <pythmata:outputs>
+          <pythmata:property name="response.fact" value="pr_var1" />
+          <pythmata:property name="response.data.value" value="pr_var2" />
+        </pythmata:outputs>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_1">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_1" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="EndEvent_1" />
+  </bpmn:process>
+</bpmn:definitions>"""
+
+# Sample BPMN XML for testing both output_mapping property and I/O Mappings tab
+COMBINED_OUTPUT_MAPPINGS_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:pythmata="http://pythmata.org/schema/1.0/bpmn"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  id="Definitions_7"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_7" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_1">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+      <bpmn:extensionElements>
+        <pythmata:serviceTaskConfig taskName="http">
+          <pythmata:properties>
+            <pythmata:property name="url" value="https://api.example.com/data" />
+            <pythmata:property name="method" value="GET" />
+            <pythmata:property name="output_mapping" value="{'pr_var3': 'response.status_code'}" />
+          </pythmata:properties>
+        </pythmata:serviceTaskConfig>
+        <pythmata:outputs>
+          <pythmata:property name="response.fact" value="pr_var1" />
+          <pythmata:property name="response.data.value" value="pr_var2" />
+        </pythmata:outputs>
       </bpmn:extensionElements>
     </bpmn:serviceTask>
     <bpmn:endEvent id="EndEvent_1">
@@ -366,3 +426,66 @@ class TestBPMNParser:
         assert properties["message"] == "Test message"
         assert properties["include_variables"] == "true"
         assert properties["variable_filter"] == "var1,var2"
+
+    async def test_parse_io_mappings_output_tab(self, parser):
+        """Test parsing of I/O Mappings - Output Mappings tab."""
+        # Parse process with I/O Mappings XML
+        result = parser.parse(IO_MAPPINGS_PROCESS_XML)
+
+        nodes = result["nodes"]
+
+        # Test service task with I/O Mappings
+        task = next(n for n in nodes if isinstance(n, Task) and n.type == "serviceTask")
+        assert task.id == "Task_1"
+
+        # Test service task config
+        assert "serviceTaskConfig" in task.extensions
+        service_config = task.extensions["serviceTaskConfig"]
+        assert service_config["task_name"] == "http"
+
+        # Test properties
+        properties = service_config["properties"]
+        assert properties["url"] == "https://api.example.com/data"
+        assert properties["method"] == "GET"
+
+        # Test output mappings from I/O Mappings tab
+        assert "output_mapping" in properties
+
+        # The output_mapping is stored as a string representation of a dict
+        output_mapping = eval(properties["output_mapping"])
+        assert isinstance(output_mapping, dict)
+        assert output_mapping["pr_var1"] == "response.fact"
+        assert output_mapping["pr_var2"] == "response.data.value"
+
+    async def test_parse_combined_output_mappings(self, parser):
+        """Test parsing of both output_mapping property and I/O Mappings tab."""
+        # Parse process with combined output mappings XML
+        result = parser.parse(COMBINED_OUTPUT_MAPPINGS_XML)
+
+        nodes = result["nodes"]
+
+        # Test service task with combined output mappings
+        task = next(n for n in nodes if isinstance(n, Task) and n.type == "serviceTask")
+        assert task.id == "Task_1"
+
+        # Test service task config
+        assert "serviceTaskConfig" in task.extensions
+        service_config = task.extensions["serviceTaskConfig"]
+        assert service_config["task_name"] == "http"
+
+        # Test properties
+        properties = service_config["properties"]
+        assert properties["url"] == "https://api.example.com/data"
+        assert properties["method"] == "GET"
+
+        # Test combined output mappings
+        assert "output_mapping" in properties
+
+        # The output_mapping is stored as a string representation of a dict
+        output_mapping = eval(properties["output_mapping"])
+        assert isinstance(output_mapping, dict)
+
+        # Should contain mappings from both sources
+        assert output_mapping["pr_var1"] == "response.fact"
+        assert output_mapping["pr_var2"] == "response.data.value"
+        assert output_mapping["pr_var3"] == "response.status_code"

@@ -1,14 +1,13 @@
 """Tests for timer parser module."""
 
+import importlib
+import sys
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-
-import sys
-import importlib
 
 
 def reload_timer_parser():
@@ -18,6 +17,7 @@ def reload_timer_parser():
             del sys.modules[module]
     # Re-import the module to reset its state
     import pythmata.core.engine.events.timer_parser as timer_parser
+
     importlib.reload(timer_parser)
     return timer_parser
 
@@ -46,7 +46,7 @@ class TestTimerParser:
 
     def test_parse_timer_definition_duration(self):
         """Test parsing duration timer definitions."""
-        
+
         timer_parser = reload_timer_parser()
 
         # Setup mock datetime with context manager for better isolation
@@ -136,7 +136,9 @@ class TestTimerParser:
           </bpmn:process>
         </bpmn:definitions>
         """
-        timer_def = timer_parser.extract_timer_definition(bpmn_xml_no_timer, "StartEvent_1")
+        timer_def = timer_parser.extract_timer_definition(
+            bpmn_xml_no_timer, "StartEvent_1"
+        )
         assert timer_def is None
 
     def test_find_timer_events_in_definition(self):
@@ -164,7 +166,9 @@ class TestTimerParser:
             mock_extract.return_value = "PT1H"
 
             # Test finding timer events
-            timer_events = timer_parser.find_timer_events_in_definition(bpmn_xml, "prefix:", "def1")
+            timer_events = timer_parser.find_timer_events_in_definition(
+                bpmn_xml, "prefix:", "def1"
+            )
             assert len(timer_events) == 1
             assert timer_events[0] == (
                 "prefix:def1:StartEvent_1",
